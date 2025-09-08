@@ -1,0 +1,66 @@
+# 开启调试模式
+debug: true
+# Steam Bot后端的监听地址
+steamBotHost: 127.0.0.1
+# Steam Bot后端的监听端口
+steamBotPort: 13091
+# 访问Steam Bot后端的认证Token
+steamBotToken: '0x4445414442454546'
+# Steam Bot使用的HTTP代理，格式为"http://127.0.0.1:8080"，"system"表示使用系统代理，留空则不使用代理
+steamBotProxy: system
+# 要发送消息的Steam群组ID，程序启动时可以读取到
+steamGroupId: '37660928'
+# 要发送消息的Steam群组频道名称
+steamChannelName: BOT候车室
+# 是否启用微信推送bot状态信息
+wechatPush: false
+# pushplus的token，用于微信通知
+pushplusToken: ''
+# 等待OCR结果超时时间(秒)
+ocrTimeout: 3
+# 卡单持续时间 (秒)
+suspendGTATime: 15
+# 卡单延迟时间 (秒)(在面板消失xx秒后卡单/在落地xx秒后卡单)
+delaySuspendTime: 5
+# 检测间隔时间 (秒)
+checkLoopTime: 1
+# 面板无人加入时重开时间 (秒)
+matchPanelTimeout: 60
+# 等待正在加入玩家超时重开时间 (秒)
+joiningPlayerKick: 120
+# 开始差事等待延迟 (秒)
+startMatchDelay: 15
+# 全部玩家已加入时立即开始差事而不等待 (绕过 "startMatchDelay" 时间)
+startOnAllJoined: true
+# 等待差事启动落地超时时间 (秒)(防止卡在启动战局中)
+exitMatchTimeout: 120
+# 差事层楼梯口进行"走出门"动作时 每轮按S的持续时间 (毫秒)
+pressSTimeStairs: 400
+# 差事层楼梯口进行"走出门"动作时 每轮按A的持续时间 (毫秒)
+pressATimeStairs: 400
+# 差事层楼梯口进行"走出门"动作持续时间 (毫秒)
+goOutStairsTime: 1000
+# 差事层进行"穿过走道"动作时 每轮按S的持续时间 (毫秒)
+pressSTimeAisle: 360
+# 差事层进行"穿过走道"动作时 每轮按A的持续时间 (毫秒)
+pressATimeAisle: 500
+# 差事层进行"穿过走道"动作持续时间 (毫秒)
+crossAisleTime: 3000
+# 差事层进行"寻找差事黄圈"动作时 每轮按S的持续时间 (毫秒)
+pressSTimeGoJob: 340
+# 差事层进行"寻找差事黄圈"动作时 每轮按A的持续时间 (毫秒)
+pressATimeGoJob: 480
+# 差事层进行"寻找差事黄圈"动作超时时间 (毫秒)
+waitFindJobTimeout: 15000
+# 开好面板时发的消息 (设置为空字符串则不发这条消息)
+msgOpenJobPanel: 德瑞差事已启动，请先看教程，学会卡CEO和卡单再进
+# 没人加入超时重开时发的消息 (设置为空字符串则不发这条消息)
+msgWaitPlayerTimeout: 启动任务超时，重新启动中
+# 有人卡在正在加入超时重开时发的消息 (设置为空字符串则不发这条消息)
+msgJoiningPlayerKick: 任务中含有卡B，重新启动中
+# 满人时发的消息 (设置为空字符串则不发这条消息)
+msgTeamFull: 满了，请等下一班车
+# 差事开始时发的消息 (设置为空字符串则不发这条消息)
+msgJobStarted: 即将发车，请在听到“咚”的一声后卡单
+# 差传bot的序号，-1: 不指定, 按顺序加入直到成功, 0: 第一个差传(一般为辅助瞄准), 1: 第二个差传(一般为自由瞄准); 
+jobTpBotIndex: -1

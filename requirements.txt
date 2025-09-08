@@ -1,0 +1,11 @@
+colorlog
+rapidocr-onnxruntime
+Pillow
+numpy
+psutil
+requests
+keyboard
+vgamepad
+pynput
+pywin32
+ruamel.yaml
