@@ -90,7 +90,7 @@ class SteamBotClient:
         """
         if raw_proxy_config == "system":
             # system 表示使用系统代理
-            system_proxies = getproxies()["http"]
+            system_proxies = getproxies().get("http", "")
             # getproxies() 只支持环境变量或者注册表中配置的代理字符串
             if system_proxies == "":
                 GLogger.warning("配置了使用系统代理，但未获取到系统代理。请注意程序不支持 PAC 模式的代理。")
