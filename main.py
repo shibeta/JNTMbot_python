@@ -3,6 +3,7 @@ import threading
 from datetime import datetime, timedelta
 import keyboard
 import os
+from sys import exit
 import win32gui
 from win32con import SW_RESTORE
 from functools import wraps
@@ -48,6 +49,7 @@ def health_check_monitor(steam_bot: SteamBotClient, token: str, pause_event: thr
 
             GLogger.warning(f"检测到 Bot 连续30分钟未向 Steam 发送消息！正在发送微信通知: {msg}")
             push_wechat(token, title, msg)
+            exit()
 
 
 # 用于处理退出的装饰器
@@ -117,26 +119,36 @@ def main():
         GLogger.error(f"初始化 OCR 引擎失败: {e}")
         return
 
-    # 暂停/恢复热键设置
+    # 热键设置
     pause_event = threading.Event()
     pause_event.set()  # 初始状态为“已恢复”
 
+    # 暂停/恢复热键
     def toggle_pause():
         if pause_event.is_set():
             pause_event.clear()  # 清除标志，进入暂停状态
-            GLogger.warning("Bot 将在本循环结束后暂停。按 F10 恢复。")
+            GLogger.warning("暂停/恢复热键被按下，Bot 将在本循环结束后暂停。按 F10 恢复。")
         else:
             pause_event.set()  # 设置标志，恢复运行
             steam_bot.reset_send_timer()  # 恢复时重置发送信息计时器
-            GLogger.warning("Bot 已恢复。")
+            GLogger.warning("暂停/恢复热键被按下，Bot 已恢复。")
 
-    keyboard.add_hotkey("f10", toggle_pause)
-    GLogger.info("暂停热键初始化成功，可以使用 F10 暂停和恢复机器人。")
+    # 退出热键
+    def toggle_exit(steam_bot: SteamBotClient):
+        GLogger.warning("退出热键被按下，退出程序。。。")
+        steam_bot.shutdown()
+        os._exit(0)
+
+    keyboard.add_hotkey("ctrl+f9", toggle_pause)
+    keyboard.add_hotkey("ctrl+f10", toggle_exit, args=(steam_bot,))
+    GLogger.info("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
 
     # 初始化健康检查和微信推送
     if GConfig.wechatPush:
         if GConfig.pushplusToken:
-            GLogger.info("已启用微信推送，当 Bot 连续30分钟未向 Steam 发送消息时，将发送微信消息。")
+            GLogger.info(
+                "已启用微信推送，当 Bot 连续30分钟未向 Steam 发送消息时，将发送微信消息并退出程序。"
+            )
             monitor_thread = threading.Thread(
                 target=health_check_monitor,
                 args=(steam_bot, GConfig.pushplusToken, pause_event),
@@ -220,7 +232,7 @@ def main():
 
             # 等待队伍并开始差事
             if not automator.wait_team():
-                GLogger.warning("等待队伍时面板状态出错。重启循环。")
+                GLogger.warning("等待队伍时出错。重启循环。")
                 GLogger.info("正在确保离开面板回到自由模式。")
                 automator.exit_job_panel()
                 continue
