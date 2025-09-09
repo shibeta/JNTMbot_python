@@ -1,11 +1,11 @@
-import numpy as np
 import win32gui
 import win32api
 import win32con
 import win32print
 from PIL import Image, ImageGrab
-from rapidocr_onnxruntime import RapidOCR
+from rapidocr import RapidOCR
 import threading
+from time import sleep
 
 from logger import setup_logger
 
@@ -30,14 +30,14 @@ class OCREngine:
         模型加载过程可能需要几秒钟。
         """
         GLogger.info("正在初始化 OCR 引擎，可能需要一些时间...")
-        self.engine = RapidOCR()
+        self.engine = RapidOCR(params={"Global.log_level": "error"})
         GLogger.warning("OCR 引擎初始化完成。")
 
     def _capture_window_area(
         self, hwnd: int, x: float, y: float, w: float, h: float, include_title_bar: bool = False
     ) -> Image.Image | None:
         """
-        截取指定窗口句柄(hwnd)的特定区域。
+        截取指定窗口的特定区域。
 
         Args:
             hwnd: 目标窗口的句柄。
@@ -51,6 +51,12 @@ class OCREngine:
             一个 PIL.Image.Image 对象，如果失败则返回 None。
         """
         try:
+            # 将要截图的窗口置于前台
+            if hwnd != win32gui.GetForegroundWindow():
+                win32gui.SetForegroundWindow(hwnd)
+                win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+                sleep(0.15)
+
             # 计算DPI缩放比例
             proportion = round(
                 win32print.GetDeviceCaps(win32gui.GetDC(0), win32con.DESKTOPHORZRES)
@@ -117,18 +123,16 @@ class OCREngine:
         if not screenshot:
             return ""
 
-        # 将 PIL Image 转换为 numpy 数组
-        img_np = np.array(screenshot)
-
-        # 调用 OCR 引擎进行识别
-        result, _ = self.engine(img_np)
+        # # 调用 OCR 引擎进行识别
+        result = self.engine(screenshot, use_det=True, use_cls=False, use_rec=True)
 
         # 处理空结果
-        if result is None:
+        if result is None or result.txts is None:
             return ""
 
         # 拼接所有识别到的文本
-        recognized_text = "".join([res[1] for res in result])
+        # print(result.txts)
+        recognized_text = "".join(result.txts)
         GLogger.debug(recognized_text)
 
         return recognized_text
@@ -137,7 +141,7 @@ class OCREngine:
 def get_ocr_engine():
     """
     获取全局唯一的 OCREngine 实例。
-    使用双重检查锁定模式确保线程安全和效率。
+    使用双重检查锁定模式确保线程安全。
     """
     global GOCREngine
     if GOCREngine is None:
