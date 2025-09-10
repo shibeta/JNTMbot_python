@@ -3,7 +3,7 @@ import win32api
 import win32con
 import win32print
 from PIL import Image, ImageGrab
-from rapidocr import RapidOCR
+from rapidocr import RapidOCR, EngineType, LangDet, LangRec, ModelType, OCRVersion
 import threading
 from time import sleep
 
@@ -30,7 +30,19 @@ class OCREngine:
         模型加载过程可能需要几秒钟。
         """
         GLogger.info("正在初始化 OCR 引擎，可能需要一些时间...")
-        self.engine = RapidOCR(params={"Global.log_level": "error"})
+        self.engine = RapidOCR(
+            params={
+                "Global.log_level": "error",
+                "Det.engine_type": EngineType.ONNXRUNTIME,
+                "Det.lang_type": LangDet.CH,
+                "Det.model_type": ModelType.MOBILE,
+                "Det.ocr_version": OCRVersion.PPOCRV5,
+                "Rec.engine_type": EngineType.ONNXRUNTIME,
+                "Rec.lang_type": LangRec.CH,
+                "Rec.model_type": ModelType.MOBILE,
+                "Rec.ocr_version": OCRVersion.PPOCRV5,
+            }
+        )
         GLogger.warning("OCR 引擎初始化完成。")
 
     def _capture_window_area(
@@ -124,7 +136,7 @@ class OCREngine:
             return ""
 
         # # 调用 OCR 引擎进行识别
-        result = self.engine(screenshot, use_det=True, use_cls=False, use_rec=True)
+        result = self.engine(screenshot)
 
         # 处理空结果
         if result is None or result.txts is None:
