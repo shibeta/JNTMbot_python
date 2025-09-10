@@ -82,7 +82,7 @@ class GameAutomator:
         ocr_result = self.ocr.ocr(self.hwnd, 0.5, 0, 0.5, 1)
 
         # 使用正则表达式搜索是否在面板中
-        pattern = "|".join(["别惹", "德瑞", "搭档"])  # 没有特殊字符所以不需要转义
+        pattern = "|".join(["浑球", "办事", "角色"])  # 没有特殊字符所以不需要转义
         # pattern = "|".join(re.escape(text) for text in ["别惹", "德瑞", "搭档"])
         if re.search(pattern, ocr_result) is not None:
             # 在面板中则识别加入玩家数
@@ -92,7 +92,7 @@ class GameAutomator:
             return True, joining_count, joined_count
         else:
             # 不在面板中则跳过识别直接返回-1
-            return True, -1, -1
+            return False, -1, -1
 
     # --- 状态检查方法 ---
     def is_respawned(self) -> bool:
