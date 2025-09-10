@@ -84,14 +84,14 @@ class GameAutomator:
 
     def is_on_job_panel(self) -> bool:
         """检查当前是否在差事面板界面。"""
-        return self._find_text("别惹德瑞", 0, 0, 0.5, 0.5)
+        return self._find_multi_text(["别惹", "德瑞", "搭档"], 0, 0, 0.5, 0.5)
 
     def is_job_marker_found(self) -> bool:
         """检查是否找到了差事的黄色光圈提示。"""
-        return self._find_text("猎杀", 0, 0, 0.5, 0.5)
+        return self._find_multi_text(["猎杀", "约翰尼"], 0, 0, 0.5, 0.5)
 
     def is_job_started(self) -> bool:
-        """检查是否启动了别惹德瑞任务。"""
+        """检查是否在别惹德瑞任务中。"""
         click_keyboard("z")
         return self._find_multi_text(["德瑞", "前往", "困难", "简单", "普通", "在线"], 0, 0, 1, 1)
 
@@ -272,22 +272,31 @@ class GameAutomator:
             time.sleep(self.config.checkLoopTime)
             current_time = time.monotonic()
 
+            # 获取玩家加入状态
+            joining_count, joined_count = self.get_job_player_count()
+            GLogger.info(f"队伍状态: {joined_count} 人已加入, {joining_count} 人正在加入。")
+
             if not self.is_on_job_panel():
+                GLogger.warning("找不到启动面板。")
                 return False  # 不知为何退出了面板
 
             # 如果没人加入则超时
-            if current_time - start_wait_time > self.config.matchPanelTimeout and last_joined_count == 0:
+            if (
+                current_time - start_wait_time > self.config.matchPanelTimeout
+                and last_joined_count == 0
+                and last_joining_count == 0
+                and joining_count == 0
+                and joined_count == 0
+            ):
+                GLogger.info("长时间没有玩家加入，退出差事并重新开始。")
                 self.steam_bot.send_group_message(self.config.msgWaitPlayerTimeout)
                 return False
 
             # 如果有人卡在“正在加入”则超时
-            if current_time - last_joining_time > self.config.joiningPlayerKick and last_joining_count > 0:
+            if current_time - last_joining_time > self.config.joiningPlayerKick and last_joining_count > 0 and joining_count > 0:
+                GLogger.info("玩家长期卡在\"正在加入\"状态，退出差事并重新开始。")
                 self.steam_bot.send_group_message(self.config.msgJoiningPlayerKick)
                 return False
-
-            # 获取玩家加入状态
-            joining_count, joined_count = self.get_job_player_count()
-            GLogger.info(f"队伍状态: {joined_count} 人已加入, {joining_count} 人正在加入。")
 
             # 检查是否应该开始差事
             # 满员且设置了满员立即启动
