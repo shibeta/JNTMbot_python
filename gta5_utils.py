@@ -334,7 +334,7 @@ class GameAutomator:
             ):
                 GLogger.info("即将启动差事。")
                 # 发送差事启动消息
-                self.steam_bot.send_group_message(self.config.msgJobStarted)
+                self.steam_bot.send_group_message(self.config.msgJobStarting)
                 click_keyboard(KEY_ENTER)
                 for _ in range(3):
                     if self.is_job_starting():
@@ -355,7 +355,7 @@ class GameAutomator:
                     else:
                         # 差事都没了就没办法了
                         GLogger.warning("未回到面板，无法继续。")
-                        self.steam_bot.send_group_message(self.config.msgJoiningPlayerKick)
+                        self.steam_bot.send_group_message(self.config.msgJobStartFail)
                         return False
 
             # 队伍人数从未满变为满员时，发送满员消息

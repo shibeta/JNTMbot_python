@@ -67,11 +67,11 @@ class Config:
         },
         "waitFindJobTimeout": {"value": 15000, "comment": '差事层进行"寻找差事黄圈"动作超时时间 (毫秒)'},
         "msgOpenJobPanel": {
-            "value": "德瑞差事已启动，请先看教程，学会卡CEO和卡单再进",
+            "value": "德瑞差事已启动，请先看教程，学会卡CEO和卡单再进。如果连接出错请再试一次，bot没加速器网不好",
             "comment": "开好面板时发的消息 (设置为空字符串则不发这条消息)",
         },
         "msgWaitPlayerTimeout": {
-            "value": "启动任务超时，重新启动中",
+            "value": "一直没有玩家加入，重新启动中",
             "comment": "没人加入超时重开时发的消息 (设置为空字符串则不发这条消息)",
         },
         "msgJoiningPlayerKick": {
@@ -82,9 +82,17 @@ class Config:
             "value": "满了，请等下一班车",
             "comment": "满人时发的消息 (设置为空字符串则不发这条消息)",
         },
-        "msgJobStarted": {
+        "msgJobStarting": {
             "value": "即将发车，请在听到“咚”的一声后卡单",
-            "comment": "差事开始时发的消息 (设置为空字符串则不发这条消息)",
+            "comment": "差事启动时发的消息 (设置为空字符串则不发这条消息)",
+        },
+        "msgJobStartFail": {
+            "value": "启动差事失败，请等下一班车",
+            "comment": "差事启动失败时发的消息 (设置为空字符串则不发这条消息)",
+        },
+        "msgDetectedSB":{
+            "value": "有人没有卡单，请先阅读教程，了解Bot的使用方法后再使用本bot。",
+            "comment": "发现有人没卡单时发的消息 (设置为空字符串则不发这条消息)",
         },
         "jobTpBotIndex": {
             "value": -1,

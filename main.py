@@ -291,6 +291,7 @@ def main():
                     if automator.is_on_scoreboard():
                         # 由于 CEO 退出的计分板只能通过等待来退出
                         GLogger.info("有神人不卡单导致任务失败，等待20秒以离开计分板。")
+                        steam_bot.send_group_message(GConfig.msgDetectedSB)
                         time.sleep(20)  # 需要多等一会，确保返回自由模式后落地
                         break
                     time.sleep(1)
