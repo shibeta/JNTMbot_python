@@ -31,14 +31,13 @@ class Config:
         "steamChannelName": {"value": "BOT候车室", "comment": "要发送消息的Steam群组频道名称"},
         "wechatPush": {"value": False, "comment": "是否启用微信推送bot状态信息"},
         "pushplusToken": {"value": "", "comment": "pushplus的token，用于微信通知"},
-        "ocrTimeout": {"value": 3, "comment": "等待OCR结果超时时间(秒)"},
         "suspendGTATime": {"value": 15, "comment": "卡单持续时间 (秒)"},
         "delaySuspendTime": {
-            "value": 5,
-            "comment": "卡单延迟时间 (秒)(在面板消失xx秒后卡单/在落地xx秒后卡单)",
+            "value": 3,
+            "comment": "卡单延迟时间 (秒)",
         },
         "checkLoopTime": {"value": 1, "comment": "检测间隔时间 (秒)"},
-        "matchPanelTimeout": {"value": 60, "comment": "面板无人加入时重开时间 (秒)"},
+        "matchPanelTimeout": {"value": 300, "comment": "面板无人加入时重开时间 (秒)"},
         "joiningPlayerKick": {"value": 120, "comment": "等待正在加入玩家超时重开时间 (秒)"},
         "startMatchDelay": {"value": 15, "comment": "开始差事等待延迟 (秒)"},
         "startOnAllJoined": {
