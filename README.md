@@ -1,4 +1,4 @@
-# JNTMbot - GTA V 德瑞差事自动化脚本
+# JNTMbot - GTAOL 德瑞差事自动化脚本
 
 ![License](https://img.shields.io/github/license/shibeta/JNTMbot_python)
 ![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)
