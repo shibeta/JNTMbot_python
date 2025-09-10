@@ -146,9 +146,7 @@ def main():
     # 初始化健康检查和微信推送
     if GConfig.wechatPush:
         if GConfig.pushplusToken:
-            GLogger.info(
-                "已启用微信推送，当 Bot 连续30分钟未向 Steam 发送消息时，将发送微信消息并退出程序。"
-            )
+            GLogger.info("已启用微信推送，当 Bot 连续30分钟未向 Steam 发送消息时，将发送微信消息并退出程序。")
             monitor_thread = threading.Thread(
                 target=health_check_monitor,
                 args=(steam_bot, GConfig.pushplusToken, pause_event),
@@ -162,8 +160,7 @@ def main():
     else:
         GLogger.info("未启用微信推送。")
 
-    # --- 主循环 ---
-    # 检查 GTA V 是否启动
+    # 初始化游戏控制器
     window_info = get_window_info("Grand Theft Auto V")
     if window_info:
         hwnd, pid = window_info
@@ -174,6 +171,9 @@ def main():
         automator = GameAutomator(GConfig, GOCREngine, steam_bot, None, None)
         automator.restart_gta()
 
+    # --- 主循环 ---
+    # 记录主循环连续出错的次数
+    main_loop_consecutive_error_count = 0
     while True:
         try:
             # 响应暂停信号
@@ -237,9 +237,10 @@ def main():
                 automator.exit_job_panel()
                 continue
 
-            # 面板消失后挂起进程
+            # 面板消失后卡单
+            # TODO 面板消失后卡单真的是必要的吗
             match_start_time = time.monotonic()
-            GLogger.info("即将开始任务！等待面板消失。")
+            GLogger.info("差事启动成功！等待面板消失。")
             while time.monotonic() - match_start_time < GConfig.exitMatchTimeout:
                 if not automator.is_on_job_panel():
                     break
@@ -254,7 +255,7 @@ def main():
             time.sleep(GConfig.delaySuspendTime)
             automator.enter_single_player_session()
 
-            # 差事落地后挂起进程
+            # 差事落地后卡单，避免加恶意值
             landing_start_time = time.monotonic()
             GLogger.info("差事加载完成！等待人物落地。")
             while time.monotonic() - landing_start_time < GConfig.exitMatchTimeout:
@@ -270,26 +271,47 @@ def main():
             GLogger.info(f"人物已落地。{GConfig.delaySuspendTime} 秒后将卡单。")
             time.sleep(GConfig.delaySuspendTime)
             automator.enter_single_player_session()
-            # 如果战局中有其他 CEO，任务会失败并进入计分板
-            GLogger.info("检查当前差事状态。")
-            possible_mission_fail_time = time.monotonic()
-            while time.monotonic() - possible_mission_fail_time < 15:
-                if automator.is_on_job_panel():  # 任务面板和计分板的检查方法相同
-                    # 由于 CEO 退出的计分板只能通过等待来退出
-                    GLogger.info("有神人不卡单导致任务失败，等待20秒以离开计分板。")
-                    time.sleep(20)  # 需要多等一会，确保返回普通战局后落地
+
+            # 如果战局中有其他 CEO，卡单后任务会失败并进入计分板
+            # 检查当前任务状态来处理卡单后可能遇到的各种情况
+            GLogger.info("正在检查当前差事状态。")
+            # 等待5秒以响应玩家离开
+            time.sleep(5)
+            mission_status_check_start_time = time.monotonic()
+            while time.monotonic() - mission_status_check_start_time < 5:
+                if automator.is_job_started():
+                    # 如果战局里只有自己一人，则无事发生
+                    GLogger.info("当前在差事中。")
                     break
                 time.sleep(1)
             else:
-                # 如果任务一直没失败则认为战局里只有自己一人，可以直接开始新一轮
-                GLogger.info("当前差事状态正常。")
+                # 如果战局中有其他 CEO，任务会失败并进入计分板
+                possible_mission_fail_time = time.monotonic()
+                while time.monotonic() - possible_mission_fail_time < 15:
+                    if automator.is_on_scoreboard():
+                        # 由于 CEO 退出的计分板只能通过等待来退出
+                        GLogger.info("有神人不卡单导致任务失败，等待20秒以离开计分板。")
+                        time.sleep(20)  # 需要多等一会，确保返回自由模式后落地
+                        break
+                    time.sleep(1)
+                else:
+                    # 既检测不到在任务中，也检测不到任务失败
+                    # 反正已经卡过单了，就这样吧
+                    GLogger.warning("任务状态异常，但还是尝试继续执行。")
 
             GLogger.info("本轮循环完成。开始新一轮。")
+            # 清空连续出错次数
+            main_loop_consecutive_error_count = 0
 
         except Exception as e:
-            GLogger.error(f"主循环中发生意外错误: {e}")
-            GLogger.error("将在10秒后重启循环...")
-            time.sleep(10)
+            # 捕获到异常则累加连续出错次数
+            # 只有捕获到异常才认为是出错，找不到差事和各种超时等不认为是出错
+            main_loop_consecutive_error_count = main_loop_consecutive_error_count + 1
+            # 最大可以等 120 秒
+            wait_before_restart_loop = max(main_loop_consecutive_error_count * 10, 120)
+            GLogger.error(f"主循环中发生错误: {e}")
+            GLogger.error(f"将在{wait_before_restart_loop}秒后重启循环...")
+            time.sleep(wait_before_restart_loop)
 
 
 if __name__ == "__main__":
