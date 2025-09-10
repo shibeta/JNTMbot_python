@@ -71,11 +71,28 @@ class GameAutomator:
         pattern = "|".join(re.escape(text) for text in texts)  # 转义所有特殊字符
         return re.search(pattern, ocr_result) is not None
 
-    def get_job_player_count(self) -> tuple[int, int]:
+    def get_job_setup_status(self) -> tuple[bool, int, int]:
+        """
+        检查差事面板状态，包括是否在面板中，以及加入的玩家数。
+        如果不在面板中玩家数将固定返回-1。
+
+        Return:
+            是否在面板(bool)，正在加入的玩家数(int)，已经加入的玩家数(int)
+        """
         ocr_result = self.ocr.ocr(self.hwnd, 0.5, 0, 0.5, 1)
-        joining_count = ocr_result.count("正在")
-        joined_count = ocr_result.count("已加")
-        return joining_count, joined_count
+
+        # 使用正则表达式搜索是否在面板中
+        pattern = "|".join(["别惹", "德瑞", "搭档"])  # 没有特殊字符所以不需要转义
+        # pattern = "|".join(re.escape(text) for text in ["别惹", "德瑞", "搭档"])
+        if re.search(pattern, ocr_result) is not None:
+            # 在面板中则识别加入玩家数
+            joining_count = ocr_result.count("正在")
+            joined_count = ocr_result.count("已加")
+
+            return True, joining_count, joined_count
+        else:
+            # 不在面板中则跳过识别直接返回-1
+            return True, -1, -1
 
     # --- 状态检查方法 ---
     def is_respawned(self) -> bool:
@@ -86,14 +103,17 @@ class GameAutomator:
         """检查当前是否在差事面板界面。"""
         return self._find_multi_text(["别惹", "德瑞", "搭档"], 0, 0, 0.5, 0.5)
 
+    def is_on_scoreboard(self) -> bool:
+        """检查当前是否在差事失败的计分板界面。"""
+        return self._find_multi_text(["别惹", "德瑞"], 0, 0, 0.5, 0.5)
+
     def is_job_marker_found(self) -> bool:
         """检查是否找到了差事的黄色光圈提示。"""
         return self._find_multi_text(["猎杀", "约翰尼"], 0, 0, 0.5, 0.5)
 
     def is_job_started(self) -> bool:
         """检查是否在别惹德瑞任务中。"""
-        click_keyboard("z")
-        return self._find_multi_text(["德瑞", "前往", "困难", "简单", "普通", "在线"], 0, 0, 1, 1)
+        return self._find_multi_text(["前往", "出现", "汇报", "进度", "团队", "生命数"], 0, 0.8, 1, 0.2)
 
     def is_job_starting(self) -> bool:
         """检查任务是否在启动中。"""
@@ -272,13 +292,15 @@ class GameAutomator:
             time.sleep(self.config.checkLoopTime)
             current_time = time.monotonic()
 
-            # 获取玩家加入状态
-            joining_count, joined_count = self.get_job_player_count()
-            GLogger.info(f"队伍状态: {joined_count} 人已加入, {joining_count} 人正在加入。")
+            # 获取准备界面状态
+            is_on_job_panel, joining_count, joined_count = self.get_job_setup_status()
 
-            if not self.is_on_job_panel():
+            # 找不到面板则直接返回出错
+            if not is_on_job_panel:
                 GLogger.warning("找不到启动面板。")
-                return False  # 不知为何退出了面板
+                return False
+
+            GLogger.info(f"队伍状态: {joined_count} 人已加入, {joining_count} 人正在加入。")
 
             # 如果没人加入则超时
             if (
@@ -293,8 +315,12 @@ class GameAutomator:
                 return False
 
             # 如果有人卡在“正在加入”则超时
-            if current_time - last_joining_time > self.config.joiningPlayerKick and last_joining_count > 0 and joining_count > 0:
-                GLogger.info("玩家长期卡在\"正在加入\"状态，退出差事并重新开始。")
+            if (
+                current_time - last_joining_time > self.config.joiningPlayerKick
+                and last_joining_count > 0
+                and joining_count > 0
+            ):
+                GLogger.info('玩家长期卡在"正在加入"状态，退出差事并重新开始。')
                 self.steam_bot.send_group_message(self.config.msgJoiningPlayerKick)
                 return False
 
@@ -345,29 +371,30 @@ class GameAutomator:
                 last_activity_time = current_time
 
     def exit_job_panel(self):
-        """从差事面板中退出到自由模式，如果不在差事面板中则行为是未定义的"""
+        """从差事准备面板退出到自由模式，如果不在差事准备面板中则行为是未定义的"""
         # 处理警告屏幕
         if self.is_on_warning_page():
             click_keyboard(KEY_ENTER)
             time.sleep(0.5)
 
-        # 如果在差事面板的第二个页面，按两次 ESC 和回车退出
-        if self._find_multi_text(["匹配", "邀请", "帮会"], 0, 0, 1, 0.8):
+        # 从差事准备面板退出
+        ocr_result = self.ocr.ocr(self.hwnd, 0, 0, 1, 0.8)
+        if re.search("|".join(["匹配", "邀请", "帮会"]), ocr_result) is not None:
+            # 如果在差事面板的第二个页面，按两次 ESC 和回车退出
             click_keyboard(KEY_ESCAPE)
             time.sleep(1)
             click_keyboard(KEY_ESCAPE)
             time.sleep(1)
             click_keyboard(KEY_ENTER)
             time.sleep(5)
-
-        # 如果在差事面板的第一个页面，按一次 ESC 和回车退出
-        if self._find_multi_text(["设置", "镜头", "锁定", "购买", "武器", "防弹衣"], 0, 0, 1, 0.8):
+        elif re.search("|".join(["设置", "镜头", "武器"]), ocr_result) is not None:
+            # 如果在差事面板的第一个页面，按一次 ESC 和回车退出
             click_keyboard(KEY_ESCAPE)
             time.sleep(1)
             click_keyboard(KEY_ENTER)
             time.sleep(5)
 
-    # TODO: komi说不知道这个方法能不能用
+    # TODO komi说不知道这个方法能不能用
     def try_to_join_bot(self):
         """尝试通过 SteamJvp 加入差传 Bot 战局。"""
         GLogger.info("正在尝试加入一个差传机器人战局...")
