@@ -23,7 +23,7 @@ delaySuspendTime: 3
 # 检测间隔时间 (秒)
 checkLoopTime: 1
 # 面板无人加入时重开时间 (秒)
-matchPanelTimeout: 300
+matchPanelTimeout: 60
 # 等待正在加入玩家超时重开时间 (秒)
 joiningPlayerKick: 120
 # 开始差事等待延迟 (秒)
@@ -51,7 +51,7 @@ pressATimeGoJob: 480
 # 差事层进行"寻找差事黄圈"动作超时时间 (毫秒)
 waitFindJobTimeout: 15000
 # 开好面板时发的消息 (设置为空字符串则不发这条消息)
-msgOpenJobPanel: 德瑞差事已启动，请先看教程，学会卡CEO和卡单再进。连接出错请再试一次，bot没加速器网不好
+msgOpenJobPanel: 德瑞差事已启动，请先看教程，学会卡CEO和卡单再进。如果无法连接请再试一次，bot没加速器网不好
 # 没人加入超时重开时发的消息 (设置为空字符串则不发这条消息)
 msgWaitPlayerTimeout: 一直没有玩家加入，重新启动中
 # 有人卡在正在加入超时重开时发的消息 (设置为空字符串则不发这条消息)
@@ -63,6 +63,6 @@ msgJobStarting: 即将发车，请在听到“咚”的一声后卡单
 # 差事启动失败时发的消息 (设置为空字符串则不发这条消息)
 msgJobStartFail: 启动差事失败，请等下一班车
 # 发现有人没卡单时发的消息 (设置为空字符串则不发这条消息)
-msgDetectedSB: 有人没有卡单，请先阅读教程，了解Bot的使用方法后再使用本bot。
+msgDetectedSB: 有人没有卡单，请先阅读教程，了解Bot的使用方法后再使用本bot
 # 差传bot的序号，-1: 不指定, 按顺序加入直到成功, 0: 第一个差传(一般为辅助瞄准), 1: 第二个差传(一般为自由瞄准); 
 jobTpBotIndex: -1

@@ -37,7 +37,7 @@ class Config:
             "comment": "卡单延迟时间 (秒)",
         },
         "checkLoopTime": {"value": 1, "comment": "检测间隔时间 (秒)"},
-        "matchPanelTimeout": {"value": 300, "comment": "面板无人加入时重开时间 (秒)"},
+        "matchPanelTimeout": {"value": 60, "comment": "面板无人加入时重开时间 (秒)"},
         "joiningPlayerKick": {"value": 120, "comment": "等待正在加入玩家超时重开时间 (秒)"},
         "startMatchDelay": {"value": 15, "comment": "开始差事等待延迟 (秒)"},
         "startOnAllJoined": {
@@ -67,7 +67,7 @@ class Config:
         },
         "waitFindJobTimeout": {"value": 15000, "comment": '差事层进行"寻找差事黄圈"动作超时时间 (毫秒)'},
         "msgOpenJobPanel": {
-            "value": "德瑞差事已启动，请先看教程，学会卡CEO和卡单再进。如果连接出错请再试一次，bot没加速器网不好",
+            "value": "德瑞差事已启动，请先看教程，学会卡CEO和卡单再进。如果无法连接请再试一次，bot没加速器网不好",
             "comment": "开好面板时发的消息 (设置为空字符串则不发这条消息)",
         },
         "msgWaitPlayerTimeout": {
@@ -91,7 +91,7 @@ class Config:
             "comment": "差事启动失败时发的消息 (设置为空字符串则不发这条消息)",
         },
         "msgDetectedSB":{
-            "value": "有人没有卡单，请先阅读教程，了解Bot的使用方法后再使用本bot。",
+            "value": "有人没有卡单，请先阅读教程，了解Bot的使用方法后再使用本bot",
             "comment": "发现有人没卡单时发的消息 (设置为空字符串则不发这条消息)",
         },
         "jobTpBotIndex": {
