@@ -79,18 +79,18 @@
 ### 方式二：运行发行版
 
 1.  **下载最新发行版**
-    从 [GitHub Releases](https://github.com/shibeta/JNTMbot_python/releases/latest) 页面下载最新的 `JNTMbot_python.zip` 文件。
+    从 [GitHub Releases](https://github.com/shibeta/JNTMbot_python/releases/latest) 或 [123云盘](https://www.123865.com/s/05OiVv-fdsmH?pwd=r51c) 下载最新的 `JNTMbot_python.zip` 文件。
 
-2.  **解压文件**
+3.  **解压文件**
     将下载的 `.zip` 文件解压到您选择的任意位置。
 
-3.  **修改配置 (可选)**
+4.  **修改配置 (可选)**
     根据您的需求，编辑解压出的文件夹中的 `config.yaml` 文件。详细说明请见 [使用说明](#️-使用说明) 部分。
 
-4.  **启动程序**
+5.  **启动程序**
     双击运行 `德瑞Bot.exe`。
 
-5.  **首次登录 Steam**
+6.  **首次登录 Steam**
     > 同上，首次运行需要您在弹出的控制台窗口中完成 Steam 登录流程。
 
 ## 🛠️ 使用说明
