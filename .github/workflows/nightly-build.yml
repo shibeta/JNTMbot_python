@@ -37,11 +37,15 @@ jobs:
       # 静默安装 ViGEmBus 驱动，避免卡在pip install vgamepad
       - name: Install ViGEmBus Driver
         run: |
-          # 从 ViGEmBus 的 GitHub Releases 页面下载 MSI 安装包
-          Invoke-WebRequest -Uri https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe -OutFile ViGEmBusSetup_x64.msi
+          # 从 ViGEmBus 的 GitHub Releases 页面下载 EXE 安装包
+          Invoke-WebRequest -Uri https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe -OutFile ViGEmBusSetup.exe
           
-          # 使用 msiexec 以静默模式 (/qn) 运行安装程序，并等待其完成
-          Start-Process msiexec -ArgumentList "/i ViGEmBusSetup_x64.msi /qn" -Wait
+          # 静默安装，并等待其完成
+          Start-Process -FilePath ".\ViGEmBusSetup.exe" -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" -Wait
+
+          # 等待5秒，让驱动服务有时间启动和注册
+          Write-Host "Waiting for ViGEmBus driver to settle..."
+          Start-Sleep -Seconds 5
         shell: pwsh
 
       # 安装 Python 依赖
