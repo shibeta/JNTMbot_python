@@ -133,13 +133,14 @@ def main():
             steam_bot.reset_send_timer()  # 恢复时重置发送信息计时器
             GLogger.warning("暂停/恢复热键被按下，Bot 已恢复。")
 
+    keyboard.add_hotkey("ctrl+f9", toggle_pause)
+
     # 退出热键
     def toggle_exit(steam_bot: SteamBotClient):
         GLogger.warning("退出热键被按下，退出程序。。。")
         steam_bot.shutdown()
         os._exit(0)
 
-    keyboard.add_hotkey("ctrl+f9", toggle_pause)
     keyboard.add_hotkey("ctrl+f10", toggle_exit, args=(steam_bot,))
     GLogger.info("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
 
