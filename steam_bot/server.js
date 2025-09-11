@@ -28,7 +28,7 @@ const bot = new SteamChatBot(proxy);
 bot.smartLogOn().catch((err) => {
     // 初始登录失败时记录错误，服务器仍会启动，但大部分接口会返回“未登录”
     console.error(
-        `💥 初始登录尝试失败: ${err.message}。服务器将继续运行，请通过API检查状态。`
+        `💥 初始登录尝试失败: ${err.message}。服务器将继续运行，请通过 API 检查状态。`
     );
 });
 
@@ -42,10 +42,10 @@ const authenticateToken = (req, res, next) => {
     const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
 
     if (token == null) {
-        return res.status(401).json({ error: "未提供认证Token。" });
+        return res.status(401).json({ error: "未提供认证 Token。" });
     }
     if (token !== AUTH_TOKEN) {
-        return res.status(403).json({ error: "无效的认证Token。" });
+        return res.status(403).json({ error: "无效的认证 Token。" });
     }
     next();
 };
@@ -71,7 +71,7 @@ app.get("/status", (req, res) => {
  */
 app.get("/userinfo", async (req, res) => {
     if (!bot.isLoggedIn().loggedIn) {
-        return res.status(403).json({ error: "操作失败: Bot尚未登录。" });
+        return res.status(403).json({ error: "操作失败: Bot 尚未登录。" });
     }
 
     try {
@@ -173,12 +173,12 @@ app.post("/logout", async (req, res) => {
             await bot.logOff();
             res.status(200).json({ success: true, message: "已成功登出。" });
         } else {
-            console.log("👋 收到登出请求，但Bot未登录。");
+            console.log("👋 收到登出请求，但 Bot 未登录。");
             res.status(200).json({ success: true, message: "Bot当前未登录。" });
         }
 
         // 在响应发送后，开始平滑关闭服务器
-        console.log("🫸 HTTP服务器正在准备关闭，将不再接受新连接...");
+        console.log("🫷 正在准备关闭 HTTP 服务器，将不再接受新连接...");
         server.close(() => {
             console.log("✅ 所有连接均已关闭，服务器成功关闭。");
             // 只有当服务器完全关闭后，才退出进程
