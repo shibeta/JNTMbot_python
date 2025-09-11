@@ -119,24 +119,42 @@ class OCREngine:
             GLogger.error(f"截图失败: {e}")
             return None
 
-    def ocr(self, hwnd: int, x: float = 0, y: float = 0, w: float = 0.5, h: float = 0.5) -> str:
+    def ocr(
+        self,
+        hwnd: int,
+        x: float = 0,
+        y: float = 0,
+        w: float = 0.5,
+        h: float = 0.5,
+        include_title_bar: bool = False,
+    ) -> str:
         """
         对指定窗口的特定区域进行 OCR 识别。
 
         Args:
             hwnd: 目标窗口句柄。
-            x, y, w, h: 截图区域的相对坐标和大小。
+            x, y: 截图区域左上角的相对坐标 (0.0 to 1.0)。
+            w, h: 截图区域的相对宽度和高度 (0.0 to 1.0)。
+            include_title_bar: 是否将标题栏和边框计算在内。
+                True: 基于完整窗口截图
+                False: 基于客户区截图 (排除标题栏和边框)
 
         Returns:
             识别出的所有文本拼接成的字符串。
         """
         # 截图
-        screenshot = self._capture_window_area(hwnd, x, y, w, h)
+        GLogger.debug(
+            f"开始对句柄为{hwnd}的窗口截图，{"" if include_title_bar else "不"}包括标题栏。截图范围左上角相对坐标为({x}, {y})，右下角相对坐标为({x+w}, {y+h})。"
+        )
+        screenshot = self._capture_window_area(hwnd, x, y, w, h, include_title_bar)
+        GLogger.debug("截图完成。")
         if not screenshot:
             return ""
 
         # # 调用 OCR 引擎进行识别
+        GLogger.debug("开始对截图进行 OCR。")
         result = self.engine(screenshot)
+        GLogger.debug("OCR 完成。")
 
         # 处理空结果
         if result is None or result.txts is None:
