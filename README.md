@@ -65,7 +65,7 @@
 
     ```bash
     cd steam_bot
-    npm install
+    npm install --production
     cd ..
     ```
 
