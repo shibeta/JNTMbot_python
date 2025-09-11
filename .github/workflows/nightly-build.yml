@@ -41,7 +41,7 @@ jobs:
           Invoke-WebRequest -Uri https://github.com/nefarius/ViGEmBus/releases/download/v1.22.0/ViGEmBus_1.22.0_x64_x86_arm64.exe -OutFile ViGEmBusSetup.exe
           
           # 静默安装，并等待其完成
-          Start-Process -FilePath ".\ViGEmBusSetup.exe" -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" -Wait
+          Start-Process -FilePath ".\ViGEmBusSetup.exe" -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART" -Verb RunAs -Wait
 
           # 等待5秒，让驱动服务有时间启动和注册
           Write-Host "Waiting for ViGEmBus driver to settle..."
