@@ -9,25 +9,26 @@
 ---
 
 ## 目录
-- [🌟 主要功能](#-主要功能)
-- [🔧 环境要求](#-环境要求)
-- [🚀 安装与运行](#-安装与运行)
-- [🛠️ 使用说明](#️-使用说明)
-  - [1. 配置文件 (`config.yaml`)](#1-配置文件-configyaml)
-  - [2. 游戏内设置](#2-游戏内设置)
-  - [3. 程序操作](#3-程序操作)
-- [🔬 项目架构](#-项目架构)
-- [🤝 贡献指南](#-贡献指南)
-- [🙏 致谢](#-致谢)
-- [📄 许可证](#-许可证)
+
+-   [🌟 主要功能](#-主要功能)
+-   [🔧 环境要求](#-环境要求)
+-   [🚀 安装与运行](#-安装与运行)
+-   [🛠️ 使用说明](#️-使用说明)
+    -   [1. 配置文件 (`config.yaml`)](#1-配置文件-configyaml)
+    -   [2. 游戏内设置](#2-游戏内设置)
+    -   [3. 程序操作](#3-程序操作)
+-   [🔬 项目架构](#-项目架构)
+-   [🤝 贡献指南](#-贡献指南)
+-   [🙏 致谢](#-致谢)
+-   [📄 许可证](#-许可证)
 
 ## 🌟 主要功能
 
-- **🤖 全自动任务流程**：从启动差事到完成，全程无需人工干预，实现真正的“挂机”。
-- **💬 实时状态同步**：通过独立的 `Node.js` 后端，将Bot状态（如“面板已开”、“队伍已满”）实时发送到指定的 Steam 群聊频道。
-- **🛡️ 智能故障处理**：当Bot长时间无响应时，可配置通过 PushPlus 发送微信警报并退出。
-- **🚀 开箱即用**：提供合理的默认配置 (`config.yaml`)，大部分用户无需修改即可直接启动。
-- **📄 详细日志记录**：在终端中记录关键操作和潜在问题，方便排查和调试。
+-   **🤖 全自动任务流程**：从启动差事到完成，全程无需人工干预，实现真正的“挂机”。
+-   **💬 实时状态同步**：通过独立的 `Node.js` 后端，将 Bot 状态（如“面板已开”、“队伍已满”）实时发送到指定的 Steam 群聊频道。
+-   **🛡️ 智能故障处理**：当 Bot 长时间无响应时，可配置通过 PushPlus 发送微信警报并退出。
+-   **🚀 开箱即用**：提供合理的默认配置 (`config.yaml`)，大部分用户无需修改即可直接启动。
+-   **📄 详细日志记录**：在终端中记录关键操作和潜在问题，方便排查和调试。
 
 <!-- ## 🎬 运行演示 -->
 <!-- TODO:在此处放置一张 GIF 动图来展示Bot的工作流程 -->
@@ -35,11 +36,11 @@
 
 ## 🔧 环境要求
 
-- **从源码运行**:
-  - Python >= 3.11
-  - Node.js >= v22.0
-- **运行发行版**:
-  - Windows 10 或更高版本 (无其他依赖要求)。
+-   **从源码运行**:
+    -   Python >= 3.11
+    -   Node.js >= v22.0
+-   **运行发行版**:
+    -   Windows 10 或更高版本 (无其他依赖要求)。
 
 ## 🚀 安装与运行
 
@@ -48,17 +49,20 @@
 ### 方式一：从源码运行
 
 1.  **克隆源码**
+
     ```bash
     git clone https://github.com/shibeta/JNTMbot_python.git
     cd JNTMbot_python
     ```
 
 2.  **安装 Python 依赖**
+
     ```bash
     pip install -r requirements.txt
     ```
 
 3.  **安装 Node.js 依赖**
+
     ```bash
     cd steam_bot
     npm install
@@ -70,33 +74,32 @@
 
 5.  **修改游戏内设置**
     修改游戏内的部分设置以适配自动化程序。详细说明请见 [使用说明](#2-游戏内设置) 部分。
-    
-7.  **启动程序**
+6.  **启动程序**
+
     ```bash
     python main.py
     ```
 
-8.  **首次登录 Steam**
+7.  **首次登录 Steam**
     > **重要提示**：如果是第一次启动，程序会要求您在控制台中输入 Steam 用户名、密码和安全令牌码以登录 Steam Chat。成功登录后，会保存一个登录令牌 (`steam登录缓存请勿分享此文件`)，后续启动将自动登录。
 
 ### 方式二：运行发行版
 
 1.  **下载最新发行版**
-    从 [GitHub Releases](https://github.com/shibeta/JNTMbot_python/releases/latest) 或 [123云盘](https://www.123865.com/s/05OiVv-fdsmH?pwd=r51c) 下载最新的 `JNTMbot_python.zip` 文件。
+    从 [GitHub Releases](https://github.com/shibeta/JNTMbot_python/releases/latest) 或 [123 云盘](https://www.123865.com/s/05OiVv-fdsmH?pwd=r51c) 下载最新的 `JNTMbot_python.zip` 文件。
 
-3.  **解压文件**
+2.  **解压文件**
     将下载的 `.zip` 文件解压到您选择的任意位置。
 
-4.  **修改配置 (可选)**
+3.  **修改配置 (可选)**
     根据您的需求，编辑解压出的文件夹中的 `config.yaml` 文件。详细说明请见 [使用说明](#1-配置文件-configyaml) 部分。
 
-5.  **修改游戏内设置**
+4.  **修改游戏内设置**
     修改游戏内的部分设置以适配自动化程序。详细说明请见 [使用说明](#2-游戏内设置) 部分。
-    
-6.  **启动程序**
+5.  **启动程序**
     双击运行 `德瑞Bot.exe`。
 
-7.  **首次登录 Steam**
+6.  **首次登录 Steam**
     > 同上，首次运行需要您在弹出的控制台窗口中完成 Steam 登录流程。
 
 ## 🛠️ 使用说明
@@ -106,26 +109,32 @@
 大部分配置项已设置为通用值，无需修改。以下是您可能需要关注或自定义的关键配置：
 
 -   `steamBotHost`, `steamBotPort`, `steamBotToken`
+
     > `steam_bot` 后端服务的相关配置。通常无需修改，除非您有特殊的网络需求或端口已被占用。
 
 -   `steamBotProxy`
+
     > 访问 Steam 的 HTTP 代理。默认为 `"system"`，表示使用系统代理。如果您的网络环境特殊，可以设置成 `"http://127.0.0.1:port"` 格式的指定代理。大部分游戏加速器的“路由模式”也可以自动加速本程序。
 
 -   `steamGroupId`
+
     > Bot 状态信息将发送到此 ID 的 Steam 群组。
-    > > **如何获取群组ID？** 将此项改为空字符串 (`steamGroupId: ''`)，然后启动程序并登录 Steam。程序会在控制台中打印出您所在的所有群组及其 ID。复制所需 ID 并填回此处即可。
+    >
+    > > **如何获取群组 ID？** 将此项改为空字符串 (`steamGroupId: ''`)，然后启动程序并登录 Steam。程序会在控制台中打印出您所在的所有群组及其 ID。复制所需 ID 并填回此处即可。
 
 -   `steamChannelName`
+
     > Bot 状态信息将发送到群组中的该频道。
 
 -   `wechatPush` 和 `pushplusToken`
-    > 是否启用微信推送警报。启用后，程序连续30分钟未向 Steam Chat 发送信息会向微信推送警报并退出程序。
+    > 是否启用微信推送警报。启用后，程序连续 30 分钟未向 Steam Chat 发送信息会向微信推送警报并退出程序。
+    >
     > > -   将 `wechatPush` 设为 `true` 以启用。
-    > > -   启用后，必须在 `pushplusToken` 中填入您从 [PushPlus官网](https://www.pushplus.plus) 获取的 Token。
+    > > -   启用后，必须在 `pushplusToken` 中填入您从 [PushPlus 官网](https://www.pushplus.plus) 获取的 Token。
 
 ### 2. 游戏内设置
 
-为确保Bot能正常工作，请在游戏中完成以下设置：
+为确保 Bot 能正常工作，请在游戏中完成以下设置：
 
 -   ✅ 在 **手机** 购买 **事务所**。注意不是 **保镖事务所** 也不是 **办公室**。
 -   ✅ 在 **事务所** 购买 **个人空间**。
@@ -138,12 +147,15 @@
 ### 3. 程序操作
 
 -   **首次登录**
+
     > 第一次运行程序时，需要手动输入 Steam 账户信息。后续将自动登录。
 
 -   **启动时机**
+
     > 程序可以自动启动 GTA5。如果您在游戏运行时启动本程序，请确保您当前处于 **在线模式的仅邀请战局** 中。
 
 -   **窗口焦点**
+
     > 程序运行时，**GTA5 游戏窗口必须保持为系统当前活动窗口**（即在前台）。
 
 -   **热键控制**
@@ -182,7 +194,7 @@
 
 ## 🙏 致谢
 
--   **傲弗拉**: 提供了德瑞 Bot 的原型设计思路。([Bilibili空间](https://space.bilibili.com/26604157))
+-   **傲弗拉**: 提供了德瑞 Bot 的原型设计思路。([Bilibili 空间](https://space.bilibili.com/26604157))
 -   **JiNiTaiMeiBot**: [https://github.com/davidLi17/JiNiTaiMeiBot](https://github.com/davidLi17/JiNiTaiMeiBot)
 -   **RapidOCR**: [https://github.com/RapidAI/RapidOCR](https://github.com/RapidAI/RapidOCR)
 -   **node-steam-user**: [https://github.com/DoctorMcKay/node-steam-user](https://github.com/DoctorMcKay/node-steam-user)
