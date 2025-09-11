@@ -37,7 +37,16 @@ jobs:
       # 静默安装 ViGEmBus 驱动，避免卡在pip install vgamepad
       - name: Install ViGEmBus Driver from local MSI
         run: |
-          msiexec /i ".\assets\ViGEmBusSetup_x64.msi" /qn /norestart
+          # 调试：列出 assets 目录中的文件，确保 MSI 文件存在
+          Write-Host "Verifying existence of MSI file..."
+          Get-ChildItem -Path ".\assets\"
+          
+          # msiexec似乎需要一个绝对路径才能工作
+          $msiPath = Join-Path $env:GITHUB_WORKSPACE "assets\ViGEmBusSetup_x64.msi"
+          Write-Host "Attempting to install from absolute path: $msiPath"
+          
+          # 使用绝对路径执行安装
+          msiexec /i "$msiPath" /qn /norestart
           
           Write-Host "Waiting for ViGEmBus driver to settle..."
           Start-Sleep -Seconds 5
