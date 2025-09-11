@@ -74,7 +74,7 @@ jobs:
       # 使用 Nuitka 打包 Python 应用
       - name: Package with Nuitka
         run: |
-          nuitka --msvc=latest --standalone --show-memory --show-progress --nofollow-import-to=tkinter --output-dir=dist --include-package-data=rapidocr --windows-icon-from-ico=./assets/johnny_guns.ico --product-name=德瑞Bot --product-version=1.0 --file-description=德瑞Bot自动开车脚本 main.py
+          nuitka --msvc=latest --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter --output-dir=dist --include-package-data=rapidocr --windows-icon-from-ico=./assets/johnny_guns.ico --product-name=德瑞Bot --product-version=1.0 --file-description=德瑞Bot自动开车脚本 main.py
         shell: cmd # 使用 cmd shell 以确保 MSVC 环境被正确继承
 
       # 整理文件并压缩
