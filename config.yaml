@@ -23,7 +23,7 @@ delaySuspendTime: 3
 # 检测间隔时间 (秒)
 checkLoopTime: 1
 # 面板无人加入时重开时间 (秒)
-matchPanelTimeout: 60
+matchPanelTimeout: 300
 # 等待正在加入玩家超时重开时间 (秒)
 joiningPlayerKick: 120
 # 开始差事等待延迟 (秒)
