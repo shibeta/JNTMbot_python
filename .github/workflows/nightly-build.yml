@@ -112,17 +112,10 @@ jobs:
       # 创建或更新 Nightly Release
       - name: Create or update Nightly Release
         uses: andelf/nightly-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # 使用 GITHUB_TOKEN 进行认证
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          # 要上传的文件
-          upload_files: ${{ steps.package.outputs.zip_path }}
-          # Nightly Release 的标签名，固定为 "nightly"
-          tag_name: "nightly"
-          # 标记为预发布版本
+          tag_name: 'nightly'
+          name: 'Nightly Build ${{ env.TODAY }}'
           prerelease: true
-          # 覆盖已有的 nightly release 中的同名文件
-          overwritable: true
-          # 发版标题，包含日期
-          release_name: "Nightly Build ${{ env.TODAY }}"
-
+          files: ${{ steps.package.outputs.zip_path }}
