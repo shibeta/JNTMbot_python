@@ -86,7 +86,7 @@
 ### 方式二：运行发行版
 
 1.  **下载最新发行版**
-    从 [GitHub Releases](https://github.com/shibeta/JNTMbot_python/releases/latest) 或 [123 云盘](https://www.123865.com/s/05OiVv-fdsmH?pwd=r51c) 下载最新的 `JNTMbot_python.zip` 文件。
+    从 [GitHub Releases](https://github.com/shibeta/JNTMbot_python/releases/latest) 或 [123 云盘](https://www.123865.com/s/05OiVv-bdsmH?pwd=bJEH) 下载最新的 `JNTMbot_python.zip` 文件。
 
 2.  **解压文件**
     将下载的 `.zip` 文件解压到您选择的任意位置。
