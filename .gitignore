@@ -4,6 +4,9 @@
 ### 缓存文件 ###
 steam登录缓存请勿分享此文件
 
+### 配置文件 ###
+config.yaml
+
 ### Node.JS ###
 steam_bot/node_modules/
 steam_bot/steam_bot.exe
