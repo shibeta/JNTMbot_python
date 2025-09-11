@@ -21,7 +21,6 @@ const PORT = portArg ? portArg.split("=")[1] : 13091;
 const tokenArg = process.argv.find((arg) => arg.startsWith("--auth_token="));
 const AUTH_TOKEN = tokenArg ? tokenArg.split("=")[1] : "0x4445414442454546";
 
-
 // 初始化Steam Bot
 console.log("🤖 正在初始化 Steam Bot...");
 const bot = new SteamChatBot(proxy);
@@ -142,23 +141,60 @@ app.post("/send-message", async (req, res) => {
 /**
  * 登出并退出程序
  */
-app.post("/logout", (req, res) => {
-    const status = bot.isLoggedIn();
+// app.post("/logout", (req, res) => {
+//     const status = bot.isLoggedIn();
 
-    if (status.loggedIn) {
-        console.log("👋 收到登出请求，正在登出...");
-        bot.logOff();
-        res.status(200).json({ success: true, message: "已成功登出。" });
-    } else {
-        console.log("👋 收到登出请求，但Bot未登录。");
-        res.status(200).json({ success: true, message: "Bot当前未登录。" });
+//     if (status.loggedIn) {
+//         console.log("👋 收到登出请求，正在登出...");
+//         bot.logOff();
+//         res.status(200).json({ success: true, message: "已成功登出。" });
+//     } else {
+//         console.log("👋 收到登出请求，但Bot未登录。");
+//         res.status(200).json({ success: true, message: "Bot当前未登录。" });
+//     }
+
+//     // 延迟退出以确保HTTP响应已发送
+//     console.log("服务器将在2秒后关闭...");
+//     setTimeout(() => {
+//         process.exit(0);
+//     }, 2000);
+// });
+
+/**
+ * 登出并平滑关机
+ */
+app.post("/logout", async (req, res) => {
+    try {
+        const status = bot.isLoggedIn();
+
+        if (status.loggedIn) {
+            console.log("👋 收到登出请求，正在等待 Steam 登出完成...");
+            // 等待机器人完全登出
+            await bot.logOff();
+            res.status(200).json({ success: true, message: "已成功登出。" });
+        } else {
+            console.log("👋 收到登出请求，但Bot未登录。");
+            res.status(200).json({ success: true, message: "Bot当前未登录。" });
+        }
+
+        // 在响应发送后，开始平滑关闭服务器
+        console.log("🫸 HTTP服务器正在准备关闭，将不再接受新连接...");
+        server.close(() => {
+            console.log("✅ 所有连接均已关闭，服务器成功关闭。");
+            // 只有当服务器完全关闭后，才退出进程
+            process.exit(0);
+        });
+    } catch (error) {
+        console.error("❌ 在登出或关机过程中发生错误:", error);
+        // 即使出错，也尝试关闭服务器
+        res.status(500).json({
+            success: false,
+            message: "登出过程中发生错误。",
+        });
+        server.close(() => {
+            process.exit(1); // 使用非零代码表示异常退出
+        });
     }
-
-    // 延迟退出以确保HTTP响应已发送
-    console.log("服务器将在2秒后关闭...");
-    setTimeout(() => {
-        process.exit(0);
-    }, 2000);
 });
 
 // 启动服务器

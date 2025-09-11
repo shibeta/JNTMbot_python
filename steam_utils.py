@@ -186,12 +186,10 @@ class SteamBotClient:
             GLogger.info("正在关闭 Steam Bot 后端...")
             try:
                 # 首先尝试通过API让其退出
-                requests.post(f"{self.base_url}/logout", headers=self.headers, timeout=5)
-                time.sleep(3)  # 等待进程自行退出
+                response = requests.post(f"{self.base_url}/logout", headers=self.headers, timeout=10)
+                response.raise_for_status()
             except requests.RequestException:
                 GLogger.warning("通过API登出失败，将强制终止进程。")
-            finally:
-                # 无论API调用是否成功，都检查并终止进程
                 if self.process.poll() is None:
                     self.process.terminate()
                     GLogger.info(f"已终止 Steam Bot 进程 (PID: {self.process.pid})。")

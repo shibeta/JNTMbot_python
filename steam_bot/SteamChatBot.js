@@ -279,8 +279,25 @@ class SteamChatBot {
      * 登出
      */
     logOff() {
-        this.#client.logOff();
-        console.log("👋 已从 Steam 登出。");
+        // this.#client.logOff();
+        // console.log("👋 已从 Steam 登出。");
+        // 返回一个 Promise，以便调用者可以等待登出操作完成
+        return new Promise((resolve) => {
+            // 监听 'disconnected' 事件，这是登出完成的明确信号
+            this.#client.once("disconnected", (eresult, msg) => {
+                console.log(`👋 已从 Steam 登出。原因: ${msg} (${eresult})。`);
+                resolve(); // 当断开连接时，resolve Promise
+            });
+
+            // 如果已经断开连接，则直接 resolve
+            if (this.#client.steamID === null) {
+                resolve();
+                return;
+            }
+            
+            // 发起登出请求
+            this.#client.logOff();
+        });
     }
 
     /**
