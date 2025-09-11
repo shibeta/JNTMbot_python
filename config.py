@@ -33,7 +33,7 @@ class Config:
         "pushplusToken": {"value": "", "comment": "pushplus的token，用于微信通知"},
         "suspendGTATime": {"value": 15, "comment": "卡单持续时间 (秒)"},
         "delaySuspendTime": {
-            "value": 3,
+            "value": 5,
             "comment": "卡单延迟时间 (秒)",
         },
         "checkLoopTime": {"value": 1, "comment": "检测间隔时间 (秒)"},

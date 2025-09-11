@@ -19,7 +19,7 @@ pushplusToken: ''
 # 卡单持续时间 (秒)
 suspendGTATime: 15
 # 卡单延迟时间 (秒)
-delaySuspendTime: 3
+delaySuspendTime: 5
 # 检测间隔时间 (秒)
 checkLoopTime: 1
 # 面板无人加入时重开时间 (秒)
