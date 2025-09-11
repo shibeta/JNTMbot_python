@@ -1,0 +1,107 @@
+name: Nightly Build
+
+on:
+  # 每天凌晨4点 (UTC时间) 自动运行
+  schedule:
+    - cron: '0 4 * * *'
+  # 也允许手动触发
+  workflow_dispatch:
+
+jobs:
+  build:
+    # 使用最新的 Windows 环境
+    runs-on: windows-latest
+
+    steps:
+      # 第一步：检出代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 第二步：设置 Python 环境
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13' # 根据您的项目选择合适的 Python 版本
+
+      # 第三步：设置 Node.js 环境
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22' # 根据您的项目选择合适的 Node.js 版本
+
+      # 第四步：安装 Python 依赖
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # 第五步：安装 Node.js 依赖并构建
+      - name: Install Node.js dependencies and build
+        run: |
+          cd steam_bot
+          npm install
+          npm run build
+        shell: bash
+
+      # 第六步：设置 MSVC 开发人员命令提示符环境
+      - name: Setup MSVC Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+        # 这个 action 会自动配置好 MSVC 环境，后续步骤可以直接使用 cl.exe
+
+      # 第七步：使用 Nuitka 打包 Python 应用
+      - name: Package with Nuitka
+        run: |
+          nuitka --msvc=latest --standalone --show-memory --show-progress --nofollow-import-to=tkinter --output-dir=dist --include-package-data=rapidocr --windows-icon-from-ico=./assets/johnny_guns.ico --product-name=德瑞Bot --product-version=1.0 --file-description=德瑞Bot自动开车脚本 main.py
+        shell: cmd # 使用 cmd shell 以确保 MSVC 环境被正确继承
+
+      # 第八步：整理文件并压缩
+      - name: Prepare and package release files
+        id: package
+        run: |
+          # 定义目录和文件名
+          $publishDir = "publish"
+          $releaseSubDir = "$publishDir/release"
+          $zipName = "JNTMbot_python_nightly.zip"
+          $zipPath = "$publishDir/$zipName"
+
+          # 如果旧目录存在则删除，并创建新目录
+          if (Test-Path $publishDir) { Remove-Item -Path $publishDir -Recurse -Force };
+          New-Item -ItemType Directory -Force -Path $publishDir
+          New-Item -ItemType Directory -Force -Path $releaseSubDir
+          
+          # 复制构建好的文件
+          Copy-Item -Path "./dist/main.dist/*" -Destination $releaseSubDir -Recurse -Force
+          Copy-Item -Path "./steam_bot/steam_bot.exe" -Destination $releaseSubDir -Force
+          
+          # 重命名主程序
+          Rename-Item -Path "$releaseSubDir/main.exe" -NewName "德瑞Bot.exe" -Force
+          
+          # 复制仓库根目录下的配置文件
+          Copy-Item -Path "./config.yaml.example" -Destination "$releaseSubDir/config.yaml" -Force
+          
+          # 压缩文件
+          Compress-Archive -Path "$releaseSubDir/*" -DestinationPath $zipPath -Force
+          
+          # 将压缩包路径设置为输出变量，供后续步骤使用
+          echo "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      # 第九步：创建或更新 Nightly Release
+      - name: Create or update Nightly Release
+        uses: andelf/nightly-release@v1
+        with:
+          # 使用 GITHUB_TOKEN 进行认证
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # 要上传的文件
+          upload_files: ${{ steps.package.outputs.zip_path }}
+          # Nightly Release 的标签名，固定为 "nightly"
+          tag_name: "nightly"
+          # 标记为预发布版本
+          prerelease: true
+          # 覆盖已有的 nightly release 中的同名文件
+          overwritable: true
+          # 发版标题，包含日期
+          release_name: "Nightly Build ${{ env.TODAY }}"
+        env:
+          # 设置一个日期环境变量
+          TODAY: ${{ format('{0:yyyy-MM-dd}', github.run_started_at) }}
