@@ -1,7 +1,7 @@
 {
     "name": "steam_bot",
     "version": "1.0.0",
-    "description": "",
+    "description": "将 node-steam-user 的群组聊天功能封装为 HTTP 后端",
     "main": "server.js",
     "scripts": {
         "start": "node server.js",
@@ -9,7 +9,7 @@
         "build": "pkg ."
     },
     "bin": "server.js",
-    "author": "",
+    "author": "shibeta",
     "license": "ISC",
     "pkg": {
         "targets": [
@@ -22,5 +22,8 @@
     "dependencies": {
         "express": "^5.1.0",
         "steam-user": "^5.2.3"
+    },
+    "devDependencies": {
+        "pkg": "^5.8.1"
     }
 }
