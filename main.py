@@ -124,13 +124,6 @@ def main():
             GLogger.info(f"请将正确的群组ID填入 {config_file_path} 。")
             return
 
-    # 初始化 OCR
-    try:
-        GOCREngine = get_ocr_engine()
-    except Exception as e:
-        GLogger.error(f"初始化 OCR 引擎失败: {e}")
-        return
-
     # 热键设置
     pause_event = threading.Event()
     pause_event.set()  # 初始状态为“已恢复”
@@ -162,6 +155,13 @@ def main():
 
     keyboard.add_hotkey("ctrl+f10", toggle_exit, args=(steam_bot,))
     GLogger.info("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
+
+    # 初始化 OCR
+    try:
+        GOCREngine = get_ocr_engine()
+    except Exception as e:
+        GLogger.error(f"初始化 OCR 引擎失败: {e}")
+        return
 
     # 初始化健康检查和微信推送
     if GConfig.wechatPush:
