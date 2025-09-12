@@ -6,7 +6,7 @@
     "scripts": {
         "start": "node server.js",
         "test": "echo \"Error: no test specified\" && exit 1",
-        "build": "pkg ."
+        "build": "pkg . --out-path ./dist/"
     },
     "bin": "server.js",
     "author": "shibeta",
