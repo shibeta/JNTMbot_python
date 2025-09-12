@@ -18,15 +18,16 @@ class SteamBotClient:
 
     def __init__(self, config):
         self.config = config
-        self.process = None  # node.js 的 PID
+        self.process = None  # node.js 的 进程
         self.base_url = f"http://{config.steamBotHost}:{config.steamBotPort}"  # node.js 后端的地址
         self.headers = {"Authorization": f"Bearer {config.steamBotToken}"}  # 用于认证，防止未授权访问
         self.last_send_time = time.monotonic()  # 最后一次发送消息的时间戳
-        # 启动后端进程
-        self._launch_process()
 
         # 注册一个退出处理函数，以确保Python程序退出时子进程也能被关闭
         atexit.register(self.shutdown)
+
+        # 启动后端进程
+        self._launch_process()
 
     def _launch_process(self):
         """构建启动命令并启动 server.js 子进程。"""
@@ -72,7 +73,7 @@ class SteamBotClient:
         except Exception as e:
             GLogger.error(f"启动 Steam Bot 后端时发生未知错误: {e}")
 
-        # 每 2 秒轮询 /status 接口，直到登录状态为True
+        # 每 5 秒轮询 /status 接口，直到登录状态为True
         GLogger.info("等待 Steam Bot 后端完成登录")
         while True:
             time.sleep(5)
@@ -182,7 +183,9 @@ class SteamBotClient:
 
     def shutdown(self):
         """关闭 Steam Bot 后端。"""
-        if self.process and self.process.poll() is None:
+        if self.process is None:
+            GLogger.info("Steam Bot 后端没有启动，无须关闭。")
+        elif self.process.poll() is None:
             GLogger.info("正在关闭 Steam Bot 后端...")
             try:
                 # 首先尝试通过API让其退出
@@ -193,4 +196,5 @@ class SteamBotClient:
                 if self.process.poll() is None:
                     self.process.terminate()
                     GLogger.info(f"已终止 Steam Bot 进程 (PID: {self.process.pid})。")
+
         self.process = None
