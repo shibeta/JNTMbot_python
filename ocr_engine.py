@@ -1,4 +1,5 @@
 import win32gui
+import win32ui
 import win32api
 import win32con
 import win32print
@@ -17,6 +18,54 @@ GOCREngine = None
 
 # 用于确保 OCR 引擎只被初始化一次的锁
 _init_lock = threading.Lock()
+
+
+class GDIScreenshotContext:
+    """
+    一个上下文管理器，用于安全地处理GDI截图所需的资源。
+    它封装了所有GDI句柄的获取和释放逻辑。
+    """
+
+    def __init__(self, width, height):
+        if not isinstance(width, int) or not isinstance(height, int) or width <= 0 or height <= 0:
+            raise ValueError(f"截图尺寸必须是正整数。收到的 width={width}, height={height}")
+
+        self._width = width
+        self._height = height
+        self.hwindc = None
+        self.srcdc = None
+        self.memdc = None
+        self.bmp = None
+
+    def __enter__(self):
+        # 获取桌面句柄和DC
+        hdesktop = win32gui.GetDesktopWindow()
+        self.hwindc = win32gui.GetWindowDC(hdesktop)
+        self.srcdc = win32ui.CreateDCFromHandle(self.hwindc)
+
+        # 创建内存DC和位图
+        self.memdc = self.srcdc.CreateCompatibleDC()
+        self.bmp = win32ui.CreateBitmap()
+        self.bmp.CreateCompatibleBitmap(self.srcdc, self._width, self._height)
+
+        # 将位图选入内存DC
+        self.memdc.SelectObject(self.bmp)
+
+        # 返回需要被使用的核心对象
+        return self.srcdc, self.memdc, self.bmp
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        # 按照与创建相反的顺序进行清理
+        if self.bmp:
+            win32gui.DeleteObject(self.bmp.GetHandle())
+        if self.memdc:
+            self.memdc.DeleteDC()
+        if self.srcdc:
+            self.srcdc.DeleteDC()
+        if self.hwindc:
+            # GetWindowDC 获取的DC需要使用 ReleaseDC
+            hdesktop = win32gui.GetDesktopWindow()
+            win32gui.ReleaseDC(hdesktop, self.hwindc)
 
 
 class OCREngine:
@@ -106,14 +155,32 @@ class OCREngine:
 
             grab_left = client_left + int(x * client_width)
             grab_top = client_top + int(y * client_height)
-            grab_right = grab_left + int(w * client_width)
-            grab_bottom = grab_top + int(h * client_height)
+            grab_width = int(w * client_width)
+            grab_height = int(h * client_height)
+            # grab_right = grab_left + int(w * client_width)
+            # grab_bottom = grab_top + int(h * client_height)
             # print(grab_left,grab_top,grab_width,grab_height)
 
-            # 使用pillow截图
-            screenshot = ImageGrab.grab(bbox=(grab_left, grab_top, grab_right, grab_bottom))
+            # TODO 截图失败: screen grab failed
+            # # 使用pillow截图
+            # screenshot = ImageGrab.grab(bbox=(grab_left, grab_top, grab_right, grab_bottom))
 
-            return screenshot
+            # 验证截图尺寸
+            if grab_width <= 0 or grab_height <= 0:
+                GLogger.warning(f"计算出的截图尺寸无效: w = {grab_width} 像素, h = {grab_height} 像素")
+                return None
+
+            # 使用 GDI 截图
+            with GDIScreenshotContext(grab_width, grab_height) as (srcdc, memdc, bmp):
+                memdc.BitBlt(
+                    (0, 0), (grab_width, grab_height), srcdc, (grab_left, grab_top), win32con.SRCCOPY
+                )
+                signed_ints_array = bmp.GetBitmapBits(True)
+                screenshot = Image.frombuffer(
+                    "RGB", (grab_width, grab_height), signed_ints_array, "raw", "BGRX", 0, 1
+                )
+
+                return screenshot
 
         except Exception as e:
             GLogger.error(f"截图失败: {e}")
