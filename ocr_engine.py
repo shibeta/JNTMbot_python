@@ -3,14 +3,14 @@ import win32ui
 import win32api
 import win32con
 import win32print
-from PIL import Image
+import numpy as np
 from rapidocr import RapidOCR, EngineType, LangDet, LangRec, ModelType, OCRVersion
 import threading
 from time import sleep
 
-from logger import setup_logger
+from logger import get_logger
 
-GLogger = setup_logger("ocr_engine")
+GLogger = get_logger("ocr_engine")
 
 
 # 全局变量，用于存储初始化后的 OCR 引擎实例，避免重复加载模型
@@ -102,7 +102,7 @@ class OCREngine:
 
     def _capture_window_area(
         self, hwnd: int, x: float, y: float, w: float, h: float, include_title_bar: bool = False
-    ) -> Image.Image | None:
+    ) -> np.ndarray | None:
         """
         截取指定窗口的特定区域。
 
@@ -115,7 +115,7 @@ class OCREngine:
                 False: 基于客户区截图 (排除标题栏和边框)
 
         Returns:
-            一个 PIL.Image.Image 对象，如果失败则返回 None。
+            一个 BGR 格式的 NumPy 数组，如果失败则返回 None。
         """
         try:
             # 将要截图的窗口置于前台
@@ -182,12 +182,13 @@ class OCREngine:
                     (0, 0), (grab_width, grab_height), srcdc, (grab_left, grab_top), win32con.SRCCOPY
                 )
                 signed_ints_array = bmp.GetBitmapBits(True)
-                screenshot = Image.frombuffer(
-                    "RGB", (grab_width, grab_height), signed_ints_array, "raw", "BGRX", 0, 1
-                )
-
-                return screenshot
-
+                screenshot_img_np = np.frombuffer(signed_ints_array, dtype='uint8')
+                # 将 1D 数组重塑为 4通道 图像 (BGRA/BGRX)
+                screenshot_img_np.shape = (grab_height, grab_width, 4)
+                # 丢弃不需要的 alpha/padding 通道，仅保留 BGR
+                # 用 np.ascontiguousarray 确保内存是连续的，提升性能?
+                return np.ascontiguousarray(screenshot_img_np[:, :, :3])
+            
         except Exception as e:
             GLogger.error(f"截图失败: {e}")
             return None
@@ -216,25 +217,24 @@ class OCREngine:
             识别出的所有文本拼接成的字符串。
         """
         # 截图
-        # GLogger.debug(
-        #     f"开始对句柄为{hwnd}的窗口截图，{"" if include_title_bar else "不"}包括标题栏。截图范围左上角相对坐标为({x}, {y})，右下角相对坐标为({x+w}, {y+h})。"
-        # )
-        screenshot = self._capture_window_area(hwnd, x, y, w, h, include_title_bar)
-        # GLogger.debug("截图完成。")
-        if not screenshot:
+        GLogger.debug(
+            f"开始对句柄为{hwnd}的窗口截图，{"" if include_title_bar else "不"}包括标题栏。截图范围左上角相对坐标为({x}, {y})，右下角相对坐标为({x+w}, {y+h})。"
+        )
+        screenshot_np = self._capture_window_area(hwnd, x, y, w, h, include_title_bar)
+        GLogger.debug("截图完成。")
+        if not screenshot_np:
             return ""
 
         # 调用 OCR 引擎进行识别
-        # GLogger.debug("开始对截图进行 OCR。")
-        result = self.engine(screenshot, use_det=True, use_cls=False, use_rec=True)
-        # GLogger.debug("OCR 完成。")
+        GLogger.debug("开始对截图进行 OCR。")
+        result = self.engine(screenshot_np, use_det=True, use_cls=False, use_rec=True)
+        GLogger.debug("OCR 完成。")
 
         # 处理空结果
         if result is None or result.txts is None:
             return ""
 
         # 拼接所有识别到的文本
-        # print(result.txts)
         recognized_text = "".join(result.txts)
         GLogger.debug(recognized_text)
 
