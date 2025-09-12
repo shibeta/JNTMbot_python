@@ -4,61 +4,67 @@ on:
   # 每天凌晨4点 (UTC时间) 自动运行
   schedule:
     - cron: '0 4 * * *'
-  # 也允许手动触发
+  # 允许手动触发
   workflow_dispatch:
 
 jobs:
-  build:
-    # 使用最新的 Windows 环境
+  # --- 构建 Python 部分 ---
+  build_python:
+    name: Build Python Executable
     runs-on: windows-latest
 
     steps:
-      # 设置当前日期环境变量
-      - name: Set current date
-        run: echo "TODAY=$(Get-Date -Format 'yyyy-MM-dd')" >> $env:GITHUB_ENV
-        shell: pwsh
-
-      # 检出代码
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 设置 Python 环境
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13' # 根据您的项目选择合适的 Python 版本
+          python-version: '3.11'
 
-      # 设置 Node.js 环境
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22' # 根据您的项目选择合适的 Node.js 版本
-
-      # 静默安装 ViGEmBus 驱动，避免卡在pip install vgamepad
+      # 静默安装 ViGEmBus 驱动，避免卡在 pip install vgamepad
       - name: Install ViGEmBus Driver from local MSI
         run: |
-          # 调试：列出 assets 目录中的文件，确保 MSI 文件存在
-          Write-Host "Verifying existence of MSI file..."
-          Get-ChildItem -Path ".\assets\"
-          
-          # msiexec似乎需要一个绝对路径才能工作
           $msiPath = Join-Path $env:GITHUB_WORKSPACE "assets\ViGEmBusSetup_x64.msi"
-          Write-Host "Attempting to install from absolute path: $msiPath"
-          
-          # 使用绝对路径执行安装
           msiexec /i "$msiPath" /qn /norestart
-          
           Write-Host "Waiting for ViGEmBus driver to settle..."
           Start-Sleep -Seconds 5
         shell: pwsh
 
-      # 安装 Python 依赖
       - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      # 安装 Node.js 依赖并构建
+      # Nuitka 打包需要 MSVC 环境
+      - name: Setup MSVC Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Package with Nuitka
+        run: |
+          nuitka --msvc=latest --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter --output-dir=dist --include-package-data=rapidocr --windows-icon-from-ico=./assets/johnny_guns.ico --product-name=德瑞Bot --product-version=1.0 --file-description=德瑞Bot自动开车脚本 main.py
+        shell: cmd
+      
+      - name: Upload Python artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-artifact
+          path: ./dist/main.dist/
+
+  # --- 构建 Node.js 部分 ---
+  build_node:
+    name: Build Node.js Executable
+    runs-on: windows-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
       - name: Install Node.js dependencies and build
         run: |
           cd steam_bot
@@ -66,18 +72,37 @@ jobs:
           npm run build
         shell: bash
 
-      # 设置 MSVC 开发人员命令提示符环境
-      - name: Setup MSVC Developer Command Prompt
-        uses: ilammy/msvc-dev-cmd@v1
-        # 这个 action 会自动配置好 MSVC 环境，后续步骤可以直接使用 cl.exe
+      - name: Upload Node.js artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-artifact
+          path: ./steam_bot/steam_bot.exe
 
-      # 使用 Nuitka 打包 Python 应用
-      - name: Package with Nuitka
-        run: |
-          nuitka --msvc=latest --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter --output-dir=dist --include-package-data=rapidocr --windows-icon-from-ico=./assets/johnny_guns.ico --product-name=德瑞Bot --product-version=1.0 --file-description=德瑞Bot自动开车脚本 main.py
-        shell: cmd # 使用 cmd shell 以确保 MSVC 环境被正确继承
+  # --- 合并产物并创建 Release ---
+  create_release:
+    name: Create Nightly Release
+    runs-on: windows-latest
+    # 只有构建成功才需要发布
+    needs: [build_python, build_node]
+    # 为发布 Job 授予写权限
+    permissions:
+      contents: write
 
-      # 整理文件并压缩
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+        # 设置当前日期环境变量
+      - name: Set current date variable
+        run: echo "TODAY=$(Get-Date -Format 'yyyy-MM-dd')" >> $env:GITHUB_ENV
+        shell: pwsh
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          # 将下载的 artifacts 存放到 build_output 文件夹
+          path: build_output
+
       - name: Prepare and package release files
         id: package
         run: |
@@ -87,29 +112,24 @@ jobs:
           $zipName = "JNTMbot_python_nightly.zip"
           $zipPath = "$publishDir/$zipName"
 
-          # 如果旧目录存在则删除，并创建新目录
-          if (Test-Path $publishDir) { Remove-Item -Path $publishDir -Recurse -Force };
           New-Item -ItemType Directory -Force -Path $publishDir
           New-Item -ItemType Directory -Force -Path $releaseSubDir
           
-          # 复制构建好的文件
-          Copy-Item -Path "./dist/main.dist/*" -Destination $releaseSubDir -Recurse -Force
-          Copy-Item -Path "./steam_bot/steam_bot.exe" -Destination $releaseSubDir -Force
+          # 从下载的 artifacts 中复制构建好的文件
+          Copy-Item -Path "./build_output/python-artifact/*" -Destination $releaseSubDir -Recurse -Force
+          Copy-Item -Path "./build_output/node-artifact/steam_bot.exe" -Destination $releaseSubDir -Force
           
           # 重命名主程序
           Rename-Item -Path "$releaseSubDir/main.exe" -NewName "德瑞Bot.exe" -Force
-          
+
           # 复制仓库根目录下的配置文件
           Copy-Item -Path "./config.yaml.example" -Destination "$releaseSubDir/config.yaml" -Force
           
-          # 压缩文件
           Compress-Archive -Path "$releaseSubDir/*" -DestinationPath $zipPath -Force
           
-          # 将压缩包路径设置为输出变量，供后续步骤使用
           echo "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
         shell: pwsh
 
-      # 创建或更新 Nightly Release
       - name: Create or update Nightly Release
         uses: andelf/nightly-release@v1
         env:
@@ -117,5 +137,9 @@ jobs:
         with:
           tag_name: 'nightly'
           name: 'Nightly Build ${{ env.TODAY }}'
+          draft: false
+          body: |
+            This is a nightly release of JNTMbot_python.
+            It's unstable compared to the official releases, **use it with caution**!
           prerelease: true
           files: ${{ steps.package.outputs.zip_path }}
