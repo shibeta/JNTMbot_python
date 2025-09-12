@@ -1,6 +1,6 @@
 colorlog
 rapidocr
-onnxruntime
+onnxruntime-directml
 Pillow
 numpy
 psutil
