@@ -151,7 +151,7 @@ class OCREngine:
         if not screenshot:
             return ""
 
-        # # 调用 OCR 引擎进行识别
+        # 调用 OCR 引擎进行识别
         GLogger.debug("开始对截图进行 OCR。")
         result = self.engine(screenshot)
         GLogger.debug("OCR 完成。")
