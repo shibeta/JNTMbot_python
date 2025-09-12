@@ -47,11 +47,15 @@ class GameAutomator:
 
     def enter_single_player_session(self):
         """通过暂停进程卡单人战局"""
+        GLogger.info("正在卡单人战局。。。")
         suspend_process_for_duration(self.pid, self.config.suspendGTATime)
+        GLogger.info("卡单人战局完成。")
 
     def kill_gta(self):
         """杀死 GTA V 进程，并且清除窗口句柄和 PID 。"""
+        GLogger.info("正在杀死 GTA V 相关进程。。。")
         kill_processes(self.GTA_PROCESS_NAMES)
+        GLogger.info("杀死 GTA V 相关进程完成。")
         self.hwnd, self.pid = None, None
 
     def _find_text(self, text, x, y, w, h) -> bool:
@@ -215,10 +219,10 @@ class GameAutomator:
                     time.sleep(0.5)
             if new_match_error_count == 10:
                 GLogger.info("尝试通过加入差传 Bot 战局来恢复正常状态。")
-                self.try_to_join_bot()
+                self.try_to_join_jobwarp_bot()
             if new_match_error_count == 15:
                 GLogger.info("尝试通过卡单来恢复正常状态。")
-                suspend_process_for_duration(self.pid, self.config.suspendGTATime)
+                self.enter_single_player_session()
             # 以下开始是正常的开始新战局的指令
             # 处理警告屏幕
             if self.is_on_warning_page():
@@ -394,16 +398,17 @@ class GameAutomator:
             click_keyboard(KEY_ENTER)
             time.sleep(5)
 
-    # TODO komi说不知道这个方法能不能用
-    def try_to_join_bot(self):
+    # TODO 方法可用但需要等待更多时间来完成加入战局
+    def try_to_join_jobwarp_bot(self):
         """尝试通过 SteamJvp 加入差传 Bot 战局。"""
-        GLogger.info("正在尝试加入一个差传机器人战局...")
+        GLogger.info("正在尝试加入一个差传 Bot 战局...")
+        # 从 mageangela 的接口获取差传 bot 的战局链接
         try:
             res = requests.get("http://quellgtacode.mageangela.cn:52014/botJvp/", timeout=10)
             res.raise_for_status()
             bot_list = res.text.replace("\r", "").split("\n")
         except requests.RequestException as e:
-            GLogger.error(f"获取差传机器人列表失败: {e}")
+            GLogger.error(f"获取差传 Bot 列表失败: {e}")
             return
 
         start_index = 3 + (self.config.jobTpBotIndex if self.config.jobTpBotIndex >= 0 else 0)
@@ -411,6 +416,7 @@ class GameAutomator:
             [bot_list[start_index]] if self.config.jobTpBotIndex >= 0 else bot_list[start_index:]
         )
 
+        # 根据 config 中的配置决定加入哪些差传 Bot
         for line in bot_lines_to_try:
             if "|" not in line:
                 continue
@@ -418,31 +424,45 @@ class GameAutomator:
             if not jvp_id:
                 continue
 
+            # 使用 Steam 加入差传 Bot 战局
             steam_url = f"steam://rungame/3240220/76561199074735990/-steamjvp={jvp_id}"
             GLogger.info(f"正在启动 Steam URL: {steam_url}")
             os.startfile(steam_url)
             time.sleep(3)
 
+            # 等待加入差传 Bot 战局，如果在线上，会掉回自由模式，如果在线下，会掉回公开战局。
             start_join_time = time.monotonic()
             has_suspended = False
-            while time.monotonic() - start_join_time < 60:
+            while time.monotonic() - start_join_time < 300:  # 5分钟加载超时
                 click_keyboard(KEY_ENTER)
+                time.sleep(0.5)
                 click_keyboard("z")
                 time.sleep(1)
                 if self._find_text("在线模式", 0, 0, 0.5, 0.5):
-                    GLogger.info("成功加入差传机器人战局。")
+                    # 进入了在线模式
+                    GLogger.info("成功加入差传 Bot 战局。5 秒后将卡单以避免战局中有其他玩家。")
+                    time.sleep(5)
+                    self.enter_single_player_session()
                     return
                 if not has_suspended and time.monotonic() - start_join_time > 30:
-                    suspend_process_for_duration(self.pid, self.config.suspendGTATime)
+                    # 等待 30 秒的时候先卡一次单
+                    GLogger.info("为缓解进入公开战局卡云，进行卡单。")
+                    self.enter_single_player_session()
                     has_suspended = True
+            else:
+                # 超时后再卡一次单，并且休息一会
+                GLogger.info("加入差传 Bot 战局时超时。尝试卡单以缓解。")
+                self.enter_single_player_session()
+                time.sleep(10)
 
             if self.config.jobTpBotIndex >= 0:
-                break  # 如果指定了索引，只尝试一次
-
-        GLogger.warning("在时限内加入差传机器人战局失败。")
+                # 如果指定了索引，只尝试一次
+                break  
+        else:
+            GLogger.warning("无法加入任何配置的差传 Bot 战局。")
 
     def restart_gta(self):
-        """重启 GTA V 游戏，并等待其主菜单加载。"""
+        """重启 GTA V 游戏，并进入在线模式仅邀请战局。"""
         GLogger.info("20秒后将重启 GTA V...")
         self.kill_gta()
         time.sleep(20)  # 等待20秒钟用于 steam 客户端响应 GTA V 退出
@@ -480,6 +500,7 @@ class GameAutomator:
             time.sleep(3)
         click_keyboard(KEY_ENTER)
 
+        # TODO 卡在地图和菜单间是因为ocr故障还是该部分代码有问题?
         # 等待进入故事模式
         GLogger.info("正在等待进入故事模式...")
         story_mode_load_start_time = time.monotonic()
