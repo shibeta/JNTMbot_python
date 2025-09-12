@@ -1,9 +1,9 @@
 name: Nightly Build
 
 on:
-  # 每天凌晨4点 (UTC时间) 自动运行
+  # 每天凌晨4点 (UTC时间晚上8点) 自动运行
   schedule:
-    - cron: '0 4 * * *'
+    - cron: '0 20 * * *'
   # 允许手动触发
   workflow_dispatch:
 
