@@ -49,7 +49,8 @@ def health_check_monitor(steam_bot: SteamBotClient, token: str, pause_event: thr
 
             GLogger.warning(f"检测到 Bot 连续30分钟未向 Steam 发送消息！正在发送微信通知: {msg}")
             push_wechat(token, title, msg)
-            exit()
+            steam_bot.shutdown()
+            os._exit(0)
 
 
 # 用于处理退出的装饰器
