@@ -49,8 +49,12 @@ def health_check_monitor(steam_bot: SteamBotClient, token: str, pause_event: thr
 
             GLogger.warning(f"检测到 Bot 连续30分钟未向 Steam 发送消息！正在发送微信通知: {msg}")
             push_wechat(token, title, msg)
-            steam_bot.shutdown()
-            os._exit(0)
+            try:
+                steam_bot.shutdown()
+            except:
+                pass  # 没有什么需要做的
+            finally:
+                os._exit(0)
 
 
 # 用于处理退出的装饰器
@@ -86,6 +90,38 @@ def main():
         setup_logging(log_level="DEBUG")
     else:
         setup_logging(log_level="INFO")
+
+    # 热键设置
+    pause_event = threading.Event()
+    pause_event.set()  # 初始状态为“已恢复”
+
+    # 暂停/恢复热键
+    def toggle_pause():
+        if pause_event.is_set():
+            pause_event.clear()  # 清除标志，进入暂停状态
+            GLogger.warning("暂停/恢复热键被按下，Bot 将在本循环结束后暂停。按 F10 恢复。")
+        else:
+            pause_event.set()  # 设置标志，恢复运行
+            try:
+                steam_bot.reset_send_timer()
+            except:
+                pass  # 没有什么需要做的
+            GLogger.warning("暂停/恢复热键被按下，Bot 已恢复。")
+
+    keyboard.add_hotkey("ctrl+f9", toggle_pause)
+
+    # 退出热键
+    def toggle_exit(steam_bot: SteamBotClient):
+        GLogger.warning("退出热键被按下，退出程序。。。")
+        try:
+            steam_bot.shutdown()
+        except:
+            pass  # 没有什么需要做的
+        finally:
+            os._exit(0)
+
+    keyboard.add_hotkey("ctrl+f10", toggle_exit, args=(steam_bot,))
+    GLogger.info("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
 
     # 初始化 Steam Bot
     try:
@@ -126,31 +162,6 @@ def main():
     except Exception as e:
         GLogger.error(f"初始化 OCR 引擎失败: {e}")
         return
-
-    # 热键设置
-    pause_event = threading.Event()
-    pause_event.set()  # 初始状态为“已恢复”
-
-    # 暂停/恢复热键
-    def toggle_pause():
-        if pause_event.is_set():
-            pause_event.clear()  # 清除标志，进入暂停状态
-            GLogger.warning("暂停/恢复热键被按下，Bot 将在本循环结束后暂停。按 F10 恢复。")
-        else:
-            pause_event.set()  # 设置标志，恢复运行
-            steam_bot.reset_send_timer()  # 恢复时重置发送信息计时器
-            GLogger.warning("暂停/恢复热键被按下，Bot 已恢复。")
-
-    keyboard.add_hotkey("ctrl+f9", toggle_pause)
-
-    # 退出热键
-    def toggle_exit(steam_bot: SteamBotClient):
-        GLogger.warning("退出热键被按下，退出程序。。。")
-        steam_bot.shutdown()
-        os._exit(0)
-
-    keyboard.add_hotkey("ctrl+f10", toggle_exit, args=(steam_bot,))
-    GLogger.info("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
 
     # 初始化健康检查和微信推送
     if GConfig.wechatPush:
