@@ -13,7 +13,8 @@ except ImportError:
 # 目前设置了控制台日志和文件日志
 DEFAULT_LOGGING_CONFIG = {
     "version": 1,
-    "disable_existing_loggers": False,  # 保持为 False 以避免清除掉之前添加的 logger
+    "disable_existing_loggers": False,  # 保持为 False 以避免清除掉其他软件包添加的 logger
+    "filters": {"silence_rapidocr_less_than_warning": {"()": "logger.RapidOCRFilter"}},  # 让 rapidocr 闭嘴
     "formatters": {
         "default": {
             "format": "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
@@ -41,6 +42,7 @@ DEFAULT_LOGGING_CONFIG = {
             "class": "logging.StreamHandler",
             "formatter": "color" if colorlog else "default",
             "level": "DEBUG",
+            "filters": ["silence_rapidocr_less_than_warning"],  # 在终端日志中添加过滤器
         },
         "file": {
             "class": "logging.handlers.RotatingFileHandler",
@@ -59,6 +61,36 @@ DEFAULT_LOGGING_CONFIG = {
 }
 
 
+class RapidOCRFilter(logging.Filter):
+    """
+    一个用于过滤掉 RapidOCR 库非 WARNING 级别日志的过滤器。
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        """
+        决定是否要处理这条日志记录。
+
+        Args:
+            record (logging.LogRecord): 日志记录对象。
+
+        Returns:
+            bool: 如果返回 True，日志被处理；返回 False，日志被丢弃。
+        """
+        # 检查日志记录的来源文件路径是否包含 'rapidocr'
+        # 这个关键词需要根据你环境中 rapidocr 库的安装路径来确定，
+        # 通常就是库的名字 'rapidocr'。
+        # record.pathname 通常是类似 '.../venv/lib/python3.9/site-packages/rapidocr_core/...' 的路径
+        is_from_rapidocr = "rapidocr" in record.pathname.lower()
+
+        # 如果日志来自 RapidOCR 库
+        if is_from_rapidocr:
+            # 那么只有当它的级别是 ERROR 或更高级别时，我们才允许它通过
+            return record.levelno >= logging.WARNING
+
+        # 如果日志不是来自 RapidOCR，我们总是允许它通过
+        return True
+
+
 def setup_logging(log_level: str = None):
     """
     初始化或设置日志。
@@ -69,16 +101,14 @@ def setup_logging(log_level: str = None):
     logging_config = DEFAULT_LOGGING_CONFIG
 
     # 如果启用了文件日志，则确保日志文件夹已创建
-    if 'handlers' in logging_config and 'file' in logging_config['handlers']:
-        log_filename = logging_config['handlers']['file']['filename']
+    if "handlers" in logging_config and "file" in logging_config["handlers"]:
+        log_filename = logging_config["handlers"]["file"]["filename"]
         log_dir = os.path.dirname(log_filename)
 
         # 如果目录非空且不存在，则创建它
         if log_dir and not os.path.exists(log_dir):
             os.makedirs(log_dir)
-            logging.getLogger(__name__).error(
-                f"日志目录 {log_dir} 已创建。"
-            )
+            logging.getLogger(__name__).error(f"日志目录 {log_dir} 已创建。")
 
     # 根据每个参数修改日志设置
     if log_level:
@@ -188,7 +218,7 @@ if __name__ == "__main__":
     score = 500
     main_logger.info(f"玩家 '{player_name}' 成功完成任务，得分: {score}")
     main_logger.critical("发生严重错误，程序即将退出！")
-    
+
     print("\n--- 日志演示结束 ---")
 
     if not colorlog:
