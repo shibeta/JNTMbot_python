@@ -216,18 +216,18 @@ class OCREngine:
             识别出的所有文本拼接成的字符串。
         """
         # 截图
-        GLogger.debug(
-            f"开始对句柄为{hwnd}的窗口截图，{"" if include_title_bar else "不"}包括标题栏。截图范围左上角相对坐标为({x}, {y})，右下角相对坐标为({x+w}, {y+h})。"
-        )
+        # GLogger.debug(
+        #     f"开始对句柄为{hwnd}的窗口截图，{"" if include_title_bar else "不"}包括标题栏。截图范围左上角相对坐标为({x}, {y})，右下角相对坐标为({x+w}, {y+h})。"
+        # )
         screenshot = self._capture_window_area(hwnd, x, y, w, h, include_title_bar)
-        GLogger.debug("截图完成。")
+        # GLogger.debug("截图完成。")
         if not screenshot:
             return ""
 
         # 调用 OCR 引擎进行识别
-        GLogger.debug("开始对截图进行 OCR。")
+        # GLogger.debug("开始对截图进行 OCR。")
         result = self.engine(screenshot, use_det=True, use_cls=False, use_rec=True)
-        GLogger.debug("OCR 完成。")
+        # GLogger.debug("OCR 完成。")
 
         # 处理空结果
         if result is None or result.txts is None:
