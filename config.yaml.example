@@ -1,4 +1,4 @@
-# 开启调试模式
+# 开启调试模式，日志输出将非常详细
 debug: false
 # Steam Bot后端的监听地址
 steamBotHost: 127.0.0.1
