@@ -81,7 +81,6 @@ class OCREngine:
         GLogger.info("正在初始化 OCR 引擎，可能需要一些时间...")
         self.engine = RapidOCR(
             params={  # 从 https://github.com/davidLi17/JiNiTaiMeiBot 抄的参数
-                "Global.log_level": "error",
                 "Global.use_cls": False,
                 "Global.max_side_len": 1024,
                 "EngineConfig.onnxruntime.intra_op_num_threads": 1,
