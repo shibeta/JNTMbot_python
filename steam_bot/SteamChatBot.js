@@ -1,5 +1,3 @@
-// SteamChatBot.js
-
 const SteamUser = require("steam-user");
 const fs = require("fs/promises"); // 使用 fs/promises 以便在 async/await 中使用
 const readline = require("readline");
