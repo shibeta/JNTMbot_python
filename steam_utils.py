@@ -56,7 +56,7 @@ class SteamBotClient:
         # 从代理配置项获取代理 URL
         proxy_url = self.get_http_proxy_string(self.config.steamBotProxy)
         if proxy_url:
-            GLogger.info(f"Steam Bot 将使用 {proxy_url} 代理到 Steam 的连接。")
+            GLogger.warning(f"Steam Bot 将使用 {proxy_url} 代理到 Steam 的连接。")
             command.append(f"--proxy={proxy_url}")
         else:
             GLogger.info("没有配置系统代理，Steam Bot 将不使用代理连接 Steam 。")
@@ -67,7 +67,7 @@ class SteamBotClient:
             # CREATE_NEW_PROCESS_GROUP 会在一个新的独立进程组中运行子进程
             # 这样做可以使子进程不响应 SIGINT 信号，因为已经在主进程中实现了自动退出子进程的功能。
             self.process = subprocess.Popen(command, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
-            GLogger.info(f"Steam Bot 后端已启动，进程ID: {self.process.pid}")
+            GLogger.warning(f"Steam Bot 后端已启动，进程ID: {self.process.pid}")
         except FileNotFoundError:
             GLogger.error("启动失败: 未找到 'node' 可执行文件。请确保 Node.js 已安装并配置在系统PATH中。")
         except Exception as e:

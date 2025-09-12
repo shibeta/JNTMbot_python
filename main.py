@@ -84,6 +84,8 @@ def main():
         GLogger.error(f"加载配置失败: {e}")
         return
 
+    # 初始化日志
+    GLogger.info("根据配置重新加载日志模块。")
     # 设置日志等级
     if GConfig.debug:
         GLogger.warning("启用了 DEBUG 模式，将输出更详细的日志。")
@@ -100,7 +102,7 @@ def main():
     # 检查初始登录状态
     status = steam_bot.get_status()
     if status.get("loggedIn"):
-        GLogger.info(f"Steam Bot 后端已连接并登录为: {status.get('name')}")
+        GLogger.warning(f"Steam Bot 后端已连接并登录为: {status.get('name')}")
     else:
         GLogger.error(
             f"Steam Bot 后端未登录。错误: {status.get('error', '后端无法完成登录，请查看后端日志')}"
@@ -117,11 +119,11 @@ def main():
                 break
         else:
             GLogger.error(f"配置中的 Steam 群组 ID ({GConfig.steamGroupId})无效，或者 Bot 不在该群组中。")
-            GLogger.info("================Bot 所在的群组列表=================")
+            GLogger.error("================Bot 所在的群组列表=================")
             for group in bot_userinfo["groups"]:
-                GLogger.info(f"  - {group['name']} (ID: {group['id']})")
-            GLogger.info("=================================================")
-            GLogger.info(f"请将正确的群组ID填入 {config_file_path} 。")
+                GLogger.error(f"  - {group['name']} (ID: {group['id']})")
+            GLogger.error("=================================================")
+            GLogger.error(f"请将正确的群组ID填入 {config_file_path} 。")
             return
 
     # 热键设置
@@ -154,7 +156,7 @@ def main():
             os._exit(0)
 
     keyboard.add_hotkey("ctrl+f10", toggle_exit, args=(steam_bot,))
-    GLogger.info("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
+    GLogger.warning("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
 
     # 初始化 OCR
     try:
@@ -166,7 +168,7 @@ def main():
     # 初始化健康检查和微信推送
     if GConfig.wechatPush:
         if GConfig.pushplusToken:
-            GLogger.info("已启用微信推送，当 Bot 连续30分钟未向 Steam 发送消息时，将发送微信消息并退出程序。")
+            GLogger.warning("已启用微信推送，当 Bot 连续30分钟未向 Steam 发送消息时，将发送微信消息并退出程序。")
             monitor_thread = threading.Thread(
                 target=health_check_monitor,
                 args=(steam_bot, GConfig.pushplusToken, pause_event),
@@ -187,7 +189,7 @@ def main():
         GLogger.info(f"找到 GTA V 窗口。窗口句柄: {hwnd}, 进程ID: {pid}")
         automator = GameAutomator(GConfig, GOCREngine, steam_bot, hwnd, pid)
     else:
-        GLogger.error("GTA V 未启动。正在重启游戏...")
+        GLogger.warning("GTA V 未启动。正在重启游戏...")
         automator = GameAutomator(GConfig, GOCREngine, steam_bot, None, None)
         automator.restart_gta()
 
