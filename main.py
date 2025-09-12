@@ -318,7 +318,7 @@ def main():
             # 只有捕获到异常才认为是出错，找不到差事和各种超时等不认为是出错
             main_loop_consecutive_error_count = main_loop_consecutive_error_count + 1
             # 最大可以等 120 秒
-            wait_before_restart_loop = max(main_loop_consecutive_error_count * 10, 120)
+            wait_before_restart_loop = min(main_loop_consecutive_error_count * 10, 120)
             GLogger.error(f"主循环中发生错误: {e}")
             GLogger.error(f"将在{wait_before_restart_loop}秒后重启循环...")
             time.sleep(wait_before_restart_loop)

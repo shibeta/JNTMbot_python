@@ -222,7 +222,7 @@ class OCREngine:
         )
         screenshot_np = self._capture_window_area(hwnd, x, y, w, h, include_title_bar)
         GLogger.debug("截图完成。")
-        if not screenshot_np:
+        if screenshot_np is None:
             return ""
 
         # 调用 OCR 引擎进行识别
