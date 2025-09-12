@@ -5,9 +5,9 @@ import atexit
 import os
 from urllib.request import getproxies
 
-from logger import setup_logger
+from logger import get_logger
 
-GLogger = setup_logger("steam_utils")
+GLogger = get_logger("steam_utils")
 
 
 class SteamBotClient:

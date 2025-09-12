@@ -8,9 +8,9 @@ from ocr_engine import OCREngine
 from keyboard_utils import *  # 导入所有键盘功能和常量
 from steam_utils import SteamBotClient
 from process_utils import get_window_info, suspend_process_for_duration, kill_processes
-from logger import setup_logger
+from logger import get_logger
 
-GLogger = setup_logger(name="gta5_utils")
+GLogger = get_logger(name="gta5_utils")
 
 
 class GameAutomator:

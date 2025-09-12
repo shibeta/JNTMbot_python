@@ -1,9 +1,9 @@
 import time
 import vgamepad as vg
 
-from logger import setup_logger
+from logger import get_logger
 
-GLogger = setup_logger(name="gamepad_utils")
+GLogger = get_logger(name="gamepad_utils")
 
 
 class Gamepad:

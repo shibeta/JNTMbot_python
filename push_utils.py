@@ -1,8 +1,8 @@
 import requests
 
-from logger import setup_logger
+from logger import get_logger
 
-GLogger = setup_logger("push_utils")
+GLogger = get_logger("push_utils")
 
 
 def push_wechat(token: str, title: str, msg: str):

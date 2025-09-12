@@ -3,9 +3,9 @@ from typing import Any, Dict
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
-from logger import setup_logger
+from logger import get_logger
 
-GLogger = setup_logger(name="config")
+GLogger = get_logger(name="config")
 
 
 class Config:
@@ -19,7 +19,7 @@ class Config:
     # _defaults 字典定义了所有配置项的默认值和注释。
     # 结构: { "配置项名称": {"value": 默认值, "comment": "注释"} }
     _defaults: Dict[str, Dict[str, Any]] = {
-        "debug": {"value": True, "comment": "开启调试模式"},
+        "debug": {"value": False, "comment": "开启调试模式"},
         "steamBotHost": {"value": "127.0.0.1", "comment": "Steam Bot后端的监听地址"},
         "steamBotPort": {"value": 13091, "comment": "Steam Bot后端的监听端口"},
         "steamBotToken": {"value": "0x4445414442454546", "comment": "访问Steam Bot后端的认证Token"},

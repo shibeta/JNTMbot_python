@@ -3,10 +3,13 @@ import threading
 from datetime import datetime, timedelta
 import keyboard
 import os
-from sys import exit
 import win32gui
 from win32con import SW_RESTORE
 from functools import wraps
+
+from logger import setup_logging, get_logger
+
+GLogger = get_logger(name="main")
 
 from config import Config
 from ocr_engine import get_ocr_engine
@@ -14,9 +17,6 @@ from steam_utils import SteamBotClient
 from process_utils import get_window_info
 from push_utils import push_wechat
 from gta5_utils import GameAutomator
-from logger import setup_logger
-
-GLogger = setup_logger(name="main")
 
 
 def health_check_monitor(steam_bot: SteamBotClient, token: str, pause_event: threading.Event):
@@ -79,6 +79,13 @@ def main():
     except Exception as e:
         GLogger.error(f"加载配置失败: {e}")
         return
+
+    # 设置日志等级
+    if GConfig.debug:
+        GLogger.warning("启用了 DEBUG 模式，将输出更详细的日志。")
+        setup_logging(log_level="DEBUG")
+    else:
+        setup_logging(log_level="INFO")
 
     # 初始化 Steam Bot
     try:

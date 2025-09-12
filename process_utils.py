@@ -4,9 +4,9 @@ import win32gui
 import win32process
 from typing import Tuple, Optional
 
-from logger import setup_logger
+from logger import get_logger
 
-GLogger = setup_logger("process_utils")
+GLogger = get_logger("process_utils")
 
 # 与 GTA V 相关的进程名称列表
 GTA_PROCESS_NAMES = [
