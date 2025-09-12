@@ -174,7 +174,7 @@
 -   `gta5_utils.py`: 封装了所有 GTA5 游戏内的自动化操作脚本。
 -   `steam_utils.py`: Python 客户端，用于管理 `steam_bot` 后端并调用其 API 发送消息。
 -   `ocr_engine.py`: 对 RapidOCR 的封装，用于游戏画面识别。
--   `process_utils.py`: 提供了获取进程信息、暂停进程（用于卡单）等功能。
+-   `process_utils.py`: 提供了获取进程信息、暂停进程（用于卡单人战局）等功能。
 -   `keyboard_utils.py`: 模拟键盘输入。
 -   `push_utils.py`: 消息平台推送，目前实现了基于 PushPlus 的微信推送。
 -   `logger.py`: 简单的日志格式化工具。
