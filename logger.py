@@ -14,7 +14,7 @@ except ImportError:
 DEFAULT_LOGGING_CONFIG = {
     "version": 1,
     "disable_existing_loggers": False,  # 保持为 False 以避免清除掉其他软件包添加的 logger
-    "filters": {"silence_rapidocr_less_than_warning": {"()": "logger.RapidOCRFilter"}},  # 让 rapidocr 闭嘴
+    "filters": {"silence_rapidocr_less_than_error": {"()": "logger.RapidOCRFilter"}},  # 让 rapidocr 闭嘴
     "formatters": {
         "default": {
             "format": "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
@@ -42,7 +42,7 @@ DEFAULT_LOGGING_CONFIG = {
             "class": "logging.StreamHandler",
             "formatter": "color" if colorlog else "default",
             "level": "DEBUG",
-            "filters": ["silence_rapidocr_less_than_warning"],  # 在终端日志中添加过滤器
+            "filters": ["silence_rapidocr_less_than_error"],  # 在终端日志中添加过滤器
         },
         "file": {
             "class": "logging.handlers.RotatingFileHandler",
@@ -63,12 +63,14 @@ DEFAULT_LOGGING_CONFIG = {
 
 class RapidOCRFilter(logging.Filter):
     """
-    一个用于过滤掉 RapidOCR 库非 WARNING 级别日志的过滤器。
+    一个多功能过滤器，用于处理 RapidOCR 库的日志：
+    1. 将其日志记录的名称从 'root' 修改为 'RapidOCR'。
+    2. 过滤掉其级别低于 ERROR 的日志。
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
         """
-        决定是否要处理这条日志记录。
+        处理日志记录：先修改，再决定是否放行。
 
         Args:
             record (logging.LogRecord): 日志记录对象。
@@ -76,16 +78,13 @@ class RapidOCRFilter(logging.Filter):
         Returns:
             bool: 如果返回 True，日志被处理；返回 False，日志被丢弃。
         """
-        # 检查日志记录的来源文件路径是否包含 'rapidocr'
-        # 这个关键词需要根据你环境中 rapidocr 库的安装路径来确定，
-        # 通常就是库的名字 'rapidocr'。
-        # record.pathname 通常是类似 '.../venv/lib/python3.9/site-packages/rapidocr_core/...' 的路径
-        is_from_rapidocr = "rapidocr" in record.pathname.lower()
-
-        # 如果日志来自 RapidOCR 库
-        if is_from_rapidocr:
+        # 如果日志来自 RapidOCR，则应用过滤器
+        # 通过检查日志记录的来源文件路径是否包含 'rapidocr' 来实现
+        if "rapidocr" in record.pathname.lower():
+            # 重命名 logger name，因为 RapidOCR 默认使用 logging.getLogger() 输出 name 为 root 的日志
+            record.name = "RapidOCR"
             # 那么只有当它的级别是 ERROR 或更高级别时，我们才允许它通过
-            return record.levelno >= logging.WARNING
+            return record.levelno >= logging.ERROR
 
         # 如果日志不是来自 RapidOCR，我们总是允许它通过
         return True
