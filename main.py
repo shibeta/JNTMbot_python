@@ -3,7 +3,7 @@ import threading
 from datetime import datetime, timedelta
 import keyboard
 import os
-import win32gui
+import traceback
 from functools import wraps
 
 from logger import setup_logging, get_logger
@@ -317,6 +317,8 @@ def main():
             # 最大可以等 120 秒
             wait_before_restart_loop = min(main_loop_consecutive_error_count * 10, 120)
             GLogger.error(f"主循环中发生错误: {e}")
+            GLogger.error(traceback.format_exc())
+
             GLogger.error(f"将在{wait_before_restart_loop}秒后重启循环...")
             time.sleep(wait_before_restart_loop)
 

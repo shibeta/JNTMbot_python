@@ -121,10 +121,11 @@ class GameAutomator:
     def is_game_started(self) -> bool:
         """检查游戏是否启动。"""
         window_info = get_window_info("Grand Theft Auto V")
-        GLogger.debug(f"找到 GTA V 窗口。窗口句柄: {window_info[0]}, 进程ID: {window_info[1]}")
         if window_info:
+            GLogger.debug(f"找到 GTA V 窗口。窗口句柄: {window_info[0]}, 进程ID: {window_info[1]}")
             return True
         else:
+            GLogger.debug("未找到 GTA V 窗口。")
             return False
 
     def is_respawned(self) -> bool:
@@ -491,8 +492,8 @@ class GameAutomator:
 
     def kill_and_restart_gta(self):
         """杀死并重启 GTA V 游戏，并进入在线模式仅邀请战局。"""
-        GLogger.info("20秒后将重启 GTA V...")
         self.kill_gta()
+        GLogger.info("20秒后将重启 GTA V...")
         time.sleep(20)  # 等待20秒钟用于 steam 客户端响应 GTA V 退出
 
         GLogger.info("正在通过 Steam 重新启动游戏...")
