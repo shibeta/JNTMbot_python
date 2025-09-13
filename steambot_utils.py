@@ -43,7 +43,6 @@ class SteamBotClient:
             GLogger.error(f"Steam Bot 后端未能在 {self.config.steamBotLoginTimeout} 秒内完成登录。")
             raise TimeoutError("Steam Bot后端登录超时，请检查后端日志输出。")
 
-
     def _launch_process(self):
         """构建启动命令并启动 server.js 子进程。"""
         node_executable = "node"  # 假设 'node' 在系统PATH中
@@ -210,13 +209,28 @@ class SteamBotClient:
         elif self.process.poll() is None:
             GLogger.info("正在关闭 Steam Bot 后端...")
             try:
-                # 首先尝试通过API让其退出
+                # 首先尝试通过 API 让其退出
                 response = requests.post(f"{self.base_url}/logout", headers=self.headers, timeout=10)
                 response.raise_for_status()
             except requests.RequestException:
                 GLogger.warning("通过API登出失败，将强制终止进程。")
                 if self.process.poll() is None:
                     self.process.terminate()
+                GLogger.info(f"已终止 Steam Bot 进程 (PID: {self.process.pid})。")
+            finally:
+                # 检查子进程是否关闭，5秒内未关闭则 kill
+                shutdown_check_start_time = time.monotonic()
+                while time.monotonic() - shutdown_check_start_time < 5:
+                    if self.process.poll() is not None:
+                        # 已退出
+                        GLogger.info("Steam Bot 后端已关闭。")
+                        break
+                    time.sleep(0.2)
+                else:
+                    # 强制 kill
+                    GLogger.warning("Steam Bot 进程退出超时，将强制终止进程。")
+                    if self.process.poll() is None:
+                        self.process.terminate()
                     GLogger.info(f"已终止 Steam Bot 进程 (PID: {self.process.pid})。")
 
         self.process = None
