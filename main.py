@@ -177,7 +177,7 @@ def main():
             GLogger.info(f"请访问 https://www.pushplus.plus/ 获取 token，并填入 {config_file_path}")
             return
     else:
-        GLogger.info("未启用微信推送。")
+        GLogger.warning("未启用微信推送。")
 
     # 初始化游戏控制器
     automator = GameAutomator(GConfig, GOCREngine, steam_bot)
