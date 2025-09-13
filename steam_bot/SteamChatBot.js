@@ -79,48 +79,64 @@ class SteamChatBot {
      * @returns {Promise<void>} 当登录成功时 resolve
      */
     async smartLogOn() {
+        // 检查是否已有登录操作正在进行
+        if (this.#loginPromise) {
+            console.log("检测到已有登录操作正在进行，将等待其完成...");
+            return this.#loginPromise;
+        }
+
         if (this.isLoggedIn().loggedIn) {
             console.log("Bot 已登录，无需重复操作。");
             return;
         }
 
-        // 从文件中读入refresh token
-        let token;
-        try {
-            token = await fs.readFile(this.#refreshTokenPath, "utf8");
-        } catch (error) {
-            // 只处理文件不存在的情况，其他读取错误需要注意
-            if (error.code === "ENOENT") {
-                console.warn(
-                    "⚠️ 未找到 Refresh Token 文件，将使用账户密码登录。"
-                );
-                await this.logOnWithPassword();
-                return;
-            }
-            // 如果是其他文件读取错误，则抛出
-            console.error("❌ 找到 Refresh Token 文件，但读取错误！");
-            throw error;
-        }
-
-        // 先验证 token 格式
-        if (this.#isTokenPotentiallyValid(token)) {
-            console.log("🔑 正在尝试使用 Refresh Token 登录...");
+        console.log("🚀 正在启动登录流程...");
+        this.#loginPromise = (async () => {
+            // 从文件中读入refresh token
+            let token;
             try {
-                await this.logOnWithToken(token);
-                // 如果 token 登录成功，就直接返回
-                return;
+                token = await fs.readFile(this.#refreshTokenPath, "utf8");
             } catch (error) {
-                // logOnWithToken 失败 (例如 token 过期或被撤销)
+                // 只处理文件不存在的情况，其他读取错误需要注意
+                if (error.code === "ENOENT") {
+                    console.warn(
+                        "⚠️ 未找到 Refresh Token 文件，将使用账户密码登录。"
+                    );
+                    await this.logOnWithPassword();
+                    return;
+                }
+                // 如果是其他文件读取错误，则抛出
+                console.error("❌ 找到 Refresh Token 文件，但读取错误！");
+                throw error;
+            }
+
+            // 先验证 token 格式
+            if (this.#isTokenPotentiallyValid(token)) {
+                console.log("🔑 正在尝试使用 Refresh Token 登录...");
+                try {
+                    await this.logOnWithToken(token);
+                    // 如果 token 登录成功，就直接返回
+                    return;
+                } catch (error) {
+                    // logOnWithToken 失败 (例如 token 过期或被撤销)
+                    console.warn(
+                        `⚠️ 使用 Refresh Token 登录失败: ${error.message}。将使用账户密码登录。`
+                    );
+                    await this.logOnWithPassword();
+                }
+            } else {
                 console.warn(
-                    `⚠️ 使用 Refresh Token 登录失败: ${error.message}。将使用账户密码登录。`
+                    "⚠️ Refresh Token 文件内容无效或已损坏，将使用账户密码登录。"
                 );
                 await this.logOnWithPassword();
             }
-        } else {
-            console.warn(
-                "⚠️ Refresh Token 文件内容无效或已损坏，将使用账户密码登录。"
-            );
-            await this.logOnWithPassword();
+        })();
+
+        try {
+            await this.#loginPromise;
+        } finally {
+            // 无论成功或失败，完成后都必须释放锁
+            this.#loginPromise = null;
         }
     }
 
@@ -130,22 +146,11 @@ class SteamChatBot {
      * @returns {Promise<void>}
      */
     logOnWithToken(token) {
-        if (this.#loginPromise) return this.#loginPromise;
-
-        this.#loginPromise = new Promise((resolve, reject) => {
-            this.#client.once("loggedOn", () => {
-                this.#loginPromise = null;
-                resolve();
-            });
-            this.#client.once("error", (err) => {
-                this.#loginPromise = null;
-                // 让 smartLogOn 能够捕获到这个错误并回退
-                reject(err);
-            });
+        return new Promise((resolve, reject) => {
+            this.#client.once("loggedOn", resolve);
+            this.#client.once("error", reject);
             this.#client.logOn({ refreshToken: token });
         });
-
-        return this.#loginPromise;
     }
 
     /**
@@ -153,40 +158,87 @@ class SteamChatBot {
      * @returns {Promise<void>}
      */
     async logOnWithPassword() {
-        if (this.#loginPromise) return this.#loginPromise;
+        while (true) {
+            const accountName = await promptUser("请输入 Steam 账户名: ");
+            const password = await promptUser("请输入 Steam 密码: ");
 
-        const accountName = await promptUser("请输入 Steam 账户名: ");
-        const password = await promptUser("请输入 Steam 密码: ");
+            try {
+                // 将单次登录尝试封装在私有方法中
+                await this._attemptPasswordLogin(accountName, password);
+                // 如果 _attemptPasswordLogin 成功 resolve，说明登录成功，直接返回
+                return;
+            } catch (err) {
+                // 分析登录失败的原因
+                switch (err.eresult) {
+                    case SteamUser.EResult.InvalidPassword:
+                    case SteamUser.EResult.AccountNotFound:
+                        console.warn(`❌ 账户名或密码错误。(${err.message})`);
+                        break;
+                    
+                    case SteamUser.EResult.AccountLogonDenied:
+                    case SteamUser.EResult.TwoFactorCodeMismatch:
+                        console.warn(`❌ Steam Guard 验证码错误。(${err.message})`);
+                        // 这种情况通常是 _attemptPasswordLogin 内部处理了，但如果它失败了，我们在这里提示
+                        break;
 
-        this.#loginPromise = new Promise((resolve, reject) => {
-            // Steam Guard (2FA or Email)
-            this.#client.once(
-                "steamGuard",
-                async (domain, callback, lastCodeWrong) => {
-                    if (lastCodeWrong) {
-                        console.warn("❌ 上一个验证码错误！");
-                    }
-                    const code = await promptUser(
-                        `请输入发送至 ${domain || "Steam 手机应用"} 的验证码: `
-                    );
-                    callback(code);
+                    case SteamUser.EResult.RateLimitExceeded:
+                        console.error("❌ 登录尝试过于频繁，您的IP可能被临时限制。请稍后再试。");
+                        // 遇到速率限制，直接抛出错误，终止登录流程
+                        throw err;
+
+                    default:
+                        console.error(`❌ 发生未知的登录错误: ${err.message} (EResult: ${err.eresult})`);
+                        break; // 对于未知错误，我们也会继续重试
                 }
-            );
+            }
+        }
+        
+    }
 
-            this.#client.once("loggedOn", () => {
-                this.#loginPromise = null;
+    /**
+     * [私有] 封装单次使用账户密码登录的尝试
+     * @param {string} accountName 
+     * @param {string} password 
+     * @returns {Promise<void>}
+     */
+    _attemptPasswordLogin(accountName, password) {
+        return new Promise((resolve, reject) => {
+            // 定义需要清理的监听器
+            let onSteamGuard, onLoggedOn, onError;
+
+            const cleanup = () => {
+                this.#client.removeListener("steamGuard", onSteamGuard);
+                this.#client.removeListener("loggedOn", onLoggedOn);
+                this.#client.removeListener("error", onError);
+            };
+
+            onSteamGuard = async (domain, callback, lastCodeWrong) => {
+                if (lastCodeWrong) {
+                    console.warn("❌ 上一个验证码错误！请重新输入。");
+                }
+                const promptMessage = `请输入发送至 ${domain || "Steam 手机应用"} 的验证码: `;
+                const code = await promptUser(promptMessage);
+                callback(code);
+            };
+            
+            onLoggedOn = () => {
+                cleanup();
                 resolve();
-            });
+            };
 
-            this.#client.once("error", (err) => {
-                this.#loginPromise = null;
+            onError = (err) => {
+                cleanup();
+                // 直接 reject，让 logOnWithPassword 的 catch 块来处理和分析错误
                 reject(err);
-            });
+            };
+
+            // 因为用户可能输错多次验证码，这个事件会触发多次
+            this.#client.on("steamGuard", onSteamGuard);
+            this.#client.once("loggedOn", onLoggedOn);
+            this.#client.once("error", onError);
 
             this.#client.logOn({ accountName, password });
         });
-
-        return this.#loginPromise;
     }
 
     /**
@@ -292,7 +344,7 @@ class SteamChatBot {
                 resolve();
                 return;
             }
-            
+
             // 发起登出请求
             this.#client.logOff();
         });

@@ -12,8 +12,7 @@ GLogger = get_logger(name="main")
 
 from config import Config
 from ocr_engine import get_ocr_engine
-from steam_utils import SteamBotClient
-from process_utils import get_window_info
+from steambot_utils import SteamBotClient
 from push_utils import push_wechat
 from gta5_utils import GameAutomator
 
@@ -44,7 +43,7 @@ def health_check_monitor(steam_bot: SteamBotClient, token: str, pause_event: thr
             formatted_time = last_send_system_time.strftime("%Y-%m-%d %H:%M:%S")
 
             title = "Bot不可用"
-            msg = f"Bot: {steam_bot.get_status().get('name', '获取Bot名称失败')} 已经超过30分钟未向Steam发送信息，请检查Bot。上一次向Steam发送信息时间为 {formatted_time}"
+            msg = f"Bot: {steam_bot.get_login_status().get('name', '获取Bot名称失败')} 已经超过30分钟未向Steam发送信息，请检查Bot。上一次向Steam发送信息时间为 {formatted_time}"
 
             GLogger.warning(f"检测到 Bot 连续30分钟未向 Steam 发送消息！正在发送微信通知: {msg}")
             push_wechat(token, title, msg)
@@ -98,15 +97,7 @@ def main():
     except Exception as e:
         GLogger.error(f"初始化 Steam Bot 客户端失败: {e}")
         return
-    # 检查初始登录状态
-    status = steam_bot.get_status()
-    if status.get("loggedIn"):
-        GLogger.warning(f"Steam Bot 后端已连接并登录为: {status.get('name')}")
-    else:
-        GLogger.error(
-            f"Steam Bot 后端未登录。错误: {status.get('error', '后端无法完成登录，请查看后端日志')}"
-        )
-        return
+    
     # 验证配置中的群组ID
     bot_userinfo = steam_bot.get_userinfo()
     if bot_userinfo.get("error"):

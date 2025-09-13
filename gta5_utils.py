@@ -6,7 +6,7 @@ import re
 from config import Config
 from ocr_engine import OCREngine
 from keyboard_utils import *  # 导入所有键盘功能和常量
-from steam_utils import SteamBotClient
+from steambot_utils import SteamBotClient
 from process_utils import (
     get_window_info,
     suspend_process_for_duration,

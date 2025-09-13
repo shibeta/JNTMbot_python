@@ -29,6 +29,21 @@ class SteamBotClient:
         # 启动后端进程
         self._launch_process()
 
+        # 检查初始登录状态
+        GLogger.info("等待 Steam Bot 后端完成登录")
+        login_start_time = time.monotonic()
+        while time.monotonic() - login_start_time < self.config.steamBotLoginTimeout:
+            time.sleep(5)
+            login_status = self.get_login_status()
+            if login_status.get("loggedIn"):
+                GLogger.warning(f"Steam Bot 后端已连接并登录为: {login_status.get('name')}")
+                break
+            GLogger.debug("仍在等待 Steam Bot 后端完成登录。。。")
+        else:
+            GLogger.error(f"Steam Bot 后端未能在 {self.config.steamBotLoginTimeout} 秒内完成登录。")
+            raise TimeoutError("Steam Bot后端登录超时，请检查后端日志输出。")
+
+
     def _launch_process(self):
         """构建启动命令并启动 server.js 子进程。"""
         node_executable = "node"  # 假设 'node' 在系统PATH中
@@ -73,14 +88,6 @@ class SteamBotClient:
         except Exception as e:
             GLogger.error(f"启动 Steam Bot 后端时发生未知错误: {e}")
 
-        # 每 5 秒轮询 /status 接口，直到登录状态为True
-        GLogger.info("等待 Steam Bot 后端完成登录")
-        while True:
-            time.sleep(5)
-            login_status = self.get_status()["loggedIn"]
-            if login_status:
-                break
-
     def get_http_proxy_string(self, raw_proxy_config: str) -> str:
         """
         将代理配置字符串翻译为具体的代理字符串。
@@ -112,7 +119,7 @@ class SteamBotClient:
 
         return self.process is not None and self.process.poll() is None
 
-    def get_status(self) -> dict:
+    def get_login_status(self) -> dict:
         """调用 /status API，获取Bot的登录状态。"""
         if not self._ensure_running():
             return {"loggedIn": False, "error": "后端未运行"}
@@ -123,6 +130,17 @@ class SteamBotClient:
         except requests.RequestException as e:
             GLogger.error(f"调用 /status API 失败: {e}")
             return {"loggedIn": False, "error": str(e)}
+
+    def login(self):
+        """调用 /login API，让 Bot 进行登录操作。"""
+        if not self._ensure_running():
+            raise Exception("Steam Bot 后端未运行，无法进行登录操作")
+        try:
+            response = requests.post(f"{self.base_url}/login", headers=self.headers, timeout=5)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            GLogger.error(f"调用 /login API 失败: {e}")
+            raise Exception(f"调用 /login API 失败: {e}")
 
     def get_userinfo(self) -> dict:
         """调用 /userinfo API，获取Bot的用户名，SteamID，群组列表。"""
@@ -147,6 +165,10 @@ class SteamBotClient:
 
         if not self._ensure_running():
             return False
+
+        # 有时会遇到 bot 被登出了，因此先检查是否登录
+        if not self.get_login_status().get("loggedIn"):
+            self.login()
 
         payload = {
             "groupId": self.config.steamGroupId,

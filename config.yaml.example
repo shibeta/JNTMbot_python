@@ -12,6 +12,8 @@ steamBotProxy: system
 steamGroupId: '37660928'
 # 要发送消息的Steam群组频道名称
 steamChannelName: BOT候车室
+# 初始化Steam Bot时，等待后端完成登录的最大等待时间 (秒)
+steamBotLoginTimeout: 60
 # 是否启用微信推送bot状态信息
 wechatPush: false
 # pushplus的token，用于微信通知

@@ -29,6 +29,7 @@ class Config:
         },
         "steamGroupId": {"value": "37660928", "comment": "要发送消息的Steam群组ID，程序启动时可以读取到"},
         "steamChannelName": {"value": "BOT候车室", "comment": "要发送消息的Steam群组频道名称"},
+        "steamBotLoginTimeout": {"value": 60, "comment": "初始化Steam Bot时，等待后端完成登录的最大等待时间 (秒)"},
         "wechatPush": {"value": False, "comment": "是否启用微信推送bot状态信息"},
         "pushplusToken": {"value": "", "comment": "pushplus的token，用于微信通知"},
         "suspendGTATime": {"value": 15, "comment": "卡单持续时间 (秒)"},

@@ -24,13 +24,7 @@ const AUTH_TOKEN = tokenArg ? tokenArg.split("=")[1] : "0x4445414442454546";
 // 初始化Steam Bot
 console.log("🤖 正在初始化 Steam Bot...");
 const bot = new SteamChatBot(proxy);
-// 立即开始登录流程
-bot.smartLogOn().catch((err) => {
-    // 初始登录失败时记录错误，服务器仍会启动，但大部分接口会返回“未登录”
-    console.error(
-        `💥 初始登录尝试失败: ${err.message}。服务器将继续运行，请通过 API 检查状态。`
-    );
-});
+console.log("🤖 Steam Bot 初始化完成。");
 
 // --- HTTP 服务器设置 ---
 const app = express();
@@ -64,6 +58,32 @@ app.get("/status", (req, res) => {
         loggedIn: status.loggedIn,
         name: status.accountName || "N/A",
     });
+});
+
+/**
+ * 触发机器人登录
+ */
+app.post("/login", async (req, res) => {
+    if (bot.isLoggedIn().loggedIn) {
+        return res
+            .status(200)
+            .json({ success: true, message: "Bot 已处于登录状态。" });
+    }
+
+    try {
+        console.log("⚙️ 收到 API 请求，正在触发登录流程...");
+        await bot.smartLogOn();
+        res.status(200).json({
+            success: true,
+            message: "登录流程已成功触发并完成。",
+        });
+    } catch (error) {
+        console.error("💥 API 触发的登录失败:", error);
+        res.status(500).json({
+            error: "登录过程中发生错误。",
+            details: error.message,
+        });
+    }
 });
 
 /**
@@ -139,28 +159,6 @@ app.post("/send-message", async (req, res) => {
 });
 
 /**
- * 登出并退出程序
- */
-// app.post("/logout", (req, res) => {
-//     const status = bot.isLoggedIn();
-
-//     if (status.loggedIn) {
-//         console.log("👋 收到登出请求，正在登出...");
-//         bot.logOff();
-//         res.status(200).json({ success: true, message: "已成功登出。" });
-//     } else {
-//         console.log("👋 收到登出请求，但Bot未登录。");
-//         res.status(200).json({ success: true, message: "Bot当前未登录。" });
-//     }
-
-//     // 延迟退出以确保HTTP响应已发送
-//     console.log("服务器将在2秒后关闭...");
-//     setTimeout(() => {
-//         process.exit(0);
-//     }, 2000);
-// });
-
-/**
  * 登出并平滑关机
  */
 app.post("/logout", async (req, res) => {
@@ -205,6 +203,7 @@ const server = app.listen(PORT, HOST, () => {
     );
     console.log("\n--- 可用API端点 ---");
     console.log(`GET  /status       - 获取登录状态`);
+    console.log(`POST /login        - (重新)触发登录流程`);
     console.log(`GET  /userinfo     - 获取当前登录的用户信息`);
     console.log(`POST /send-message - 发送群组消息`);
     console.log(`POST /logout       - 登出并关闭服务器`);
@@ -222,4 +221,12 @@ process.on("SIGINT", () => {
         console.log("HTTP 服务器已关闭。");
         process.exit(0);
     });
+});
+
+// 开始登录流程
+bot.smartLogOn().catch((err) => {
+    // 初始登录失败时记录错误，服务器仍会启动，但大部分接口会返回“未登录”
+    console.error(
+        `💥 初始登录尝试失败: ${err.message}。服务器将继续运行，请通过 API 检查状态。`
+    );
 });
