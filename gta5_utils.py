@@ -146,6 +146,7 @@ class GameAutomator:
 
     def is_job_started(self) -> bool:
         """检查是否在别惹德瑞任务中。"""
+        # 有时任务会以英文启动，因此检查"团队生命数"作为保底
         return self._find_multi_text(["前往", "出现", "汇报", "进度", "团队", "生命数"], 0, 0.8, 1, 0.2)
 
     def is_job_starting(self) -> bool:
