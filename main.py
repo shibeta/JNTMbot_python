@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 import keyboard
 import os
 import win32gui
-from win32con import SW_RESTORE
 from functools import wraps
 
 from logger import setup_logging, get_logger
@@ -183,15 +182,8 @@ def main():
         GLogger.info("未启用微信推送。")
 
     # 初始化游戏控制器
-    window_info = get_window_info("Grand Theft Auto V")
-    if window_info:
-        hwnd, pid = window_info
-        GLogger.info(f"找到 GTA V 窗口。窗口句柄: {hwnd}, 进程ID: {pid}")
-        automator = GameAutomator(GConfig, GOCREngine, steam_bot, hwnd, pid)
-    else:
-        GLogger.warning("GTA V 未启动。正在重启游戏...")
-        automator = GameAutomator(GConfig, GOCREngine, steam_bot, None, None)
-        automator.restart_gta()
+    automator = GameAutomator(GConfig, GOCREngine, steam_bot)
+
 
     # --- 主循环 ---
     # 记录主循环连续出错的次数
@@ -202,21 +194,13 @@ def main():
             pause_event.wait()
             time.sleep(1)
 
-            gta_hwnd = automator.get_gta_hwnd()
-            if not gta_hwnd:
-                GLogger.warning("GTA V 未启动。正在重启游戏...")
-                automator.restart_gta()
-                continue
-            if gta_hwnd != win32gui.GetForegroundWindow():
-                GLogger.warning("GTA V 未置于前台。尝试切换到 GTA V 窗口...")
-                win32gui.SetForegroundWindow(gta_hwnd)
-                win32gui.ShowWindow(gta_hwnd, SW_RESTORE)
-                continue
+            # 确保游戏启动
+            automator.setup_gta()
 
             # 开始新战局
             if not automator.start_new_match():
                 GLogger.error("开始新战局失败次数过多。正在重启游戏。")
-                automator.restart_gta()
+                automator.kill_and_restart_gta()
                 continue
 
             GLogger.info("成功初始化新战局。")

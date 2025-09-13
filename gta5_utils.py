@@ -7,7 +7,12 @@ from config import Config
 from ocr_engine import OCREngine
 from keyboard_utils import *  # 导入所有键盘功能和常量
 from steam_utils import SteamBotClient
-from process_utils import get_window_info, suspend_process_for_duration, kill_processes
+from process_utils import (
+    get_window_info,
+    suspend_process_for_duration,
+    kill_processes,
+    set_active_window,
+)
 from logger import get_logger
 
 GLogger = get_logger(name="gta5_utils")
@@ -33,8 +38,8 @@ class GameAutomator:
         config: Config,
         ocr_engine: OCREngine,
         steam_bot: SteamBotClient,
-        hwnd: int | None,
-        pid: int | None,
+        hwnd: int = None,
+        pid: int = None,
     ):
         self.config = config
         self.ocr = ocr_engine
@@ -57,6 +62,20 @@ class GameAutomator:
         kill_processes(self.GTA_PROCESS_NAMES)
         GLogger.info("杀死 GTA V 相关进程完成。")
         self.hwnd, self.pid = None, None
+
+    def setup_gta(self):
+        """确保 GTA V 启动并且是当前活动窗口，同时更新 PID 和窗口句柄。"""
+        if not self.is_game_started():
+            # 没启动就先启动
+            GLogger.warning("GTA V 未启动。正在启动游戏...")
+            # 启动过程中会自己设置 PID 和窗口句柄
+            self.kill_and_restart_gta()
+        else:
+            # 如果启动了则更新 PID 和窗口句柄
+            self.hwnd, self.pid = get_window_info("Grand Theft Auto V")
+            GLogger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
+        # 设置为活动窗口
+        set_active_window(self.hwnd)
 
     def _find_text(self, text, x, y, w, h) -> bool:
         """辅助函数，用于检查文本是否存在于指定区域。"""
@@ -99,6 +118,15 @@ class GameAutomator:
             return False, -1, -1
 
     # --- 状态检查方法 ---
+    def is_game_started(self) -> bool:
+        """检查游戏是否启动。"""
+        window_info = get_window_info("Grand Theft Auto V")
+        GLogger.debug(f"找到 GTA V 窗口。窗口句柄: {window_info[0]}, 进程ID: {window_info[1]}")
+        if window_info:
+            return True
+        else:
+            return False
+
     def is_respawned(self) -> bool:
         """检查玩家是否已在床上复活。"""
         return self._find_text("床", 0, 0, 0.5, 0.5)
@@ -398,7 +426,7 @@ class GameAutomator:
             click_keyboard(KEY_ENTER)
             time.sleep(5)
 
-    # TODO 方法可用但需要等待更多时间来完成加入战局
+    # TODO 测试改善后的方法能否实现加入差传战局来解决卡在各种地方
     def try_to_join_jobwarp_bot(self):
         """尝试通过 SteamJvp 加入差传 Bot 战局。"""
         GLogger.info("正在尝试加入一个差传 Bot 战局...")
@@ -457,12 +485,12 @@ class GameAutomator:
 
             if self.config.jobTpBotIndex >= 0:
                 # 如果指定了索引，只尝试一次
-                break  
+                break
         else:
             GLogger.warning("无法加入任何配置的差传 Bot 战局。")
 
-    def restart_gta(self):
-        """重启 GTA V 游戏，并进入在线模式仅邀请战局。"""
+    def kill_and_restart_gta(self):
+        """杀死并重启 GTA V 游戏，并进入在线模式仅邀请战局。"""
         GLogger.info("20秒后将重启 GTA V...")
         self.kill_gta()
         time.sleep(20)  # 等待20秒钟用于 steam 客户端响应 GTA V 退出
@@ -474,10 +502,10 @@ class GameAutomator:
         GLogger.info("正在等待 GTA 窗口出现...")
         process_start_time = time.monotonic()
         while time.monotonic() - process_start_time < 300:  # 5分钟总超时
-            info = get_window_info("Grand Theft Auto V")
-            if info:
-                self.hwnd, self.pid = info
-                GLogger.info(f"GTA 窗口已找到！句柄: {self.hwnd}, PID: {self.pid}")
+            window_info = get_window_info("Grand Theft Auto V")
+            if window_info:
+                self.hwnd, self.pid = window_info
+                GLogger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
                 break
             time.sleep(5)
         else:
@@ -500,7 +528,6 @@ class GameAutomator:
             time.sleep(3)
         click_keyboard(KEY_ENTER)
 
-        # TODO 卡在地图和菜单间是因为ocr故障还是该部分代码有问题?
         # 等待进入故事模式
         GLogger.info("正在等待进入故事模式...")
         story_mode_load_start_time = time.monotonic()

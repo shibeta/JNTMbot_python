@@ -2,6 +2,7 @@ import time
 import psutil
 import win32gui
 import win32process
+from win32con import SW_RESTORE
 from typing import Tuple, Optional
 
 from logger import get_logger
@@ -19,6 +20,46 @@ GTA_PROCESS_NAMES = [
     "SocialClubHelper.exe",
     "Launcher.exe",
 ]
+
+
+def is_process_exist(pid: int):
+    """
+    检查进程ID是否有效。
+
+    Args:
+        pid: 进程ID (整数)
+
+    Returns:
+        bool: True表示进程存在，False表示不存在
+    """
+    try:
+        if pid is not None:
+            return psutil.pid_exists(pid)
+        else:
+            raise ValueError("PID 必须是一个整数")
+    except Exception as e:
+        GLogger.error(f"检查进程ID({pid})是否存在时出错: {e}。")
+        return False
+
+
+def is_window_handler_exist(hwnd: int):
+    """
+    检查窗口句柄是否有效
+
+    Args:
+        hwnd: 窗口句柄 (整数)
+
+    Returns:
+        bool: True表示窗口存在，False表示不存在
+    """
+    try:
+        if hwnd is not None:
+            return bool(win32gui.IsWindow(hwnd))
+        else:
+            raise ValueError("窗口句柄必须是一个整数")
+    except Exception as e:
+        GLogger.error(f"检查窗口句柄({hwnd})是否存在时出错: {e}。")
+        return False
 
 
 def get_window_info(window_name: str) -> Optional[Tuple[int, int]]:
@@ -70,8 +111,8 @@ def suspend_process_for_duration(pid: int, duration_seconds: int):
         pid: 要挂起的进程的 PID
         duration_seconds: 要挂起的时间(秒)
     """
-    if not pid:
-        GLogger.warning("挂起失败：无效的PID (0)。")
+    if not is_process_exist(pid):
+        GLogger.warning(f"无法挂起：无效的PID ({pid})。")
         return
     try:
         proc = psutil.Process(pid)
@@ -79,7 +120,7 @@ def suspend_process_for_duration(pid: int, duration_seconds: int):
         proc.suspend()
         time.sleep(duration_seconds)
     except psutil.NoSuchProcess:
-        GLogger.error(f"无法挂起：未找到 PID 为 {pid} 的进程。")
+        GLogger.error(f"挂起失败：未找到 PID 为 {pid} 的进程。")
     except Exception as e:
         GLogger.error(f"在挂起进程期间发生错误: {e}")
     finally:
@@ -108,3 +149,22 @@ def kill_processes(process_names: list[str]):
                 proc.kill()
             except Exception as e:
                 GLogger.warning(f"无法终止进程 {proc.info['name']}: {e}")
+
+
+def set_active_window(hwnd: int):
+    """
+    将传入的窗口句柄从最小化还原并设置为当前活动窗口。传入的句柄无效则不做任何事。
+
+    Args:
+        hwnd: 窗口句柄 (整数)
+    """
+    if is_window_handler_exist(hwnd):
+        try:
+            if hwnd != win32gui.GetForegroundWindow():
+                win32gui.SetForegroundWindow(hwnd)
+                win32gui.ShowWindow(hwnd, SW_RESTORE)
+        except Exception as e:
+            GLogger.error(f"将窗口({hwnd})设置为活动窗口时出错: {e}")
+            return
+    else:
+        return
