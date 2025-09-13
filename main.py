@@ -73,6 +73,7 @@ def interrupt_decorator(func):
 @interrupt_decorator
 def main():
     os.system(f"title 鸡你太美")
+    global_start_time = time.monotonic()
 
     # 加载配置
     try:
@@ -98,7 +99,7 @@ def main():
     except Exception as e:
         GLogger.error(f"初始化 Steam Bot 客户端失败: {e}")
         return
-    
+
     # 验证配置中的群组ID
     bot_userinfo = steam_bot.get_userinfo()
     if bot_userinfo.get("error"):
@@ -157,15 +158,20 @@ def main():
         return
 
     # 初始化健康检查和微信推送
+    push_on_exception_exit = False
     if GConfig.wechatPush:
         if GConfig.pushplusToken:
-            GLogger.warning("已启用微信推送，当 Bot 连续30分钟未向 Steam 发送消息时，将发送微信消息并退出程序。")
+            GLogger.warning("已启用微信推送。")
+            GLogger.info("当 Bot 连续30分钟未向 Steam 发送消息时，将通过微信通知并退出程序。")
             monitor_thread = threading.Thread(
                 target=health_check_monitor,
                 args=(steam_bot, GConfig.pushplusToken, pause_event),
                 daemon=True,  # 设置为守护线程，这样主程序退出时该线程会自动结束
             )
             monitor_thread.start()
+            GLogger.info("当程序运行了10分钟以上，由于发生异常而退出，将通过微信通知。")
+            push_on_exception_exit = True
+
         else:
             GLogger.warning("已启用微信推送，但没有提供 pushplus token。")
             GLogger.info(f"请访问 https://www.pushplus.plus/ 获取 token，并填入 {config_file_path}")
@@ -175,7 +181,6 @@ def main():
 
     # 初始化游戏控制器
     automator = GameAutomator(GConfig, GOCREngine, steam_bot)
-
 
     # --- 主循环 ---
     # 记录主循环连续出错的次数
@@ -190,13 +195,13 @@ def main():
             automator.setup_gta()
 
             # 把方向键全按一遍，避免卡键
-            click_keyboard('a',1000)
+            click_keyboard("a", 1000)
             time.sleep(0.1)
-            click_keyboard('s',1000)
+            click_keyboard("s", 1000)
             time.sleep(0.1)
-            click_keyboard('d',1000)
+            click_keyboard("d", 1000)
             time.sleep(0.1)
-            click_keyboard('w',1000)
+            click_keyboard("w", 1000)
             time.sleep(0.1)
 
             # 开始新战局
@@ -313,16 +318,26 @@ def main():
             main_loop_consecutive_error_count = 0
 
         except Exception as e:
-            # 捕获到异常则累加连续出错次数
-            # 只有捕获到异常才认为是出错，找不到差事和各种超时等不认为是出错
-            main_loop_consecutive_error_count = main_loop_consecutive_error_count + 1
-            # 最大可以等 120 秒
-            wait_before_restart_loop = min(main_loop_consecutive_error_count * 10, 120)
+            # # 捕获到异常则累加连续出错次数
+            # # 只有捕获到异常才认为是出错，找不到差事和各种超时等不认为是出错
+            # main_loop_consecutive_error_count = main_loop_consecutive_error_count + 1
+            # # 最大可以等 120 秒
+            # wait_before_restart_loop = min(main_loop_consecutive_error_count * 10, 120)
+            # GLogger.error(f"主循环中发生错误: {e}")
+            # GLogger.error(traceback.format_exc())
+
+            # GLogger.error(f"将在{wait_before_restart_loop}秒后重启循环...")
+            # time.sleep(wait_before_restart_loop)
+
+            # 抛出异常直接退出
             GLogger.error(f"主循环中发生错误: {e}")
             GLogger.error(traceback.format_exc())
+            # 启用了微信推送并且运行超过10分钟则推送消息
+            if push_on_exception_exit:
+                if time.monotonic() - global_start_time > 10 * 60:
+                    push_wechat(GConfig.pushplusToken, f"主循环中发生错误: {e}", traceback.format_exc())
 
-            GLogger.error(f"将在{wait_before_restart_loop}秒后重启循环...")
-            time.sleep(wait_before_restart_loop)
+            return
 
 
 if __name__ == "__main__":
