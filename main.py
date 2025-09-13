@@ -43,8 +43,8 @@ def health_check_monitor(steam_bot: SteamBotClient, token: str, pause_event: thr
             last_send_system_time = datetime.fromtimestamp(time.time() - elapsed_time)
             formatted_time = last_send_system_time.strftime("%Y-%m-%d %H:%M:%S")
 
-            title = "Bot不可用"
-            msg = f"Bot: {steam_bot.get_login_status().get('name', '获取Bot名称失败')} 已经超过30分钟未向Steam发送信息，请检查Bot。上一次向Steam发送信息时间为 {formatted_time}"
+            title = "Bot: {steam_bot.get_login_status().get('name', '获取Bot名称失败')} 已经超过30分钟未向Steam发送信息"
+            msg = f"程序将退出，请检查程序日志。上一次向Steam发送信息时间为 {formatted_time}"
 
             GLogger.warning(f"检测到 Bot 连续30分钟未向 Steam 发送消息！正在发送微信通知: {msg}")
             push_wechat(token, title, msg)
@@ -169,7 +169,7 @@ def main():
                 daemon=True,  # 设置为守护线程，这样主程序退出时该线程会自动结束
             )
             monitor_thread.start()
-            GLogger.info("当程序运行了10分钟以上，由于发生异常而退出，将通过微信通知。")
+            GLogger.info("当程序运行超过10分钟后，发生异常而退出时，将通过微信通知。")
             push_on_exception_exit = True
 
         else:
