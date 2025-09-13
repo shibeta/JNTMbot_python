@@ -15,6 +15,7 @@ from ocr_engine import get_ocr_engine
 from steambot_utils import SteamBotClient
 from push_utils import push_wechat
 from gta5_utils import GameAutomator
+from keyboard_utils import click_keyboard
 
 
 def health_check_monitor(steam_bot: SteamBotClient, token: str, pause_event: threading.Event):
@@ -187,6 +188,16 @@ def main():
 
             # 确保游戏启动
             automator.setup_gta()
+
+            # 把方向键全按一遍，避免卡键
+            click_keyboard('a',1000)
+            time.sleep(0.1)
+            click_keyboard('s',1000)
+            time.sleep(0.1)
+            click_keyboard('d',1000)
+            time.sleep(0.1)
+            click_keyboard('w',1000)
+            time.sleep(0.1)
 
             # 开始新战局
             if not automator.start_new_match():

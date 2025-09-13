@@ -183,20 +183,14 @@ class GameAutomator:
             click_keyboard("w", 150)
         time.sleep(2.0)
         release_keyboard("d")
-        press_keyboard("w")
-        time.sleep(2.0)
-        release_keyboard("w")
-        press_keyboard("s")
-        time.sleep(4.0)
-        release_keyboard("s")
+        click_keyboard("w", 2000)
+        click_keyboard("s", 4000)
         press_keyboard("d")
         press_keyboard("w")
         time.sleep(2.0)
         release_keyboard("w")
         release_keyboard("d")
-        press_keyboard("a")
-        time.sleep(5.0)
-        release_keyboard("a")
+        click_keyboard("a", 5000)
 
     def find_job(self) -> bool:
         """从一楼楼梯间开始向任务触发点移动，并检查是否到达任务点。"""
