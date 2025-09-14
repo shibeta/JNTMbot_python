@@ -86,7 +86,7 @@
 
     ```bash
     cd steam_bot
-    npm install --production
+    npm install --omit=dev
     cd ..
     ```
 
