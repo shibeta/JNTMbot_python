@@ -30,7 +30,7 @@ class SteamBotClient:
         self._launch_process()
 
         # 检查初始登录状态
-        GLogger.info("等待 Steam Bot 后端完成登录")
+        GLogger.info("等待 Steam Bot 后端启动并完成登录。。。")
         login_start_time = time.monotonic()
         while time.monotonic() - login_start_time < self.config.steamBotLoginTimeout:
             time.sleep(5)
@@ -38,7 +38,7 @@ class SteamBotClient:
             if login_status.get("loggedIn"):
                 GLogger.warning(f"Steam Bot 后端已连接并登录为: {login_status.get('name')}")
                 break
-            GLogger.debug("仍在等待 Steam Bot 后端完成登录。。。")
+            GLogger.debug("仍在等待 Steam Bot 后端启动并完成登录。。。")
         else:
             GLogger.error(f"Steam Bot 后端未能在 {self.config.steamBotLoginTimeout} 秒内完成登录。")
             raise TimeoutError("Steam Bot后端登录超时，请检查后端日志输出。")
