@@ -136,7 +136,7 @@ def find_window(window_title: str, process_name: str) -> Optional[Tuple[int, int
             return hwnd, pid
 
     # 遍历完所有窗口都没找到
-    return None, None
+    return None
 
 
 def get_process_pid_by_window_handler(handler: int) -> int:
