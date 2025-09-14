@@ -195,6 +195,7 @@ def main():
             automator.setup_gta()
 
             # 把方向键全按一遍，避免卡键
+            GLogger.info("正在按下 wasd 键以避免卡键。")
             click_keyboard("a", 1000)
             time.sleep(0.1)
             click_keyboard("s", 1000)
