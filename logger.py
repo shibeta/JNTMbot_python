@@ -1,5 +1,6 @@
 import logging
 import logging.config
+from logging.handlers import RotatingFileHandler
 import os
 
 try:
@@ -83,10 +84,10 @@ class RapidOCRFilter(logging.Filter):
         if "rapidocr" in record.pathname.lower():
             # 重命名 logger name，因为 RapidOCR 默认使用 logging.getLogger() 输出 name 为 root 的日志
             record.name = "RapidOCR"
-            # 那么只有当它的级别是 ERROR 或更高级别时，我们才允许它通过
+            # 只有当它的级别是 ERROR 或更高级别时，才允许通过
             return record.levelno >= logging.ERROR
 
-        # 如果日志不是来自 RapidOCR，我们总是允许它通过
+        # 如果日志不是来自 RapidOCR，总是允许通过
         return True
 
 
@@ -139,65 +140,6 @@ def get_logger(name: str) -> logging.Logger:
 
 setup_logging()
 
-# def get_logger(name: str, level=logging.DEBUG):
-#     """
-#     配置并返回一个支持控制台颜色输出的 logger。
-
-#     Args:
-#         name (str): logger 的名称。
-#         level (int): logger 的最低输出级别
-
-#     Returns:
-#         logging.Logger: 配置好的 logger 实例。
-#     """
-
-#     # 获取 logger 实例
-#     logger = logging.getLogger(name)
-
-#     # 设置最低日志级别
-#     logger.setLevel(level)
-
-#     # 防止日志消息向上传递给根 logger，避免重复输出
-#     logger.propagate = False
-
-#     # 如果 logger 已有 handlers，先清空，防止重复添加
-#     if logger.hasHandlers():
-#         logger.handlers.clear()
-
-#     # 定义日志格式为 [YYYY-MM-DD hh:mm:ss] [level] [source] message
-#     log_format = "%(log_color)s[%(asctime)s] [%(levelname)s] [%(name)s]%(reset)s %(message)s"
-#     date_format = "%Y-%m-%d %H:%M:%S"
-
-#     # 创建 formatter 并应用颜色
-#     if colorlog:
-#         # 如果 colorlog 安装成功，则使用 ColoredFormatter
-#         formatter = colorlog.ColoredFormatter(
-#             log_format,
-#             datefmt=date_format,
-#             reset=True,
-#             log_colors={
-#                 "DEBUG": "white",
-#                 "INFO": "cyan",
-#                 "WARNING": "yellow",
-#                 "ERROR": "red",
-#                 "CRITICAL": "bold_red",
-#             },
-#         )
-#     else:
-#         # 如果 colorlog 未安装，则使用标准 formatter，移除颜色相关的占位符
-#         plain_format = "[%(asctime)s] [%(levelname)-5s] %(message)s"
-#         formatter = logging.Formatter(plain_format, datefmt=date_format)
-
-#     # 将 handler 添加到 logger
-#     handler = logging.StreamHandler()
-#     handler.setFormatter(formatter)
-#     logger.addHandler(handler)
-
-#     # 输出构造完成提示
-#     logger.debug(f"Logger {name} started up")
-
-#     return logger
-
 
 # --- 使用示例 ---
 if __name__ == "__main__":
@@ -206,6 +148,15 @@ if __name__ == "__main__":
     ocr_logger = get_logger(name="ocr_engine")
     window_logger = get_logger(name="window_utils")
 
+    print("\n--- 诊断信息 ---")
+    root_logger = logging.getLogger()
+    print(f"Root logger 的有效级别是: {logging.getLevelName(root_logger.getEffectiveLevel())}")
+    # 检查文件处理器的级别
+    for handler in root_logger.handlers:
+        if isinstance(handler, RotatingFileHandler):
+            print(f"文件处理器 ({handler.baseFilename}) 的级别是: {logging.getLevelName(handler.level)}")
+    print("--- 诊断结束 ---\n")
+    
     print("\n--- 日志功能演示 ---")
     # 现在 logger 的输出会包含模块名和对齐的级别
     main_logger.debug("这是一条来自 main 模块的调试信息。")

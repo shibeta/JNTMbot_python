@@ -81,6 +81,7 @@ class OCREngine:
         GLogger.info("正在初始化 OCR 引擎，可能需要一些时间...")
         self.engine = RapidOCR(
             params={  # 从 https://github.com/davidLi17/JiNiTaiMeiBot 抄的参数
+                "Global.log_level": "debug",  # RapidOCR默认会修改全局日志最低等级为info
                 "Global.use_cls": False,
                 "Global.max_side_len": 1024,
                 "EngineConfig.onnxruntime.intra_op_num_threads": 1,
@@ -185,7 +186,7 @@ class OCREngine:
                 # 将 1D 数组重塑为 4通道 图像 (BGRA/BGRX)
                 screenshot_img_np.shape = (grab_height, grab_width, 4)
                 # 丢弃不需要的 alpha/padding 通道，仅保留 BGR
-                # 用 np.ascontiguousarray 确保内存是连续的，提升性能?
+                # 用 np.ascontiguousarray 确保内存是连续的，避免出现 bug
                 return np.ascontiguousarray(screenshot_img_np[:, :, :3])
             
         except Exception as e:
