@@ -206,8 +206,7 @@ def main():
 
             # 开始新战局
             if not automator.start_new_match():
-                GLogger.error("开始新战局失败次数过多。正在重启游戏。")
-                automator.kill_and_restart_gta()
+                GLogger.error("开始新战局失败次数过多。重启循环。")
                 continue
 
             GLogger.info("成功初始化新战局。")
