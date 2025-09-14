@@ -505,7 +505,11 @@ class GameAutomator:
                 break
             time.sleep(5)
         else:
+            # 启动失败则杀死 GTA V 进程并返回
             GLogger.error("重启 GTA 失败：等待 GTA 窗口出现超时。")
+            self.kill_gta()
+            self.hwnd, self.pid = None,None
+            return
 
         # 等待主菜单加载
         GLogger.info("正在等待主菜单出现...")
