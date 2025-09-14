@@ -207,7 +207,8 @@ def main():
 
             # 开始新战局
             if not automator.start_new_match():
-                GLogger.error("开始新战局失败次数过多。重启循环。")
+                GLogger.error("开始新战局失败次数过多。杀死 GTA V 进程并重启循环。")
+                automator.kill_gta()
                 continue
 
             GLogger.info("成功初始化新战局。")
