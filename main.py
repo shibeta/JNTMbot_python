@@ -6,6 +6,8 @@ import os
 import traceback
 from functools import wraps
 
+import requests
+
 from logger import setup_logging, get_logger
 
 GLogger = get_logger(name="main")
@@ -43,7 +45,7 @@ def health_check_monitor(steam_bot: SteamBotClient, token: str, pause_event: thr
             last_send_system_time = datetime.fromtimestamp(time.time() - elapsed_time)
             formatted_time = last_send_system_time.strftime("%Y-%m-%d %H:%M:%S")
 
-            title = "Bot: {steam_bot.get_login_status().get('name', '获取Bot名称失败')} 已经超过30分钟未向Steam发送信息"
+            title = f"Bot: {steam_bot.get_login_status().get('name', '获取Bot名称失败')} 已经超过30分钟未向Steam发送信息"
             msg = f"程序将退出，请检查程序日志。上一次向Steam发送信息时间为 {formatted_time}"
 
             GLogger.warning(f"检测到 Bot 连续30分钟未向 Steam 发送消息！正在发送微信通知: {msg}")
@@ -305,7 +307,11 @@ def main():
                     if automator.is_on_scoreboard():
                         # 由于 CEO 退出的计分板只能通过等待来退出
                         GLogger.info("有神人不卡单导致任务失败，等待20秒以离开计分板。")
-                        steam_bot.send_group_message(GConfig.msgDetectedSB)
+                        try:
+                            steam_bot.send_group_message(GConfig.msgDetectedSB)
+                        except requests.RequestException as e:
+                            # 发送信息失败，小事罢了，不影响自动化运行
+                            pass
                         time.sleep(20)  # 需要多等一会，确保返回自由模式后落地
                         break
                     time.sleep(1)

@@ -139,7 +139,7 @@ class SteamBotClient:
             response.raise_for_status()
         except requests.RequestException as e:
             GLogger.error(f"调用 /login API 失败: {e}")
-            raise Exception(f"调用 /login API 失败: {e}")
+            raise e
 
     def get_userinfo(self) -> dict:
         """调用 /userinfo API，获取Bot的用户名，SteamID，群组列表。"""
@@ -158,7 +158,6 @@ class SteamBotClient:
 
     def send_group_message(self, message: str):
         """调用 /send-message API，向预设的群组和频道发送消息。"""
-        self.last_send_time = time.monotonic()  # 更新最后一次发送消息的时间戳
         if not message:
             return  # 如果消息为空，则认为发送成功
 
@@ -182,13 +181,14 @@ class SteamBotClient:
             )
             if response.status_code == 200:
                 GLogger.info("消息发送成功。")
+                self.last_send_time = time.monotonic()  # 更新最后一次发送消息的时间戳
                 return
             else:
                 GLogger.error(f"发送消息失败，状态码: {response.status_code}, 响应: {response.text}")
                 response.raise_for_status()
         except requests.RequestException as e:
             GLogger.error(f"调用 /send-message API 失败: {e}")
-            raise Exception(f"发送消息失败: {e}")
+            raise e
 
     def get_last_send_time(self) -> float:
         """返回上一次成功发送消息的时间戳 (monotonic time)。"""

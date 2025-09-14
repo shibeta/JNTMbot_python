@@ -319,7 +319,11 @@ class GameAutomator:
         last_joined_count = 0  # 记录上一次 OCR 时"已加入"的人数
 
         # 发送差事就绪消息
-        self.steam_bot.send_group_message(self.config.msgOpenJobPanel)
+        try:
+            self.steam_bot.send_group_message(self.config.msgOpenJobPanel)
+        except requests.RequestException as e:
+            # 发送信息失败，小事罢了，不影响自动化运行
+            pass
 
         # 导航面板以选中"开始差事"选项
         click_keyboard("w")
@@ -353,7 +357,11 @@ class GameAutomator:
                 and joined_count == 0
             ):
                 GLogger.info("长时间没有玩家加入，退出差事并重新开始。")
-                self.steam_bot.send_group_message(self.config.msgWaitPlayerTimeout)
+                try:
+                    self.steam_bot.send_group_message(self.config.msgWaitPlayerTimeout)
+                except requests.RequestException as e:
+                    # 发送信息失败，小事罢了，不影响自动化运行
+                    pass
                 return False
 
             # 如果有人卡在“正在加入”则超时
@@ -363,7 +371,11 @@ class GameAutomator:
                 and joining_count > 0
             ):
                 GLogger.info('玩家长期卡在"正在加入"状态，退出差事并重新开始。')
-                self.steam_bot.send_group_message(self.config.msgJoiningPlayerKick)
+                try:
+                    self.steam_bot.send_group_message(self.config.msgJoiningPlayerKick)
+                except requests.RequestException as e:
+                    # 发送信息失败，小事罢了，不影响自动化运行
+                    pass
                 return False
 
             # 检查是否应该开始差事
@@ -376,7 +388,11 @@ class GameAutomator:
             ):
                 GLogger.info("即将启动差事。")
                 # 发送差事启动消息
-                self.steam_bot.send_group_message(self.config.msgJobStarting)
+                try:
+                    self.steam_bot.send_group_message(self.config.msgJobStarting)
+                except requests.RequestException as e:
+                    # 发送信息失败，小事罢了，不影响自动化运行
+                    pass
                 click_keyboard(KEY_ENTER)
                 for _ in range(3):
                     if self.is_job_starting():
@@ -397,13 +413,21 @@ class GameAutomator:
                     else:
                         # 差事都没了就没办法了
                         GLogger.warning("未回到面板，无法继续。")
-                        self.steam_bot.send_group_message(self.config.msgJobStartFail)
+                        try:
+                            self.steam_bot.send_group_message(self.config.msgJobStartFail)
+                        except requests.RequestException as e:
+                            # 发送信息失败，小事罢了，不影响自动化运行
+                            pass
                         return False
 
             # 队伍人数从未满变为满员时，发送满员消息
             if joining_count + joined_count != last_joining_count + last_joined_count:
                 if joined_count + joining_count >= 3:  # 队伍已满 (1个主机 + 3个玩家)
-                    self.steam_bot.send_group_message(self.config.msgTeamFull)
+                    try:
+                        self.steam_bot.send_group_message(self.config.msgTeamFull)
+                    except requests.RequestException as e:
+                        # 发送信息失败，小事罢了，不影响自动化运行
+                        pass
 
             # 队伍加入状态变化时，更新最近加入状态变化的时间，最近队伍状态变化的时间，上一次的正在加入人数，上一次的已加入人数
             if joining_count != last_joining_count or joined_count != last_joined_count:
@@ -440,8 +464,12 @@ class GameAutomator:
     def try_to_join_jobwarp_bot(self):
         """
         尝试通过 SteamJvp 加入差传 Bot 战局。  
+        该方法应当在游戏启动后才能运行，否则会卡在steam确认启动游戏。  
         注意该方法目前不再维护，且将来可能被废弃。
         """
+        if not self.is_game_started():
+            GLogger.error("游戏未启动，因此不能加入差传 Bot 战局。")
+            return
         GLogger.info("正在尝试加入一个差传 Bot 战局...")
         # 从 mageangela 的接口获取差传 bot 的战局链接
         try:
