@@ -8,6 +8,7 @@ from ocr_engine import OCREngine
 from keyboard_utils import *  # 导入所有键盘功能和常量
 from steambot_utils import SteamBotClient
 from process_utils import (
+    find_window,
     get_window_info,
     suspend_process_for_duration,
     kill_processes,
@@ -68,11 +69,20 @@ class GameAutomator:
         if not self.is_game_started():
             # 没启动就先启动
             GLogger.warning("GTA V 未启动。正在启动游戏...")
-            # 启动过程中会自己设置 PID 和窗口句柄
-            self.kill_and_restart_gta()
+            # 尝试启动 5 次
+            for retry_times in range(5):
+                if self.kill_and_restart_gta():
+                    # 启动过程中会自己设置 PID 和窗口句柄, 不需要做任何事
+                    return
+                else:
+                    GLogger.warning(f"GTA V 启动失败。将重试 {5-1-retry_times} 次。")
+                    continue
+            else:
+                # 达到最大失败次数后抛出异常
+                raise Exception("无法启动 GTA V 或无法进入在线模式。")
         else:
             # 如果启动了则更新 PID 和窗口句柄
-            self.hwnd, self.pid = get_window_info("Grand Theft Auto V")
+            self.hwnd, self.pid = find_window("Grand Theft Auto V","GTA5_Enhanced.exe")
             GLogger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
         # 设置为活动窗口
         set_active_window(self.hwnd)
@@ -120,13 +130,17 @@ class GameAutomator:
     # --- 状态检查方法 ---
     def is_game_started(self) -> bool:
         """检查游戏是否启动。"""
-        window_info = get_window_info("Grand Theft Auto V")
+        window_info = find_window("Grand Theft Auto V","GTA5_Enhanced.exe")
         if window_info:
             GLogger.debug(f"找到 GTA V 窗口。窗口句柄: {window_info[0]}, 进程ID: {window_info[1]}")
             return True
         else:
             GLogger.debug("未找到 GTA V 窗口。")
             return False
+
+    def is_on_main_menu(self) -> bool:
+        """检查游戏是否在主菜单。"""
+        return self._find_text("加入自由模式", 0, 0, 1, 1)
 
     def is_respawned(self) -> bool:
         """检查玩家是否已在床上复活。"""
@@ -226,8 +240,8 @@ class GameAutomator:
     def start_new_match(self) -> bool:
         """尝试从一个战局中切换到另一个仅邀请战局，必须在自由模式下才能工作。"""
         GLogger.info("动作：正在开始一个新差事...")
-        # 切换新战局会尝试20次，在某些次数中，会使用不同措施尝试使游戏回到"正常状态"。
-        for new_match_error_count in range(20):
+        # 切换新战局会尝试15次，在某些次数中，会使用不同措施尝试使游戏回到"正常状态"。
+        for new_match_error_count in range(15):
             # 各种措施，很难说效果究竟如何，瞎猫撞死耗子
             if new_match_error_count % 3 == 2:
                 GLogger.info("尝试通过多次按 ESCAPE 键来恢复正常状态。")
@@ -241,10 +255,10 @@ class GameAutomator:
                     time.sleep(0.5)
                     click_keyboard(KEY_ENTER)
                     time.sleep(0.5)
+            # if new_match_error_count == 10:
+            #     GLogger.info("尝试通过加入差传 Bot 战局来恢复正常状态。")
+            #     self.try_to_join_jobwarp_bot()
             if new_match_error_count == 10:
-                GLogger.info("尝试通过加入差传 Bot 战局来恢复正常状态。")
-                self.try_to_join_jobwarp_bot()
-            if new_match_error_count == 15:
                 GLogger.info("尝试通过卡单来恢复正常状态。")
                 self.enter_single_player_session()
             # 以下开始是正常的开始新战局的指令
@@ -422,9 +436,12 @@ class GameAutomator:
             click_keyboard(KEY_ENTER)
             time.sleep(5)
 
-    # TODO 测试改善后的方法能否实现加入差传战局来解决卡在各种地方
+    # 不认为加入差传bot是一个好主意，应当重启
     def try_to_join_jobwarp_bot(self):
-        """尝试通过 SteamJvp 加入差传 Bot 战局。"""
+        """
+        尝试通过 SteamJvp 加入差传 Bot 战局。  
+        注意该方法目前不再维护，且将来可能被废弃。
+        """
         GLogger.info("正在尝试加入一个差传 Bot 战局...")
         # 从 mageangela 的接口获取差传 bot 的战局链接
         try:
@@ -485,8 +502,14 @@ class GameAutomator:
         else:
             GLogger.warning("无法加入任何配置的差传 Bot 战局。")
 
-    def kill_and_restart_gta(self):
-        """杀死并重启 GTA V 游戏，并进入在线模式仅邀请战局。"""
+    def kill_and_restart_gta(self) -> bool:
+        """
+        杀死并重启 GTA V 游戏，并进入在线模式仅邀请战局。
+        如果重启游戏失败，将杀死游戏进程。
+
+        Returns:
+            bool: 重启是否成功。True: 成功重启并进入了在线模式。False: 失败了，并且杀死了游戏进程。
+        """
         self.kill_gta()
         GLogger.info("20秒后将重启 GTA V...")
         time.sleep(20)  # 等待20秒钟用于 steam 客户端响应 GTA V 退出
@@ -498,7 +521,7 @@ class GameAutomator:
         GLogger.info("正在等待 GTA 窗口出现...")
         process_start_time = time.monotonic()
         while time.monotonic() - process_start_time < 300:  # 5分钟总超时
-            window_info = get_window_info("Grand Theft Auto V")
+            window_info = find_window("Grand Theft Auto V","GTA5_Enhanced.exe")
             if window_info:
                 self.hwnd, self.pid = window_info
                 GLogger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
@@ -508,21 +531,31 @@ class GameAutomator:
             # 启动失败则杀死 GTA V 进程并返回
             GLogger.error("重启 GTA 失败：等待 GTA 窗口出现超时。")
             self.kill_gta()
-            self.hwnd, self.pid = None,None
-            return
+            self.hwnd, self.pid = None, None
+            return False
 
         # 等待主菜单加载
         GLogger.info("正在等待主菜单出现...")
         main_menu_load_start_time = time.monotonic()
         while time.monotonic() - main_menu_load_start_time < 180:  # 3分钟加载超时
-            if self._find_text("加入自由模式", 0, 0, 1, 1):
+            if self.is_on_main_menu():
+                GLogger.info("主菜单已加载。")
+                break
+            elif self._find_multi_text(["导览", "跳过"], 0.5, 0.8, 0.5, 0.2):
+                # 有时候主菜单会展示一个显示当前最新活动的窗口
+                time.sleep(2)
+                click_keyboard(KEY_ENTER)
                 GLogger.info("主菜单已加载。")
                 break
             time.sleep(5)
         else:
             GLogger.error("重启 GTA 失败：等待主菜单加载超时。")
+            self.kill_gta()
+            self.hwnd, self.pid = None, None
+            return False
 
         # 进入故事模式
+        time.sleep(2)
         for _ in range(2):
             click_keyboard("e")
             time.sleep(3)
@@ -539,6 +572,9 @@ class GameAutomator:
             time.sleep(5)
         else:
             GLogger.error("重启 GTA 失败：等待进入故事模式超时。")
+            self.kill_gta()
+            self.hwnd, self.pid = None, None
+            return False
 
         # 进入在线模式
         for _ in range(3):  # 尝试3次
@@ -569,6 +605,9 @@ class GameAutomator:
                 continue
         else:
             GLogger.error("重启 GTA 失败：找不到在线模式选项卡。")
+            self.kill_gta()
+            self.hwnd, self.pid = None, None
+            return False
 
         # 选择进入仅邀请战局
         click_keyboard("s")
@@ -584,6 +623,22 @@ class GameAutomator:
             if self.is_respawned():
                 GLogger.info("已进入在线模式。")
                 break
+            elif self.is_on_warning_page():
+                # 有些时候会弹出错误窗口，这一般是网络不好导致的
+                time.sleep(2)
+                click_keyboard(KEY_ENTER)
+            elif self.is_on_main_menu():
+                # 在线模式，很神奇吧
+                GLogger.error("重启 GTA 失败：加入在线模式失败，被回退到主菜单，请检查网络。")
+                self.kill_gta()
+                self.hwnd, self.pid = None, None
+                return False
             time.sleep(5)
         else:
-            GLogger.error("重启 GTA 失败：等待进入故事模式超时。")
+            GLogger.error("重启 GTA 失败：等待进入在线模式超时。")
+            self.kill_gta()
+            self.hwnd, self.pid = None, None
+            return False
+
+        GLogger.info("重启 GTA 成功。")
+        return True
