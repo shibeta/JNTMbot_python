@@ -9,18 +9,6 @@ from logger import get_logger
 
 GLogger = get_logger("process_utils")
 
-# 与 GTA V 相关的进程名称列表
-GTA_PROCESS_NAMES = [
-    "GTA5.exe",
-    "GTA5_Enhanced.exe",
-    "GTA5_Enhanced_BE.exe",
-    "PlayGTAV.exe",
-    "RockstarErrorHandler.exe",
-    "RockstarService.exe",
-    "SocialClubHelper.exe",
-    "Launcher.exe",
-]
-
 
 def is_process_exist(pid: int):
     """
@@ -190,7 +178,7 @@ def suspend_process_for_duration(pid: int, duration_seconds: int):
 
 def kill_processes(process_names: list[str]):
     """
-    根据进程名称终止一组进程。
+    终止所有符合名称的进程。
 
     Args:
         process_names: 进程名称列表
