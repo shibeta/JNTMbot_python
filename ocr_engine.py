@@ -104,7 +104,7 @@ class OCREngine:
             physical_right = int(right * scale_factor)
             physical_bottom = int(bottom * scale_factor)
             GLogger.debug(
-                f"缩放后的客户区大小: {physical_right-physical_left} * {physical_bottom-physical_right}。左上角坐标({physical_left},{physical_top})，右下角坐标({physical_right},{physical_bottom})。"
+                f"缩放后的客户区大小: {physical_right-physical_left} * {physical_bottom-physical_top}。左上角坐标({physical_left},{physical_top})，右下角坐标({physical_right},{physical_bottom})。"
             )
 
             return physical_left, physical_top, physical_right, physical_bottom
@@ -276,8 +276,8 @@ class OCREngine:
         hwnd: int,
         x: float = 0,
         y: float = 0,
-        w: float = 0.5,
-        h: float = 0.5,
+        w: float = 1,
+        h: float = 1,
         include_title_bar: bool = False,
     ) -> str:
         """
