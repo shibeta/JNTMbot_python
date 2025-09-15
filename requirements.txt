@@ -10,3 +10,4 @@ vgamepad
 pynput
 pywin32
 ruamel.yaml
+mss
