@@ -82,7 +82,7 @@ class GameAutomator:
                 raise Exception("无法启动 GTA V 或无法进入在线模式。")
         else:
             # 如果启动了则更新 PID 和窗口句柄
-            self.hwnd, self.pid = find_window("Grand Theft Auto V","GTA5_Enhanced.exe")
+            self.hwnd, self.pid = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
             GLogger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
         # 设置为活动窗口
         set_active_window(self.hwnd)
@@ -130,12 +130,12 @@ class GameAutomator:
     # --- 状态检查方法 ---
     def is_game_started(self) -> bool:
         """检查游戏是否启动。"""
-        window_info = find_window("Grand Theft Auto V","GTA5_Enhanced.exe")
+        window_info = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
         if window_info:
-            GLogger.debug(f"找到 GTA V 窗口。窗口句柄: {window_info[0]}, 进程ID: {window_info[1]}")
+            GLogger.debug(f"GTA V 已启动。窗口句柄: {window_info[0]}, 进程ID: {window_info[1]}")
             return True
         else:
-            GLogger.debug("未找到 GTA V 窗口。")
+            GLogger.debug("未找到 GTA V 窗口。GTA V 未启动。")
             return False
 
     def is_on_main_menu(self) -> bool:
@@ -173,7 +173,7 @@ class GameAutomator:
 
     def is_on_pause_menu(self) -> bool:
         """检查是否在暂停菜单"""
-        return self._find_multi_text(["地图", "在线", "职业", "好友", "设置"], 0, 0, 0.5, 0.5)
+        return self._find_multi_text(["地图", "职业", "简讯"], 0, 0, 0.5, 0.5)
 
     def is_on_go_online_menu(self) -> bool:
         """检查是否在"进入在线模式"菜单"""
@@ -463,8 +463,8 @@ class GameAutomator:
     # 不认为加入差传bot是一个好主意，应当重启
     def try_to_join_jobwarp_bot(self):
         """
-        尝试通过 SteamJvp 加入差传 Bot 战局。  
-        该方法应当在游戏启动后才能运行，否则会卡在steam确认启动游戏。  
+        尝试通过 SteamJvp 加入差传 Bot 战局。
+        该方法应当在游戏启动后才能运行，否则会卡在steam确认启动游戏。
         注意该方法目前不再维护，且将来可能被废弃。
         """
         if not self.is_game_started():
@@ -549,7 +549,7 @@ class GameAutomator:
         GLogger.info("正在等待 GTA 窗口出现...")
         process_start_time = time.monotonic()
         while time.monotonic() - process_start_time < 300:  # 5分钟总超时
-            window_info = find_window("Grand Theft Auto V","GTA5_Enhanced.exe")
+            window_info = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
             if window_info:
                 self.hwnd, self.pid = window_info
                 GLogger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
