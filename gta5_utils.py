@@ -570,7 +570,7 @@ class GameAutomator:
                 GLogger.info("主菜单已加载。")
                 break
             elif self._find_multi_text(["导览", "跳过"], 0.5, 0.8, 0.5, 0.2):
-                # 有时候主菜单会展示一个显示当前最新活动的窗口
+                # 有时候主菜单会展示一个显示 GTA+ 广告的窗口
                 time.sleep(2)
                 click_keyboard(KEY_ENTER)
                 GLogger.info("主菜单已加载。")
