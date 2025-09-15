@@ -68,11 +68,16 @@ class OCREngine:
 
     def _get_physical_rect(self, hwnd: int, include_title_bar: bool) -> Optional[tuple[int, int, int, int]]:
         """
-        辅助函数：获取窗口或客户区的指定区域的物理像素坐标和大小
+        辅助函数：获取窗口或客户区的指定区域的物理像素坐标
+
+        Args:
             hwnd: 目标窗口的句柄。
             include_title_bar: 是否将标题栏和边框计算在内。
                 True: 基于完整窗口计算
                 False: 基于客户区计算 (排除标题栏和边框)
+
+        Returns:
+            一个有4个元素的元组，对应窗口或客户区上下左右的物理像素坐标。如果获取失败，返回 None
         """
         try:
             # 使用更现代的API获取DPI
@@ -113,15 +118,15 @@ class OCREngine:
             return None
 
     def _capture_window_area_mss(
-        self, hwnd: int, top: float, left: float, width: float, height: float, include_title_bar: bool = False
+        self, hwnd: int, left: float, top: float, width: float, height: float, include_title_bar: bool = False
     ) -> np.ndarray | None:
         """
         截取指定窗口的特定区域。
 
         Args:
             hwnd: 目标窗口的句柄。
-            top: 截图区域左上角的相对横坐标 (0.0 to 1.0)。
-            left: 截图区域左上角的相对纵坐标 (0.0 to 1.0)。
+            left: 截图区域左上角的相对横坐标 (0.0 to 1.0)。
+            top: 截图区域左上角的相对纵坐标 (0.0 to 1.0)。
             width: 截图区域的相对宽度 (0.0 to 1.0)。
             height: 截图区域的相对高度 (0.0 to 1.0)。
             include_title_bar: 是否将标题栏和边框计算在内。
@@ -181,15 +186,15 @@ class OCREngine:
             return None
 
     def _capture_window_area_GDI(
-        self, hwnd: int, top: float, left: float, width: float, height: float, include_title_bar: bool = False
+        self, hwnd: int, left: float, top: float, width: float, height: float, include_title_bar: bool = False
     ) -> np.ndarray | None:
         """
         截取指定窗口的特定区域。
 
         Args:
             hwnd: 目标窗口的句柄。
-            top: 截图区域左上角的相对横坐标 (0.0 to 1.0)。
-            left: 截图区域左上角的相对纵坐标 (0.0 to 1.0)。
+            left: 截图区域左上角的相对横坐标 (0.0 to 1.0)。
+            top: 截图区域左上角的相对纵坐标 (0.0 to 1.0)。
             width: 截图区域的相对宽度 (0.0 to 1.0)。
             height: 截图区域的相对高度 (0.0 to 1.0)。
             include_title_bar: 是否将标题栏和边框计算在内。
@@ -200,6 +205,7 @@ class OCREngine:
             一个 BGR 格式的 NumPy 数组，如果失败则返回 None。
         """
         try:
+            GLogger.debug(f"传入的值: hwnd:{hwnd}，")
             # 将要截图的窗口置于前台
             if hwnd != win32gui.GetForegroundWindow():
                 win32gui.SetForegroundWindow(hwnd)
@@ -274,10 +280,10 @@ class OCREngine:
     def ocr(
         self,
         hwnd: int,
-        x: float = 0,
-        y: float = 0,
-        w: float = 1,
-        h: float = 1,
+        left: float = 0,
+        top: float = 0,
+        width: float = 1,
+        height: float = 1,
         include_title_bar: bool = False,
     ) -> str:
         """
@@ -285,8 +291,10 @@ class OCREngine:
 
         Args:
             hwnd: 目标窗口句柄。
-            x, y: 截图区域左上角的相对坐标 (0.0 to 1.0)。
-            w, h: 截图区域的相对宽度和高度 (0.0 to 1.0)。
+            left: 截图区域左上角的相对横坐标 (0.0 to 1.0)。
+            top: 截图区域左上角的相对纵坐标 (0.0 to 1.0)。
+            width: 截图区域的相对宽度 (0.0 to 1.0)。
+            height: 截图区域的相对高度 (0.0 to 1.0)。
             include_title_bar: 是否将标题栏和边框计算在内。
                 True: 基于完整窗口截图
                 False: 基于客户区截图 (排除标题栏和边框)
@@ -296,11 +304,11 @@ class OCREngine:
         """
         # 截图
         GLogger.debug(
-            f"开始对句柄为{hwnd}的窗口截图，{"" if include_title_bar else "不"}包括标题栏。截图范围左上角相对坐标为({x}, {y})，右下角相对坐标为({x+w}, {y+h})。"
+            f"开始对句柄为{hwnd}的窗口截图，{"" if include_title_bar else "不"}包括标题栏。截图范围左上角相对坐标为({left}, {top})，右下角相对坐标为({left+width}, {top+height})。"
         )
         # screenshot_np = self._capture_window_area_GDI(hwnd, x, y, w, h, include_title_bar)
         # 尝试新的mss截图方法
-        screenshot_np = self._capture_window_area_mss(hwnd, x, y, w, h, include_title_bar)
+        screenshot_np = self._capture_window_area_mss(hwnd, left, top, width, height, include_title_bar)
         GLogger.debug("截图完成。")
         if screenshot_np is None:
             return ""
@@ -356,7 +364,7 @@ if __name__ == "__main__":
 
         # 对记事本窗口的左上角一半区域进行 OCR
         # 这对应 C++ 中的 ocrUTF(hWnd, 0, 0, 0.5f, 0.5f)
-        text = ocr_engine.ocr(hwnd, x=0, y=0, w=0.5, h=0.5)
+        text = ocr_engine.ocr(hwnd, left=0, top=0, width=0.5, height=0.5)
 
         print("-" * 20)
         print(f"识别结果: {text}")

@@ -87,14 +87,14 @@ class GameAutomator:
         # 设置为活动窗口
         set_active_window(self.hwnd)
 
-    def _find_text(self, text, x, y, w, h) -> bool:
+    def _find_text(self, text, left, top, width, height) -> bool:
         """辅助函数，用于检查文本是否存在于指定区域。"""
-        ocr_result = self.ocr.ocr(self.hwnd, x, y, w, h)
+        ocr_result = self.ocr.ocr(self.hwnd, left, top, width, height)
         return text in ocr_result
 
-    def _find_multi_text(self, texts: list[str], x, y, w, h) -> bool:
+    def _find_multi_text(self, texts: list[str], left, top, weight, height) -> bool:
         """辅助函数，用于检查一组文本是否有部分存在于指定区域。"""
-        ocr_result = self.ocr.ocr(self.hwnd, x, y, w, h)
+        ocr_result = self.ocr.ocr(self.hwnd, left, top, weight, height)
 
         # 避免生成空的正则表达式
         if not texts:
