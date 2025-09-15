@@ -1,16 +1,15 @@
 from typing import Optional
 import win32gui
 import win32ui
-import win32api
 import win32con
-import win32print
 import numpy as np
 from rapidocr import RapidOCR, EngineType, LangDet, LangRec, ModelType, OCRVersion
 import threading
 from time import sleep
 import mss
-from ctypes import oledll, windll, byref, c_int
+from ctypes import windll, byref, c_int
 
+from process_utils import is_window_handler_exist
 from logger import get_logger
 
 GLogger = get_logger("ocr_engine")
@@ -302,6 +301,11 @@ class OCREngine:
         Returns:
             识别出的所有文本拼接成的字符串。
         """
+        # 检查窗口句柄是否有效
+        if not is_window_handler_exist(hwnd):
+            GLogger.error(f"要截图的窗口{hwnd}是一个无效的窗口句柄。")
+            return ""
+        
         # 截图
         GLogger.debug(
             f"开始对句柄为{hwnd}的窗口截图，{"" if include_title_bar else "不"}包括标题栏。截图范围左上角相对坐标为({left}, {top})，右下角相对坐标为({left+width}, {top+height})。"
