@@ -50,14 +50,26 @@ app.use(authenticateToken);
 // --- API 路由 ---
 
 /**
+ * 返回后端状态
+ */
+app.get("/health", (req, res) => {
+    res.sendStatus(200);
+});
+
+/**
  * 返回登录状态
  */
 app.get("/status", (req, res) => {
     const status = bot.isLoggedIn();
-    res.status(200).json({
-        loggedIn: status.loggedIn,
-        name: status.accountName || "N/A",
-    });
+    if (status.loggedIn) {
+        res.status(200).json({
+            name: status.accountName || "N/A",
+        });
+    } else {
+        res.status(401).json({
+            error: "操作失败: Bot 尚未登录。",
+        });
+    }
 });
 
 /**
@@ -91,7 +103,7 @@ app.post("/login", async (req, res) => {
  */
 app.get("/userinfo", async (req, res) => {
     if (!bot.isLoggedIn().loggedIn) {
-        return res.status(403).json({ error: "操作失败: Bot 尚未登录。" });
+        return res.status(401).json({ error: "操作失败: Bot 尚未登录。" });
     }
 
     try {
@@ -110,7 +122,7 @@ app.get("/userinfo", async (req, res) => {
  */
 app.post("/send-message", async (req, res) => {
     if (!bot.isLoggedIn().loggedIn) {
-        return res.status(403).json({ error: "操作失败: Bot尚未登录。" });
+        return res.status(401).json({ error: "操作失败: Bot尚未登录。" });
     }
 
     console.log("原始请求体 (解析后):", req.body);
@@ -159,38 +171,29 @@ app.post("/send-message", async (req, res) => {
 });
 
 /**
- * 登出并平滑关机
+ * 登出 Steam
  */
 app.post("/logout", async (req, res) => {
     try {
         const status = bot.isLoggedIn();
 
         if (status.loggedIn) {
-            console.log("👋 收到登出请求，正在等待 Steam 登出完成...");
-            // 等待机器人完全登出
+            console.log("👋 收到 API 登出请求，正在从 Steam 登出...");
+            
             await bot.logOff();
-            res.status(200).json({ success: true, message: "已成功登出。" });
+            
+            console.log("✅ 已成功从 Steam 登出。");
+            res.status(200).json({ success: true, message: "已成功从 Steam 登出。" });
         } else {
-            console.log("👋 收到登出请求，但 Bot 未登录。");
-            res.status(200).json({ success: true, message: "Bot当前未登录。" });
+            console.log("👋 收到 API 登出请求，但 Bot 本身未登录。");
+            res.status(200).json({ success: true, message: "Bot 当前未登录，无需执行登出操作。" });
         }
-
-        // 在响应发送后，开始平滑关闭服务器
-        console.log("🫷 正在准备关闭 HTTP 服务器，将不再接受新连接...");
-        server.close(() => {
-            console.log("✅ 所有连接均已关闭，服务器成功关闭。");
-            // 只有当服务器完全关闭后，才退出进程
-            process.exit(0);
-        });
     } catch (error) {
-        console.error("❌ 在登出或关机过程中发生错误:", error);
-        // 即使出错，也尝试关闭服务器
+        console.error("❌ 在登出过程中发生错误:", error);
         res.status(500).json({
             success: false,
-            message: "登出过程中发生错误。",
-        });
-        server.close(() => {
-            process.exit(1); // 使用非零代码表示异常退出
+            message: "登出过程中发生内部错误。",
+            details: error.message
         });
     }
 });
@@ -202,11 +205,12 @@ const server = app.listen(PORT, HOST, () => {
         `🔑 请在请求的 Authorization Header 中使用 Bearer Token: ${AUTH_TOKEN}`
     );
     console.log("\n--- 可用API端点 ---");
+    console.log(`GET  /health       - 获取后端状态`);
     console.log(`GET  /status       - 获取登录状态`);
     console.log(`POST /login        - (重新)触发登录流程`);
     console.log(`GET  /userinfo     - 获取当前登录的用户信息`);
     console.log(`POST /send-message - 发送群组消息`);
-    console.log(`POST /logout       - 登出并关闭服务器`);
+    console.log(`POST /logout       - 从 Steam 登出`);
     console.log("-------------------\n");
 });
 

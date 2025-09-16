@@ -58,13 +58,15 @@ def on_become_healthy(steam_bot: SteamBotClient, enable_wechat_push: bool, wecha
         logger.warning(f"正在发送微信通知: {title}: {msg}")
         push_wechat(wechat_push_token, title, msg)
 
-def on_is_unhealthy(enable_exit_on_unhealthy:bool, exit_func:Callable):
+
+def on_is_unhealthy(enable_exit_on_unhealthy: bool, exit_func: Callable):
     """
     在本次检查状态为 unhealthy 时，需要执行的作业:
     根据config设置，退出程序
     """
     if enable_exit_on_unhealthy:
         exit_func()
+
 
 def health_check_monitor(
     steam_bot: SteamBotClient,
@@ -80,12 +82,12 @@ def health_check_monitor(
     一个在后台运行的守护线程函数，用于监控 Bot 可用性。
     """
     global is_bot_healthy_on_last_check
-    logger.info("Bot 可用性监控线程已启动，每5分钟检查一次。")
+    logger.info(f"Bot 可用性监控线程已启动，每 {check_interval} 分钟检查一次。")
 
     while True:
         # 可用性监控也会响应暂停
         pause_event.wait()
-        time.sleep(check_interval)
+        time.sleep(check_interval * 60)
         pause_event.wait()
 
         # 基于上次向 Steam 发送消息的时间判断 Bot 健康状态
@@ -94,7 +96,7 @@ def health_check_monitor(
         logger.debug(f"健康检查：距离上次发送消息已过去 {timedelta(seconds=elapsed_time)} 。")
 
         # 基于所有检查项，判断 Bot 状态
-        if elapsed_time > steam_chat_timeout_threshold:
+        if elapsed_time > steam_chat_timeout_threshold * 60:
             # 当前状态为 unhealthy
             logger.warning(
                 f"Bot 状态为 unhealthy。原因: 连续 {steam_chat_timeout_threshold} 分钟未向 Steam 发送消息。"
@@ -126,3 +128,5 @@ def health_check_monitor(
         if is_bot_healthy_on_this_check == False:
             if enable_exit_on_unhealthy:
                 exit_func()
+
+        is_bot_healthy_on_last_check = is_bot_healthy_on_this_check

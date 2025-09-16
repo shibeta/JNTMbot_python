@@ -94,10 +94,17 @@ def main():
 
     # 初始化 Steam Bot
     try:
+        logger.info("正在初始化 Steam Bot 客户端...")
         steam_bot = SteamBotClient(config)
     except Exception as e:
         logger.error(f"初始化 Steam Bot 客户端失败: {e}")
+        if "steam_bot" in locals() and isinstance(steam_bot, SteamBotClient):
+            steam_bot.shutdown()
         return
+    # 等待至多 steamBotLoginTimeout 秒来让 Steam Bot 完成初始化
+    if not steam_bot.wait_for_ready(timeout=config.steamBotLoginTimeout):
+        logger.error(f"Steam Bot 后端未能在 {config.steamBotLoginTimeout} 秒内准备就绪。")
+    logger.info("Steam Bot 客户端初始化完成。")
 
     # 验证配置中的群组ID
     bot_userinfo = steam_bot.get_userinfo()

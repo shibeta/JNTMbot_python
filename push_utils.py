@@ -2,7 +2,7 @@ import requests
 
 from logger import get_logger
 
-GLogger = get_logger("push_utils")
+logger = get_logger("push_utils")
 
 
 def push_wechat(token: str, title: str, msg: str):
@@ -18,11 +18,11 @@ def push_wechat(token: str, title: str, msg: str):
     try:
         url = f"https://www.pushplus.plus/send"
         data = {"token": token, "title": title, "content": msg, "template": "txt"}
-        GLogger.info(f"使用pushplus向微信发送通知 {title}: {msg}")
+        logger.info(f"使用pushplus向微信发送通知 {title}: {msg}")
         r = requests.post(url=url, json=data)
         r.raise_for_status()
-        GLogger.info(f"pushplus: {r.json()['msg']}")
+        logger.info(f"pushplus: {r.json()['msg']}")
     except requests.HTTPError:
-        GLogger.error(f"pushplus: {r.json()['msg']} ({r.json()['data']})")
+        logger.error(f"pushplus: {r.json()['msg']} ({r.json()['data']})")
     except requests.RequestException as e:
-        GLogger.error(f"调用 pushplus API 时发生致命错误: {e}")
+        logger.error(f"调用 pushplus API 时发生致命错误: {e}")
