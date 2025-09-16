@@ -81,6 +81,8 @@
     ```bash
     pip install -r requirements.txt
     ```
+    > 安装 Python 依赖期间，可能会弹出 [ViGEmBus虚拟手柄驱动](https://github.com/nefarius/ViGEmBus) 的安装程序，请接受许可协议并安装该驱动以完成依赖安装。
+    > > 目前程序仅模拟键盘输入，但将来可能会添加模拟手柄输入的功能。
 
 3.  **安装 Node.js 依赖**
 
@@ -135,10 +137,11 @@
     > Bot 状态信息将发送到群组中的该频道。
 
 -   `wechatPush` 和 `pushplusToken`
-    > 是否启用微信推送警报。启用后，程序连续 30 分钟未向 Steam Chat 发送信息会向微信推送警报并退出程序。
+    > 是否启用微信推送警报。启用后，当程序运行一段时间后发生报错退出，或健康状态发生变化时，会向微信推送错误信息。
     >
     > > -   将 `wechatPush` 设为 `true` 以启用。
     > > -   启用后，必须在 `pushplusToken` 中填入您从 [PushPlus 官网](https://www.pushplus.plus) 获取的 Token。
+    > > -   必须将 `enableHealthCheck` 设为 `true`，才会在健康状态发生变化时推送。
 
 ### 2. 游戏内设置
 

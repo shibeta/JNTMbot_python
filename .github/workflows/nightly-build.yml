@@ -76,7 +76,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: node-artifact
-          path: ./steam_bot/steam_bot.exe
+          path: ./steam_bot/dist/steam_bot.exe
 
   # --- 合并产物并创建 Release ---
   create_release:

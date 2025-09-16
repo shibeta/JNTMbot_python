@@ -5,7 +5,7 @@ from ruamel.yaml.comments import CommentedMap
 
 from logger import get_logger
 
-GLogger = get_logger(name="config")
+logger = get_logger(name="config")
 
 
 class Config:
@@ -29,9 +29,40 @@ class Config:
         },
         "steamGroupId": {"value": "37660928", "comment": "要发送消息的Steam群组ID，程序启动时可以读取到"},
         "steamChannelName": {"value": "BOT候车室", "comment": "要发送消息的Steam群组频道名称"},
-        "steamBotLoginTimeout": {"value": 60, "comment": "初始化Steam Bot时，等待后端完成登录的最大等待时间 (秒)"},
-        "wechatPush": {"value": False, "comment": "是否启用微信推送bot状态信息"},
-        "pushplusToken": {"value": "", "comment": "pushplus的token，用于微信通知"},
+        "steamBotLoginTimeout": {
+            "value": 60,
+            "comment": "初始化Steam Bot时，等待后端完成登录的最大等待时间 (秒)",
+        },
+        "enableHealthCheck": {
+            "value": True,
+            "comment": "启用健康检查，每间隔一段时间检查Bot上次向Steam发送信息的时间",
+        },
+        "healthCheckInterval": {
+            "value": 10,
+            "comment": "健康检查的频率，即两次健康检查之间等待的时间 (分钟)",
+        },
+        "healthCheckSteamChatTimeoutThreshold": {
+            "value": 60,
+            "comment": "基于Steam消息的健康检查判断阈值，如果发现Bot一段时间内未向Steam发送过信息，则认为Bot不可用 (分钟)",
+        },
+        "enableExitOnUnhealthy": {"value": False, "comment": "健康检查发现Bot不可用时，是否退出程序"},
+        "enableWechatPush": {
+            "value": False,
+            "comment": "是否启用微信推送bot状态信息。启用后，当程序运行一段时间后发生报错退出，或健康状态发生变化时，会向微信推送错误信息",
+        },
+        "pushplusToken": {"value": "", "comment": "pushplus的API token，用于微信通知"},
+        "wechatPushActivationDelay": {
+            "value": 5,
+            "comment": "微信推送报错退出的启用延迟。为节省API用量，只有程序运行时长超过该时间后，报错退出时才会向微信推送 (分钟)",
+        },
+        "mainLoopConsecutiveErrorThreshold": {
+            "value": 3,
+            "comment": "主循环连续报错的阈值，连续报错超过该次数将报错退出。设置为<=1则报错一次即退出",
+        },
+        "restartGTAConsecutiveFailThreshold": {
+            "value": 5,
+            "comment": "初始化GTA时重启GTA失败的阈值，连续重启失败超过该次数将抛出异常。设置为<=1则重启失败立即抛出异常",
+        },
         "suspendGTATime": {"value": 15, "comment": "卡单持续时间 (秒)"},
         "delaySuspendTime": {
             "value": 5,
@@ -91,7 +122,7 @@ class Config:
             "value": "启动差事失败，请等下一班车",
             "comment": "差事启动失败时发的消息 (设置为空字符串则不发这条消息)",
         },
-        "msgDetectedSB":{
+        "msgDetectedSB": {
             "value": "有人没有卡单，请先阅读教程，了解Bot的使用方法后再使用本bot",
             "comment": "发现有人没卡单时发的消息 (设置为空字符串则不发这条消息)",
         },
@@ -126,9 +157,9 @@ class Config:
                 if existing_config is None:
                     existing_config = {}
         except FileNotFoundError:
-            GLogger.info(f"未找到配置文件 '{self.config_filename}'，将创建一个新的。")
+            logger.info(f"未找到配置文件 '{self.config_filename}'，将创建一个新的。")
         except Exception as e:
-            GLogger.error(f"加载配置文件时出错: {e}")
+            logger.error(f"加载配置文件时出错: {e}")
             existing_config = {}
 
         # 用默认值填写空的配置项
@@ -159,7 +190,7 @@ class Config:
             with open(self.config_filename, "w", encoding="utf-8") as f:
                 self.yaml.dump(config_to_save, f)
         except IOError as e:
-            GLogger.error(f"无法写入配置文件 {self.config_filename}: {e}")
+            logger.error(f"无法写入配置文件 {self.config_filename}: {e}")
 
 
 # --- 使用示例 ---

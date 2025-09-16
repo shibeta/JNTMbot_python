@@ -12,7 +12,7 @@ from ctypes import windll, byref, c_int
 from process_utils import is_window_handler_exist
 from logger import get_logger
 
-GLogger = get_logger("ocr_engine")
+logger = get_logger("ocr_engine")
 
 # 提前加载DLLs
 user32 = windll.user32
@@ -42,7 +42,7 @@ class OCREngine:
         初始化 RapidOCR 引擎。
         模型加载过程可能需要几秒钟。
         """
-        GLogger.info("正在初始化 OCR 引擎，可能需要一些时间...")
+        logger.info("正在初始化 OCR 引擎，可能需要一些时间...")
         self.engine = RapidOCR(
             params={  # 从 https://github.com/davidLi17/JiNiTaiMeiBot 抄的参数
                 "Global.log_level": "debug",  # RapidOCR默认会修改全局日志最低等级为info
@@ -63,7 +63,7 @@ class OCREngine:
             }
         )
         self.sct = mss.mss()
-        GLogger.warning("OCR 引擎初始化完成。")
+        logger.warning("OCR 引擎初始化完成。")
 
     def _get_physical_rect(self, hwnd: int, include_title_bar: bool) -> Optional[tuple[int, int, int, int]]:
         """
@@ -85,11 +85,11 @@ class OCREngine:
             dpi_y = c_int()
             shcore.GetDpiForMonitor(monitor, 0, byref(dpi_x), byref(dpi_y))
             scale_factor = dpi_x.value / 96.0  # 96 DPI是Windows的基准
-            GLogger.debug(f"缩放比: {scale_factor} 。")
+            logger.debug(f"缩放比: {scale_factor} 。")
 
             if include_title_bar:
                 left, top, right, bottom = win32gui.GetWindowRect(hwnd)
-                GLogger.debug("指定包含边框，将整个窗口视为客户区。")
+                logger.debug("指定包含边框，将整个窗口视为客户区。")
             else:
                 client_rect = win32gui.GetClientRect(hwnd)
                 client_width = client_rect[2] - client_rect[0]
@@ -98,7 +98,7 @@ class OCREngine:
                 left, top = win32gui.ClientToScreen(hwnd, (0, 0))
                 right = left + client_width
                 bottom = top + client_height
-                GLogger.debug(
+                logger.debug(
                     f"指定仅包含客户区，客户区大小: {client_width} * {client_height}。左上角坐标({left},{top})，右下角坐标({right},{bottom})。"
                 )
 
@@ -107,13 +107,13 @@ class OCREngine:
             physical_top = int(top * scale_factor)
             physical_right = int(right * scale_factor)
             physical_bottom = int(bottom * scale_factor)
-            GLogger.debug(
+            logger.debug(
                 f"缩放后的客户区大小: {physical_right-physical_left} * {physical_bottom-physical_top}。左上角坐标({physical_left},{physical_top})，右下角坐标({physical_right},{physical_bottom})。"
             )
 
             return physical_left, physical_top, physical_right, physical_bottom
         except Exception as e:
-            GLogger.error(f"获取物理坐标失败: {e}")
+            logger.error(f"获取物理坐标失败: {e}")
             return None
 
     def _capture_window_area_mss(
@@ -144,7 +144,7 @@ class OCREngine:
 
             # DEBUG: 输出窗口原始大小
             window_left, window_top, window_right, window_bottom = win32gui.GetWindowRect(hwnd)
-            GLogger.debug(
+            logger.debug(
                 f"传入的窗口大小: {window_right-window_left} * {window_bottom-window_top}。左上角坐标({window_left},{window_top})，右下角坐标({window_right},{window_bottom})。"
             )
 
@@ -162,13 +162,13 @@ class OCREngine:
             grab_top = phys_top + int(top * phys_height)
             grab_width = int(width * phys_width)
             grab_height = int(height * phys_height)
-            GLogger.debug(
+            logger.debug(
                 f"截图区域大小: {grab_width} * {grab_height}。左上角坐标({grab_left},{grab_top})，右下角坐标({grab_left+grab_width},{grab_top+grab_height})。"
             )
 
             # 验证截图尺寸
             if grab_width <= 0 or grab_height <= 0:
-                GLogger.warning(f"计算出的截图尺寸无效: w = {grab_width} 像素, h = {grab_height} 像素")
+                logger.warning(f"计算出的截图尺寸无效: w = {grab_width} 像素, h = {grab_height} 像素")
                 return None
 
             # 使用mss截图
@@ -181,7 +181,7 @@ class OCREngine:
             return np.ascontiguousarray(img_np[:, :, :3])
 
         except Exception as e:
-            GLogger.error(f"截图失败: {e}")
+            logger.error(f"截图失败: {e}")
             return None
 
     def _capture_window_area_GDI(
@@ -204,7 +204,7 @@ class OCREngine:
             一个 BGR 格式的 NumPy 数组，如果失败则返回 None。
         """
         try:
-            GLogger.debug(f"传入的值: hwnd:{hwnd}，")
+            logger.debug(f"传入的值: hwnd:{hwnd}，")
             # 将要截图的窗口置于前台
             if hwnd != win32gui.GetForegroundWindow():
                 win32gui.SetForegroundWindow(hwnd)
@@ -213,7 +213,7 @@ class OCREngine:
 
             # DEBUG: 输出窗口原始大小
             window_left, window_top, window_right, window_bottom = win32gui.GetWindowRect(hwnd)
-            GLogger.debug(
+            logger.debug(
                 f"传入的窗口大小: {window_right-window_left} * {window_bottom-window_top}。左上角坐标({window_left},{window_top})，右下角坐标({window_right},{window_bottom})。"
             )
 
@@ -231,13 +231,13 @@ class OCREngine:
             grab_top = phys_top + int(top * phys_height)
             grab_width = int(width * phys_width)
             grab_height = int(height * phys_height)
-            GLogger.debug(
+            logger.debug(
                 f"截图区域大小: {grab_width} * {grab_height}。左上角坐标({grab_left},{grab_top})，右下角坐标({grab_left+grab_width},{grab_top+grab_height})。"
             )
 
             # 验证截图尺寸
             if grab_width <= 0 or grab_height <= 0:
-                GLogger.warning(f"计算出的截图尺寸无效: w = {grab_width} 像素, h = {grab_height} 像素")
+                logger.warning(f"计算出的截图尺寸无效: w = {grab_width} 像素, h = {grab_height} 像素")
                 return None
 
             # 使用 GDI 截图
@@ -273,7 +273,7 @@ class OCREngine:
                     win32gui.ReleaseDC(hwnd, hwindc)
 
         except Exception as e:
-            GLogger.error(f"截图失败: {e}")
+            logger.error(f"截图失败: {e}")
             return None
 
     def ocr(
@@ -303,24 +303,24 @@ class OCREngine:
         """
         # 检查窗口句柄是否有效
         if not is_window_handler_exist(hwnd):
-            GLogger.error(f"要截图的窗口{hwnd}是一个无效的窗口句柄。")
+            logger.error(f"要截图的窗口{hwnd}是一个无效的窗口句柄。")
             return ""
         
         # 截图
-        GLogger.debug(
+        logger.debug(
             f"开始对句柄为{hwnd}的窗口截图，{"" if include_title_bar else "不"}包括标题栏。截图范围左上角相对坐标为({left}, {top})，右下角相对坐标为({left+width}, {top+height})。"
         )
         # screenshot_np = self._capture_window_area_GDI(hwnd, x, y, w, h, include_title_bar)
         # 尝试新的mss截图方法
         screenshot_np = self._capture_window_area_mss(hwnd, left, top, width, height, include_title_bar)
-        GLogger.debug("截图完成。")
+        logger.debug("截图完成。")
         if screenshot_np is None:
             return ""
 
         # 调用 OCR 引擎进行识别
-        GLogger.debug("开始对截图进行 OCR。")
+        logger.debug("开始对截图进行 OCR。")
         result = self.engine(screenshot_np, use_det=True, use_cls=False, use_rec=True)
-        GLogger.debug("OCR 完成。")
+        logger.debug("OCR 完成。")
 
         # 处理空结果
         if result is None or result.txts is None:
@@ -328,7 +328,7 @@ class OCREngine:
 
         # 拼接所有识别到的文本
         recognized_text = "".join(result.txts)
-        GLogger.debug(recognized_text)
+        logger.debug(recognized_text)
 
         return recognized_text
 

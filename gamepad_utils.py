@@ -3,7 +3,7 @@ import vgamepad as vg
 
 from logger import get_logger
 
-GLogger = get_logger(name="gamepad_utils")
+logger = get_logger(name="gamepad_utils")
 
 
 class Gamepad:
@@ -48,7 +48,7 @@ class Gamepad:
         try:
             self.pad = vg.VX360Gamepad()  # Or use vg.XBox360Gamepad() if you prefer
         except Exception as e:
-            GLogger.error(f"初始化虚拟手柄失败: {e}")
+            logger.error(f"初始化虚拟手柄失败: {e}")
             self.pad = None  # Mark as uninitialized
             self.connected = False
             return
@@ -63,11 +63,11 @@ class Gamepad:
         self.pad.release_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
         self.pad.update()
         time.sleep(0.1)
-        GLogger.info("初始化虚拟手柄完成。")
+        logger.info("初始化虚拟手柄完成。")
 
     def _check_connected(self):
         if not self.connected or self.pad is None:
-            GLogger.error("没有安装虚拟手柄驱动，或没有初始化")
+            logger.error("没有安装虚拟手柄驱动，或没有初始化")
             return False
         return True
 
@@ -79,7 +79,7 @@ class Gamepad:
             self.pad.press_button(button)
             self.pad.update()
         except Exception as e:
-            GLogger.error(f"按住按钮 {button} 时出错: {e}")
+            logger.error(f"按住按钮 {button} 时出错: {e}")
 
     def release_button(self, button):
         """松开一个按钮"""
@@ -89,7 +89,7 @@ class Gamepad:
             self.pad.release_button(button)
             self.pad.update()
         except Exception as e:
-            GLogger.error(f"松开按钮 {button} 时出错: {e}")
+            logger.error(f"松开按钮 {button} 时出错: {e}")
 
     def click_button(self, button, duration_seconds=0.2):
         """按住一个按钮一段时间"""
@@ -100,7 +100,7 @@ class Gamepad:
             time.sleep(duration_seconds)
             self.release_button(button)
         except Exception as e:
-            GLogger.error(f"点按按钮 {button} 时出错: {e}")
+            logger.error(f"点按按钮 {button} 时出错: {e}")
 
     def move_left_stick(self, x_percent: float, y_percent: float):
         """
@@ -116,7 +116,7 @@ class Gamepad:
             self.pad.left_joystick_float(x_percent, y_percent)
             self.pad.update()
         except Exception as e:
-            GLogger.error(f"移动左摇杆时出错: {e}")
+            logger.error(f"移动左摇杆时出错: {e}")
 
     def hold_left_stick_percent(self, x_percent: float, y_percent: float, duration_seconds: float):
         """
@@ -148,7 +148,7 @@ class Gamepad:
             self.pad.right_joystick_float(x_percent, y_percent)
             self.pad.update()
         except Exception as e:
-            GLogger.error(f"Error moving right stick: {e}")
+            logger.error(f"Error moving right stick: {e}")
 
     def hold_right_stick_percent(self, x_percent: float, y_percent: float, duration_seconds: float):
         """

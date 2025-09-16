@@ -7,7 +7,7 @@ from typing import Tuple, Optional
 
 from logger import get_logger
 
-GLogger = get_logger("process_utils")
+logger = get_logger("process_utils")
 
 
 def is_process_exist(pid: int):
@@ -26,7 +26,7 @@ def is_process_exist(pid: int):
         else:
             raise ValueError("PID 必须是一个整数")
     except Exception as e:
-        GLogger.error(f"检查进程ID({pid})是否存在时出错: {e}。")
+        logger.error(f"检查进程ID({pid})是否存在时出错: {e}。")
         return False
 
 
@@ -46,7 +46,7 @@ def is_window_handler_exist(hwnd: int):
         else:
             raise ValueError("窗口句柄必须是一个整数")
     except Exception as e:
-        GLogger.error(f"检查窗口句柄({hwnd})是否存在时出错: {e}。")
+        logger.error(f"检查窗口句柄({hwnd})是否存在时出错: {e}。")
         return False
 
 
@@ -70,7 +70,7 @@ def get_window_info(window_name: str) -> Optional[Tuple[int, int]]:
             return None
         return hwnd, pid
     except Exception as e:
-        GLogger.error(f"获取窗口 '{window_name}' 的进程ID时出错: {e}")
+        logger.error(f"获取窗口 '{window_name}' 的进程ID时出错: {e}")
         return None
 
 
@@ -140,7 +140,7 @@ def get_process_pid_by_window_handler(handler: int) -> int:
             return None
         return pid
     except Exception as e:
-        GLogger.error(f"获取句柄{handler}的进程ID时出错: {e}")
+        logger.error(f"获取句柄{handler}的进程ID时出错: {e}")
         return None
 
 
@@ -153,27 +153,27 @@ def suspend_process_for_duration(pid: int, duration_seconds: int):
         duration_seconds: 要挂起的时间(秒)
     """
     if not is_process_exist(pid):
-        GLogger.warning(f"无法挂起：无效的PID ({pid})。")
+        logger.warning(f"无法挂起：无效的PID ({pid})。")
         return
     try:
         proc = psutil.Process(pid)
-        GLogger.info(f"正在挂起进程 {pid}，持续 {duration_seconds} 秒。")
+        logger.info(f"正在挂起进程 {pid}，持续 {duration_seconds} 秒。")
         proc.suspend()
         time.sleep(duration_seconds)
     except psutil.NoSuchProcess:
-        GLogger.error(f"挂起失败：未找到 PID 为 {pid} 的进程。")
+        logger.error(f"挂起失败：未找到 PID 为 {pid} 的进程。")
     except Exception as e:
-        GLogger.error(f"在挂起进程期间发生错误: {e}")
+        logger.error(f"在挂起进程期间发生错误: {e}")
     finally:
         try:
             # 确保进程总是被恢复
             if "proc" in locals() and proc.status() == psutil.STATUS_STOPPED:
                 proc.resume()
-                GLogger.info(f"已恢复进程 {pid}。")
+                logger.info(f"已恢复进程 {pid}。")
         except psutil.NoSuchProcess:
             pass  # 进程可能在操作期间关闭了
         except Exception as e:
-            GLogger.error(f"恢复进程 {pid} 时出错: {e}")
+            logger.error(f"恢复进程 {pid} 时出错: {e}")
 
 
 def kill_processes(process_names: list[str]):
@@ -186,10 +186,10 @@ def kill_processes(process_names: list[str]):
     for proc in psutil.process_iter(["pid", "name"]):
         if proc.info["name"] in process_names:
             try:
-                GLogger.info(f"正在终止进程: {proc.info['name']} (PID: {proc.pid})")
+                logger.info(f"正在终止进程: {proc.info['name']} (PID: {proc.pid})")
                 proc.kill()
             except Exception as e:
-                GLogger.warning(f"无法终止进程 {proc.info['name']}: {e}")
+                logger.warning(f"无法终止进程 {proc.info['name']}: {e}")
 
 
 def set_active_window(hwnd: int):
@@ -207,7 +207,7 @@ def set_active_window(hwnd: int):
             # 给 Windows 一点时间完成窗口重绘
             time.sleep(0.5)
         except Exception as e:
-            GLogger.error(f"将窗口({hwnd})设置为活动窗口时出错: {e}")
+            logger.error(f"将窗口({hwnd})设置为活动窗口时出错: {e}")
             return
     else:
         return

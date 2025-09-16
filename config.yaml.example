@@ -14,10 +14,24 @@ steamGroupId: '37660928'
 steamChannelName: BOT候车室
 # 初始化Steam Bot时，等待后端完成登录的最大等待时间 (秒)
 steamBotLoginTimeout: 60
-# 是否启用微信推送bot状态信息
+# 启用健康检查，每间隔一段时间检查Bot上次向Steam发送信息的时间
+enableHealthCheck: true
+# 健康检查的频率，即两次健康检查之间等待的时间 (分钟)
+healthCheckInterval: 10
+# 基于Steam消息的健康检查判断阈值，如果发现Bot一段时间内未向Steam发送过信息，则认为Bot不可用 (分钟)
+healthCheckSteamChatTimeoutThreshold: 60
+# 健康检查发现Bot不可用时，是否退出程序
+exitOnUnhealthy: false
+# 是否启用微信推送bot状态信息。启用后，当程序运行一段时间后发生报错退出，或健康状态发生变化时，会向微信推送错误信息
 wechatPush: false
-# pushplus的token，用于微信通知
+# pushplus的API token，用于微信通知
 pushplusToken: ''
+# 微信推送报错退出的启用延迟。为节省API用量，只有程序运行时长超过该时间后，报错退出时才会向微信推送 (分钟)
+wechatPushActivationDelay: 5
+# 主循环连续报错的阈值，连续报错超过该次数将报错退出。设置为<=1则报错一次即退出
+mainLoopConsecutiveErrorThreshold: 3
+# 初始化GTA时重启GTA失败的阈值，连续重启失败超过该次数将抛出异常。设置为<=1则重启失败立即抛出异常
+restartGTAConsecutiveFailThreshold: 5
 # 卡单持续时间 (秒)
 suspendGTATime: 15
 # 卡单延迟时间 (秒)
@@ -25,7 +39,7 @@ delaySuspendTime: 5
 # 检测间隔时间 (秒)
 checkLoopTime: 1
 # 面板无人加入时重开时间 (秒)
-matchPanelTimeout: 300
+matchPanelTimeout: 60
 # 等待正在加入玩家超时重开时间 (秒)
 joiningPlayerKick: 120
 # 开始差事等待延迟 (秒)

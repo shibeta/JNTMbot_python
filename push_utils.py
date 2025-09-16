@@ -16,9 +16,10 @@ def push_wechat(token: str, title: str, msg: str):
         msg: 内容，需要点开消息才能看到
     """
     try:
-        url = f"https://www.pushplus.plus/send?token={token}&title={title}&content={msg}&template=txt"
+        url = f"https://www.pushplus.plus/send"
+        data = {"token": token, "title": title, "content": msg, "template": "txt"}
         GLogger.info(f"使用pushplus向微信发送通知 {title}: {msg}")
-        r = requests.get(url=url)
+        r = requests.post(url=url, json=data)
         r.raise_for_status()
         GLogger.info(f"pushplus: {r.json()['msg']}")
     except requests.HTTPError:
