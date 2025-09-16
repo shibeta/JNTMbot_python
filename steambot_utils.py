@@ -208,6 +208,7 @@ class SteamBotClient:
             # 第一次尝试
             response = request_func(*args, **kwargs)
             response.raise_for_status()
+            return response
         except requests.HTTPError as e:
             # 检查是否是 401 Unauthorized 错误
             if e.response.status_code == 401:
