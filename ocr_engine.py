@@ -1,6 +1,5 @@
 from typing import Optional
 import win32gui
-import win32ui
 import win32con
 import numpy as np
 from rapidocr import RapidOCR, EngineType, LangDet, LangRec, ModelType, OCRVersion
@@ -179,98 +178,6 @@ class OCREngine:
             img_np = np.frombuffer(sct_img.raw, dtype=np.uint8).reshape((sct_img.height, sct_img.width, 4))
             # 丢弃 alpha 通道，并确保内存连续
             return np.ascontiguousarray(img_np[:, :, :3])
-
-        except Exception as e:
-            logger.error(f"截图失败: {e}")
-            return None
-
-    def _capture_window_area_GDI(
-        self, hwnd: int, left: float, top: float, width: float, height: float, include_title_bar: bool = False
-    ) -> np.ndarray | None:
-        """
-        截取指定窗口的特定区域。
-
-        Args:
-            hwnd: 目标窗口的句柄。
-            left: 截图区域左上角的相对横坐标 (0.0 to 1.0)。
-            top: 截图区域左上角的相对纵坐标 (0.0 to 1.0)。
-            width: 截图区域的相对宽度 (0.0 to 1.0)。
-            height: 截图区域的相对高度 (0.0 to 1.0)。
-            include_title_bar: 是否将标题栏和边框计算在内。
-                True: 基于完整窗口截图
-                False: 基于客户区截图 (排除标题栏和边框)
-
-        Returns:
-            一个 BGR 格式的 NumPy 数组，如果失败则返回 None。
-        """
-        try:
-            logger.debug(f"传入的值: hwnd:{hwnd}，")
-            # 将要截图的窗口置于前台
-            if hwnd != win32gui.GetForegroundWindow():
-                win32gui.SetForegroundWindow(hwnd)
-                sleep(0.01)
-            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
-
-            # DEBUG: 输出窗口原始大小
-            window_left, window_top, window_right, window_bottom = win32gui.GetWindowRect(hwnd)
-            logger.debug(
-                f"传入的窗口大小: {window_right-window_left} * {window_bottom-window_top}。左上角坐标({window_left},{window_top})，右下角坐标({window_right},{window_bottom})。"
-            )
-
-            # 获取窗口物理坐标
-            rect = self._get_physical_rect(hwnd, include_title_bar)
-            if not rect:
-                raise Exception("获取窗口物理坐标失败")
-
-            phys_left, phys_top, phys_right, phys_bottom = rect
-            phys_width = phys_right - phys_left
-            phys_height = phys_bottom - phys_top
-
-            # 基于物理尺寸计算截图区域
-            grab_left = phys_left + int(left * phys_width)
-            grab_top = phys_top + int(top * phys_height)
-            grab_width = int(width * phys_width)
-            grab_height = int(height * phys_height)
-            logger.debug(
-                f"截图区域大小: {grab_width} * {grab_height}。左上角坐标({grab_left},{grab_top})，右下角坐标({grab_left+grab_width},{grab_top+grab_height})。"
-            )
-
-            # 验证截图尺寸
-            if grab_width <= 0 or grab_height <= 0:
-                logger.warning(f"计算出的截图尺寸无效: w = {grab_width} 像素, h = {grab_height} 像素")
-                return None
-
-            # 使用 GDI 截图
-            try:
-                # 获取 DC
-                hwindc = win32gui.GetWindowDC(hwnd)
-                srcdc = win32ui.CreateDCFromHandle(hwindc)
-                # 创建内存 DC 和位图
-                memdc = srcdc.CreateCompatibleDC()
-                bmp = win32ui.CreateBitmap()
-                bmp.CreateCompatibleBitmap(srcdc, grab_width, grab_height)
-                # 将位图选入内存 DC
-                memdc.SelectObject(bmp)
-                # 复制截图区域像素到位图
-                memdc.BitBlt(
-                    (0, 0), (grab_width, grab_height), srcdc, (grab_left, grab_top), win32con.SRCCOPY
-                )
-                # 从位图初始化 4 通道 numpy 数组 (BGRA/BGRX 图像)
-                screenshot_img_np = np.frombuffer(bmp.GetBitmapBits(True), dtype="uint8").reshape(
-                    (grab_height, grab_width, 4)
-                )
-                # 丢弃不需要的 alpha/padding 通道，仅保留 BGR
-                # 用 np.ascontiguousarray 确保内存是连续的，避免出现 bug
-                return np.ascontiguousarray(screenshot_img_np[:, :, :3])
-            finally:
-                if bmp:
-                    win32gui.DeleteObject(bmp.GetHandle())
-                if memdc:
-                    memdc.DeleteDC()
-                if srcdc:
-                    srcdc.DeleteDC()
-                if hwindc:
-                    win32gui.ReleaseDC(hwnd, hwindc)
 
         except Exception as e:
             logger.error(f"截图失败: {e}")
