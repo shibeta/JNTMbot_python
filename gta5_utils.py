@@ -94,7 +94,7 @@ class GameAutomator:
             self.hwnd, self.pid = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
             logger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
         # 以防万一将其从挂起中恢复
-        self._resume_gta_process(self)
+        self._resume_gta_process()
         # 设置为活动窗口
         set_active_window(self.hwnd)
 
