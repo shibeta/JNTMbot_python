@@ -182,19 +182,19 @@ class SteamBotClient:
         try:
             # 发送一个可以被捕获的信号 (在Windows上对进程组更有效)
             proc_to_kill.send_signal(CTRL_BREAK_EVENT)
-            
+
             # 等待一小段时间让进程响应
             # .wait() 比 time.sleep() 循环更高效
             proc_to_kill.wait(timeout=2)
             logger.info(f"进程 {proc_to_kill.pid} 已成功终止。")
-            
+
         except subprocess.TimeoutExpired:
             # 如果等待超时，则采取强制措施
             if proc_to_kill.poll() is None:
                 logger.warning(f"进程 {proc_to_kill.pid} 未能退出，将执行强制终止。")
                 proc_to_kill.kill()
                 logger.info(f"进程 {proc_to_kill.pid} 已被强制终止。")
-                
+
         except Exception as e:
             # 捕获其他可能的错误 (例如进程在操作期间突然消失)
             logger.error(f"终止进程 {proc_to_kill.pid} 时发生意外错误: {e}")
@@ -264,10 +264,7 @@ class SteamBotClient:
 
     # --- 业务逻辑方法 ---
     def get_login_status(self) -> dict:
-        """
-        调用 /status API，获取Bot的登录状态。
-        此方法现在能正确处理后端的 200 OK (已登录) 和 401 Unauthorized (未登录) 响应。
-        """
+        """调用 /status API，获取Bot的登录状态。"""
         try:
             response = requests.get(f"{self.base_url}/status", headers=self.headers, timeout=5)
 
@@ -280,7 +277,6 @@ class SteamBotClient:
                 return {"loggedIn": False, "error": response.json().get("error", "Not logged in")}
 
             # 对于其他所有失败的状态码 (如 500 Internal Server Error)
-            # raise_for_status 会抛出 HTTPError 异常
             response.raise_for_status()
 
             # 兜底，理论上不会执行到这里
