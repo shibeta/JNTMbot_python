@@ -1,6 +1,7 @@
 from __future__ import annotations
 import subprocess
 import threading
+from signal import CTRL_BREAK_EVENT
 import time
 import requests
 import atexit
@@ -87,7 +88,7 @@ class _SupervisorThread(threading.Thread):
             try:
                 response = requests.get(f"{self.client.base_url}/health", headers=self.headers, timeout=5)
                 if response.status_code == 200:
-                    logger.info(f"Steam Bot 后端已确认健康 (PID: {self.client.process.pid})。")
+                    logger.debug(f"Steam Bot 后端已确认健康 (PID: {self.client.process.pid})。")
                     return True
             except requests.ConnectionError:
                 # 这是预料之中的，因为服务器可能还没开始监听
@@ -177,10 +178,10 @@ class SteamBotClient:
         if proc_to_kill is None or proc_to_kill.poll() is not None:
             return  # 进程不存在或已退出
 
-        logger.info(f"正在尝试终止进程 (PID: {proc_to_kill.pid})...")
+        logger.debug(f"正在尝试终止进程 (PID: {proc_to_kill.pid})...")
         try:
             # 发送一个可以被捕获的信号 (在Windows上对进程组更有效)
-            proc_to_kill.send_signal(subprocess.CTRL_BREAK_EVENT)
+            proc_to_kill.send_signal(CTRL_BREAK_EVENT)
             
             # 等待一小段时间让进程响应
             # .wait() 比 time.sleep() 循环更高效
@@ -367,16 +368,16 @@ class SteamBotClient:
 
     def shutdown(self):
         """关闭 Supervisor 线程和 Steam Bot 子进程。"""
-        logger.info("正在启动关闭程序...")
+        logger.info("正在关闭 Steam Bot...")
 
         # 通知 Supervisor 线程停止
         if self.supervisor.is_alive():
-            logger.info("正在通知 Supervisor 线程停止...")
+            logger.debug("正在通知 Supervisor 线程停止...")
             self.supervisor_stop_event.set()
             self.supervisor.join()
-            logger.info("Supervisor 线程已成功退出。")
+            logger.debug("Supervisor 线程已成功退出。")
         else:
-            logger.info("Supervisor 线程已经停止。")
+            logger.debug("Supervisor 线程已经停止。")
 
         # Supervisor 停止后，可以安全地关闭子进程，因为它不会再被重启
         with self.process_lock:
@@ -388,13 +389,13 @@ class SteamBotClient:
             return
 
         # 请求后端登出Steam。如果失败也无所谓，因为稍后将直接关闭进程
-        logger.info(f"正在关闭 Steam Bot 后端 (PID: {proc_to_shutdown.pid})...")
+        logger.debug(f"正在关闭 Steam Bot 后端 (PID: {proc_to_shutdown.pid})...")
         try:
-            logger.info("正在通过 API 请求后端从 Steam 登出...")
+            logger.debug("正在通过 API 请求后端从 Steam 登出...")
             requests.post(f"{self.base_url}/logout", headers=self.headers, timeout=5)
-            logger.info("已成功向后端发送登出请求。")
+            logger.debug("已成功向后端发送登出请求。")
         except requests.RequestException as e:
-            logger.warning(f"请求后端登出失败 (这可能是正常的，如果进程已无响应): {e}")
+            logger.debug(f"请求后端登出失败 (这可能是正常的，如果进程已无响应): {e}")
 
         # 终止 Steam Bot 进程
         self._terminate_process(proc_to_shutdown)
