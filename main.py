@@ -5,6 +5,7 @@ import os
 import traceback
 from functools import wraps
 import requests
+from atexit import _run_exitfuncs as trigger_atexit
 
 from logger import setup_logging, get_logger
 from config import Config
@@ -31,6 +32,15 @@ def interrupt_decorator(func):
     return wrapper
 
 
+# 安全退出程序而不需要调用 return 或 sys.exit
+def safe_exit():
+    try:
+        # os._exit() 不会触发 atexit，因此需要手动触发
+        trigger_atexit()
+    finally:
+        os._exit(0)
+
+
 # --- 主程序执行 ---
 @interrupt_decorator
 def main():
@@ -54,6 +64,33 @@ def main():
         setup_logging(log_level="DEBUG")
     else:
         setup_logging(log_level="INFO")
+
+    # 初始化热键
+    pause_event = threading.Event()
+    pause_event.set()  # 初始状态为“已恢复”
+
+    # 暂停/恢复热键
+    def toggle_pause():
+        if pause_event.is_set():
+            pause_event.clear()  # 清除标志，进入暂停状态
+            logger.warning("暂停/恢复热键被按下，Bot 将在本循环结束后暂停。按 F10 恢复。")
+        else:
+            pause_event.set()  # 设置标志，恢复运行
+            try:
+                steam_bot.reset_send_timer()
+            except:
+                pass  # 没有什么需要做的
+            logger.warning("暂停/恢复热键被按下，Bot 已恢复。")
+
+    keyboard.add_hotkey("ctrl+f9", toggle_pause)
+
+    # 退出热键
+    def toggle_exit():
+        logger.warning("退出热键被按下，退出程序。。。")
+        safe_exit()
+
+    keyboard.add_hotkey("ctrl+f10", toggle_exit)
+    logger.warning("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
 
     # 初始化 Steam Bot
     try:
@@ -80,44 +117,15 @@ def main():
             logger.error(f"请将正确的群组ID填入 {config_file_path} 。")
             return
 
-    # 热键设置
-    pause_event = threading.Event()
-    pause_event.set()  # 初始状态为“已恢复”
-
-    # 暂停/恢复热键
-    def toggle_pause():
-        if pause_event.is_set():
-            pause_event.clear()  # 清除标志，进入暂停状态
-            logger.warning("暂停/恢复热键被按下，Bot 将在本循环结束后暂停。按 F10 恢复。")
-        else:
-            pause_event.set()  # 设置标志，恢复运行
-            try:
-                steam_bot.reset_send_timer()
-            except:
-                pass  # 没有什么需要做的
-            logger.warning("暂停/恢复热键被按下，Bot 已恢复。")
-
-    keyboard.add_hotkey("ctrl+f9", toggle_pause)
-
-    # 退出热键
-    def toggle_exit(steam_bot: SteamBotClient):
-        logger.warning("退出热键被按下，退出程序。。。")
-        try:
-            steam_bot.shutdown()
-        except:
-            pass  # 没有什么需要做的
-        finally:
-            os._exit(0)
-
-    keyboard.add_hotkey("ctrl+f10", toggle_exit, args=(steam_bot,))
-    logger.warning("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
-
     # 初始化 OCR
     try:
         GOCREngine = get_ocr_engine()
     except Exception as e:
         logger.error(f"初始化 OCR 引擎失败: {e}")
         return
+
+    # 初始化游戏控制器
+    automator = GameAutomator(config, GOCREngine, steam_bot)
 
     # 初始化健康检查
     if config.enableHealthCheck:
@@ -132,6 +140,7 @@ def main():
             args=(
                 steam_bot,
                 pause_event,
+                safe_exit,
                 config.healthCheckInterval,
                 config.enableWechatPush,
                 config.pushplusToken,
@@ -162,9 +171,6 @@ def main():
             return
     else:
         logger.warning("未启用微信推送。")
-
-    # 初始化游戏控制器
-    automator = GameAutomator(config, GOCREngine, steam_bot)
 
     # --- 主循环 ---
     # 记录主循环连续出错的次数

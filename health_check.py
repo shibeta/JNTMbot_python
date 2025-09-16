@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
-import os
 import threading
 import time
+from typing import Callable
 
 from logger import get_logger
 from push_utils import push_wechat
@@ -12,9 +12,64 @@ logger = get_logger(name="health_check")
 is_bot_healthy_on_last_check = True
 
 
+def on_become_unhealthy(
+    unhealthy_reason: str,
+    steam_bot: SteamBotClient,
+    last_send_timestamp: int,
+    steam_chat_timeout_threshold: int,
+    enable_wechat_push: bool,
+    wechat_push_token: str,
+):
+    """
+    在从 healthy 状态变为 unhealthy 状态后，需要执行的作业:
+    根据config设置，发送微信通知
+    """
+    logger.info("Bot 状态变化: healthy -> unhealthy。")
+    # 发送微信通知
+    if enable_wechat_push:
+        logger.info("启用了微信推送，将通过微信通知 Bot 变为 unhealthy。。")
+        title = f"Bot: {steam_bot.get_login_status().get('name', '获取Bot名称失败')} 状态变为 unhealthy"
+        # 具体原因
+        if unhealthy_reason == "SteamChatTimeout":
+            # 由于上次向 Steam 发送消息的时间超时
+            last_send_system_time = datetime.fromtimestamp(last_send_timestamp)
+            formatted_time = last_send_system_time.strftime("%Y-%m-%d %H:%M:%S")
+            msg = f"Bot 超过 {steam_chat_timeout_threshold} 分钟未向 Steam 发送消息。上一次向Steam发送信息时间为 {formatted_time}"
+        else:
+            # 未定义的原因
+            msg = f"未知原因: {unhealthy_reason}"
+
+        logger.warning(f"正在发送微信通知: {title}: {msg}")
+        push_wechat(wechat_push_token, title, msg)
+
+
+def on_become_healthy(steam_bot: SteamBotClient, enable_wechat_push: bool, wechat_push_token: str):
+    """
+    在从 unhealthy 状态变为 healthy 状态后，需要执行的作业:
+    根据config设置，发送微信通知
+    """
+    logger.info("Bot 状态变化: unhealthy -> healthy。")
+    # 发送微信通知
+    if enable_wechat_push:
+        logger.info("启用了微信推送，将通过微信通知 Bot 变为 healthy。")
+        title = f"Bot: {steam_bot.get_login_status().get('name', '获取Bot名称失败')} 状态变为 healthy"
+        msg = "现在一切正常"
+
+        logger.warning(f"正在发送微信通知: {title}: {msg}")
+        push_wechat(wechat_push_token, title, msg)
+
+def on_is_unhealthy(enable_exit_on_unhealthy:bool, exit_func:Callable):
+    """
+    在本次检查状态为 unhealthy 时，需要执行的作业:
+    根据config设置，退出程序
+    """
+    if enable_exit_on_unhealthy:
+        exit_func()
+
 def health_check_monitor(
     steam_bot: SteamBotClient,
     pause_event: threading.Event,
+    exit_func: Callable,
     check_interval: int,
     enable_wechat_push: bool,
     wechat_push_token: str,
@@ -22,7 +77,7 @@ def health_check_monitor(
     steam_chat_timeout_threshold: int,
 ):
     """
-    一个在后台运行的守护线程函数，用于监控 Bot 向 Steam 发送信息的情况。
+    一个在后台运行的守护线程函数，用于监控 Bot 可用性。
     """
     global is_bot_healthy_on_last_check
     logger.info("Bot 可用性监控线程已启动，每5分钟检查一次。")
@@ -52,46 +107,22 @@ def health_check_monitor(
             is_bot_healthy_on_this_check = True
 
         # 根据本次检查状态和上次检查状态，执行行为:
-        # healthy -> unhealthy: 根据config设置，发送微信通知
+        # healthy -> unhealthy
         if is_bot_healthy_on_last_check == True and is_bot_healthy_on_this_check == False:
-            logger.info("Bot 状态变化: healthy -> unhealthy。")
-            # 发送微信通知
-            if enable_wechat_push:
-                logger.info("启用了微信推送，将通过微信通知 Bot 变为 unhealthy。。")
-                title = (
-                    f"Bot: {steam_bot.get_login_status().get('name', '获取Bot名称失败')} 状态变为 unhealthy"
-                )
-                # 具体原因
-                if unhealthy_reason == "SteamChatTimeout":
-                    # 由于上次向 Steam 发送消息的时间超时
-                    last_send_system_time = datetime.fromtimestamp(last_send_timestamp)
-                    formatted_time = last_send_system_time.strftime("%Y-%m-%d %H:%M:%S")
-                    msg = f"Bot 超过 {steam_chat_timeout_threshold} 分钟未向 Steam 发送消息。上一次向Steam发送信息时间为 {formatted_time}"
-                else:
-                    # 未定义的原因
-                    msg = f"未知原因: {unhealthy_reason}"
+            on_become_unhealthy(
+                unhealthy_reason,
+                steam_bot,
+                last_send_timestamp,
+                steam_chat_timeout_threshold,
+                enable_wechat_push,
+                wechat_push_token,
+            )
 
-                logger.warning(f"正在发送微信通知: {title}: {msg}")
-                push_wechat(wechat_push_token, title, msg)
-
-        # unhealthy -> healthy: 根据config设置，发送微信通知
+        # unhealthy -> healthy
         if is_bot_healthy_on_last_check == False and is_bot_healthy_on_this_check == True:
-            logger.info("Bot 状态变化: unhealthy -> healthy。")
-            # 发送微信通知
-            if enable_wechat_push:
-                logger.info("启用了微信推送，将通过微信通知 Bot 变为 healthy。")
-                title = f"Bot: {steam_bot.get_login_status().get('name', '获取Bot名称失败')} 状态变为 healthy"
-                msg = "现在一切正常"
+            on_become_healthy(steam_bot, enable_wechat_push, wechat_push_token)
 
-                logger.warning(f"正在发送微信通知: {title}: {msg}")
-                push_wechat(wechat_push_token, title, msg)
-
-        # any -> unhealthy: 根据config设置，退出程序
+        # any -> unhealthy
         if is_bot_healthy_on_this_check == False:
             if enable_exit_on_unhealthy:
-                try:
-                    steam_bot.shutdown()
-                except:
-                    pass  # 没有什么需要做的
-                finally:
-                    os._exit(0)
+                exit_func()
