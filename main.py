@@ -104,6 +104,9 @@ def main():
     # 等待至多 steamBotLoginTimeout 秒来让 Steam Bot 完成初始化
     if not steam_bot.wait_for_ready(timeout=config.steamBotLoginTimeout):
         logger.error(f"Steam Bot 后端未能在 {config.steamBotLoginTimeout} 秒内准备就绪。")
+    # 等待 Steam Bot 完成首次登录
+    while steam_bot.get_login_status()["loggedIn"] != True:
+        time.sleep(5)
     logger.info("Steam Bot 客户端初始化完成。")
 
     # 验证配置中的群组ID
