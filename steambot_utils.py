@@ -401,4 +401,4 @@ class SteamBotClient:
         # 终止 Steam Bot 进程
         self._terminate_process(proc_to_shutdown)
 
-        logger.info("关闭程序完成。")
+        logger.info("成功关闭 Steam Bot。")
