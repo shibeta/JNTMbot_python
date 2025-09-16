@@ -2,6 +2,7 @@ import time
 import os
 import requests
 import re
+import atexit
 
 from config import Config
 from ocr_engine import OCREngine
@@ -9,7 +10,7 @@ from keyboard_utils import *  # 导入所有键盘功能和常量
 from steambot_utils import SteamBotClient
 from process_utils import (
     find_window,
-    get_window_info,
+    resume_process_from_suspend,
     suspend_process_for_duration,
     kill_processes,
     set_active_window,
@@ -48,6 +49,9 @@ class GameAutomator:
         self.hwnd = hwnd
         self.pid = pid
 
+        # 注册一个退出处理函数，以确保Python程序退出时 GTA V 进程不会被挂起
+        atexit.register(self._resume_gta_process)
+
     def get_gta_hwnd(self) -> int:
         return self.hwnd
 
@@ -56,6 +60,11 @@ class GameAutomator:
         logger.info("正在卡单人战局。。。")
         suspend_process_for_duration(self.pid, self.config.suspendGTATime)
         logger.info("卡单人战局完成。")
+
+    def _resume_gta_process(self):
+        """将 GTA V 进程从挂起中恢复"""
+        if self.pid:
+            resume_process_from_suspend(self.pid)
 
     def kill_gta(self):
         """杀死 GTA V 进程，并且清除窗口句柄和 PID 。"""
@@ -84,6 +93,8 @@ class GameAutomator:
             # 如果启动了则更新 PID 和窗口句柄
             self.hwnd, self.pid = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
             logger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
+        # 以防万一将其从挂起中恢复
+        self._resume_gta_process(self)
         # 设置为活动窗口
         set_active_window(self.hwnd)
 

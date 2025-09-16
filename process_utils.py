@@ -176,6 +176,29 @@ def suspend_process_for_duration(pid: int, duration_seconds: int):
             logger.error(f"恢复进程 {pid} 时出错: {e}")
 
 
+def resume_process_from_suspend(pid: int):
+    """
+    将一个挂起的进程恢复。如果进程未被挂起，将不做任何事。
+
+    Args:
+        pid: 要恢复的进程的 PID
+    """
+    if not is_process_exist(pid):
+        logger.warning(f"无法从挂起恢复：无效的PID ({pid})。")
+        return
+    try:
+        proc = psutil.Process(pid)
+        if proc.status() == psutil.STATUS_STOPPED:
+            proc.resume()
+            logger.info(f"已恢复进程 {pid}。")
+        else:
+            pass
+    except psutil.NoSuchProcess:
+        pass  # 进程可能在操作期间关闭了
+    except Exception as e:
+        logger.error(f"恢复进程 {pid} 时出错: {e}")
+
+
 def kill_processes(process_names: list[str]):
     """
     终止所有符合名称的进程。
