@@ -13,7 +13,7 @@ steamGroupId: '37660928'
 # 要发送消息的Steam群组频道名称
 steamChannelName: BOT候车室
 # 初始化Steam Bot时，等待后端完成登录的最大等待时间 (秒)
-steamBotLoginTimeout: 60
+steamBotLoginTimeout: 120
 # 启用健康检查，每间隔一段时间检查Bot上次向Steam发送信息的时间
 enableHealthCheck: true
 # 健康检查的频率，即两次健康检查之间等待的时间 (分钟)
@@ -21,9 +21,9 @@ healthCheckInterval: 10
 # 基于Steam消息的健康检查判断阈值，如果发现Bot一段时间内未向Steam发送过信息，则认为Bot不可用 (分钟)
 healthCheckSteamChatTimeoutThreshold: 60
 # 健康检查发现Bot不可用时，是否退出程序
-exitOnUnhealthy: false
+enableExitOnUnhealthy: false
 # 是否启用微信推送bot状态信息。启用后，当程序运行一段时间后发生报错退出，或健康状态发生变化时，会向微信推送错误信息
-wechatPush: false
+enableWechatPush: false
 # pushplus的API token，用于微信通知
 pushplusToken: ''
 # 微信推送报错退出的启用延迟。为节省API用量，只有程序运行时长超过该时间后，报错退出时才会向微信推送 (分钟)
