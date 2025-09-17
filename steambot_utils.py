@@ -114,7 +114,8 @@ class SteamBotClient:
         self.process_lock = threading.Lock()  # 用于操作子进程的锁
         self.base_url = f"http://{config.steamBotHost}:{config.steamBotPort}"
         self.headers = {"Authorization": f"Bearer {config.steamBotToken}"}
-        self.last_send_time = time.monotonic()  # 上次向 Steam 发送消息的时间
+        self.last_send_monotonic_time = time.monotonic()  # 上次向 Steam 发送消息的相对时间
+        self.last_send_system_time = time.time()  # 上次向 Steam 发送消息的系统时间，注意该时间受系统 NTP 对时影响，不够精确，仅作参考
         self.login_lock = threading.Lock()  # 为登录操作创建一个专用的锁
         self._is_login_in_progress = False  # 一个辅助标志
 
@@ -349,7 +350,8 @@ class SteamBotClient:
             )
             response.raise_for_status()
             logger.info("消息发送成功。")
-            self.last_send_time = time.monotonic()
+            self.last_send_monotonic_time = time.monotonic()
+            self.last_send_system_time = time.time()
         except requests.ConnectionError as e:
             logger.error("后端服务不可用，无法发送消息。")
             raise Exception("Steam Bot 后端未运行，无法发送消息") from e
@@ -357,11 +359,15 @@ class SteamBotClient:
             logger.error(f"调用 /send-message API 失败: {e}")
             raise e
 
-    def get_last_send_time(self) -> float:
-        return self.last_send_time
+    def get_last_send_monotonic_time(self) -> float:
+        return self.last_send_monotonic_time
+    
+    def get_last_send_system_time(self) -> float:
+        return self.last_send_system_time
 
     def reset_send_timer(self):
-        self.last_send_time = time.monotonic()
+        self.last_send_monotonic_time = time.monotonic()
+        self.last_send_system_time = time.time()
 
     def shutdown(self):
         """关闭 Supervisor 线程和 Steam Bot 子进程。"""
