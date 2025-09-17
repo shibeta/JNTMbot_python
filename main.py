@@ -210,7 +210,7 @@ def main():
                 continue
 
             # 导航并寻找差事
-            automator.go_downstairs()
+            automator.go_job_point_from_bed()
             if not automator.find_job():
                 logger.warning("未能找到差事标记。重启循环。")
                 continue

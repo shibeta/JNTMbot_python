@@ -193,14 +193,16 @@ class GameAutomator:
         )
 
     # 各种动作序列
-    def go_downstairs(self):
-        """从事务所的床出发，下到一楼"""
-        logger.info("动作：正在下楼...")
+    def go_job_point_from_bed(self):
+        """从事务所的床出发，下到一楼，移动到任务点附近"""
+        logger.info("动作：正在从事务所个人空间走到楼梯间...")
+        # 走到柱子上卡住
         press_keyboard("a")
         press_keyboard("w")
         time.sleep(2.0)
         release_keyboard("w")
         release_keyboard("a")
+        # 走到楼梯口
         press_keyboard("d")
         time.sleep(6.0)
         start_time = time.monotonic()
@@ -209,7 +211,10 @@ class GameAutomator:
             click_keyboard("w", 150)
         time.sleep(2.0)
         release_keyboard("d")
+        # 走进楼梯门
         click_keyboard("w", 2000)
+        # 走下楼梯
+        logger.info("动作：正在下楼...")
         click_keyboard("s", 4000)
         press_keyboard("d")
         press_keyboard("w")
@@ -217,23 +222,21 @@ class GameAutomator:
         release_keyboard("w")
         release_keyboard("d")
         click_keyboard("a", 5000)
-
-    def find_job(self) -> bool:
-        """从一楼楼梯间开始向任务触发点移动，并检查是否到达任务点。"""
-        logger.info("动作：正在寻找差事地点...")
         # 走出楼梯间
         start_time = time.monotonic()
         while time.monotonic() - start_time < self.config.goOutStairsTime / 1000.0:
             click_keyboard("s", self.config.pressSTimeStairs)
             click_keyboard("a", self.config.pressATimeStairs)
-
+        logger.info("动作：正在穿过一楼走廊...")
         # 穿过走廊
         start_time = time.monotonic()
         while time.monotonic() - start_time < self.config.crossAisleTime / 1000.0:
             click_keyboard("s", self.config.pressSTimeAisle)
             click_keyboard("a", self.config.pressATimeAisle)
 
-        # 使用 OCR 搜索差事标记
+    def find_job(self) -> bool:
+        """检查是否到达任务点。如果没有，会尝试向任务点移动。"""
+        # 一边搜索任务标记，一边向任务黄圈移动
         start_time = time.monotonic()
         while time.monotonic() - start_time < self.config.waitFindJobTimeout / 1000.0:
             click_keyboard("s", self.config.pressSTimeGoJob)
@@ -381,7 +384,7 @@ class GameAutomator:
                 and last_joining_count > 0
                 and joining_count > 0
             ):
-                logger.info('玩家长期卡在"正在加入"状态，退出差事并重新开始。')
+                logger.info("玩家长期卡在\"正在加入\"状态，退出差事并重新开始。")
                 try:
                     self.steam_bot.send_group_message(self.config.msgJoiningPlayerKick)
                 except requests.RequestException as e:
