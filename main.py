@@ -14,7 +14,7 @@ from steambot_utils import SteamBotClient
 from push_utils import push_wechat
 from gta5_utils import GameAutomator
 from keyboard_utils import click_keyboard
-from health_check import health_check_monitor
+from health_check import HealthMonitor
 
 logger = get_logger(name="main")
 
@@ -139,28 +139,14 @@ def main():
 
     # 初始化健康检查
     if config.enableHealthCheck:
-        logger.warning(f"已启用健康检查。每 {config.healthCheckInterval} 分钟一次。")
-        logger.info(
-            f"当 Bot 连续 {config.healthCheckSteamChatTimeoutThreshold} 分钟未向 Steam 发送消息时，将认为 Bot 不健康。"
+        logger.warning(f"已启用健康检查。正在初始化监控模块...")
+        monitor = HealthMonitor(
+            steam_bot,
+            pause_event,
+            safe_exit,
+            config
         )
-        if config.enableExitOnUnhealthy:
-            logger.warning(f"当监测到 Bot 不健康时，将退出程序以节省资源。")
-        monitor_thread = threading.Thread(
-            target=health_check_monitor,
-            args=(
-                steam_bot,
-                pause_event,
-                safe_exit,
-                config.healthCheckInterval,
-                config.enableWechatPush,
-                config.pushplusToken,
-                config.enableExitOnUnhealthy,
-                config.healthCheckSteamChatTimeoutThreshold,
-            ),
-            daemon=True,  # 设置为守护线程，这样主程序退出时该线程会自动结束
-        )
-        monitor_thread.start()
-        logger.warning("初始化健康检查线程完成。")
+        monitor.start()
 
     else:
         logger.warning("未启用健康检查。")
@@ -172,7 +158,7 @@ def main():
             if config.enableHealthCheck:
                 logger.info("当健康检查发现 Bot 状态发生变化时，将通过微信通知。")
             logger.info(
-                f"当程序运行超过 {config.wechatPushActivationDelay} 分钟后，因发生异常而退出时，将通过微信通知。"
+                f"当程序运行超过 {config.wechatPushActivationDelay / 60:.1f} 分钟后，因发生异常而退出时，将通过微信通知。"
             )
 
         else:
