@@ -39,9 +39,9 @@ class HealthMonitor(threading.Thread):
         self._is_healthy_on_last_check = True  # 初始假定为健康
         self._stop_event = threading.Event()  # 用于停止线程
 
-        logger.info(f"健康检查已配置：每 {config.healthCheckInterval} 分钟检查一次。")
+        logger.info(f"健康检查已配置：每 {self.check_interval / 60:.1f} 分钟检查一次。")
         logger.info(
-            f"不健康阈值：连续 {config.healthCheckSteamChatTimeoutThreshold} 分钟未发送消息。"
+            f"不健康阈值：连续 {self.steam_chat_timeout_threshold} 分钟未发送消息。"
         )
         if self.enable_exit_on_unhealthy:
             logger.warning("不健康时自动退出程序功能：已启用。")

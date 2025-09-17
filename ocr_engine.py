@@ -215,7 +215,7 @@ class OCREngine:
         
         # 截图
         logger.debug(
-            f"开始对句柄为{hwnd}的窗口截图，{"" if include_title_bar else "不"}包括标题栏。截图范围左上角相对坐标为({left}, {top})，右下角相对坐标为({left+width}, {top+height})。"
+            f"开始对句柄为{hwnd}的窗口截图，{'' if include_title_bar else '不'}包括标题栏。截图范围左上角相对坐标为({left}, {top})，右下角相对坐标为({left+width}, {top+height})。"
         )
         # screenshot_np = self._capture_window_area_GDI(hwnd, x, y, w, h, include_title_bar)
         # 尝试新的mss截图方法

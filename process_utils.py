@@ -70,7 +70,7 @@ def get_window_info(window_name: str) -> Optional[Tuple[int, int]]:
             return None
         return hwnd, pid
     except Exception as e:
-        logger.error(f"获取窗口 '{window_name}' 的进程ID时出错: {e}")
+        logger.error(f"获取窗口 \"{window_name}\" 的进程ID时出错: {e}")
         return None
 
 

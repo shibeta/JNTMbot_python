@@ -147,7 +147,7 @@ class SteamBotClient:
         elif os.path.exists(script_path):
             command = [node_executable, script_path]
         else:
-            logger.error(f"Steam Bot 启动失败: 未找到 '{executable_path}' 或 '{script_path}'。")
+            logger.error(f"Steam Bot 启动失败: 未找到 \"{executable_path}\" 或 \"{script_path}\"。")
             self.process = None
             return
 
@@ -168,7 +168,7 @@ class SteamBotClient:
             self.process = subprocess.Popen(command, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
             logger.warning(f"Steam Bot 后端已启动，新进程ID: {self.process.pid}")
         except FileNotFoundError:
-            logger.error("启动失败: 未找到 'node' 可执行文件。")
+            logger.error("启动失败: 未找到 \"node\" 可执行文件。")
             self.process = None
         except Exception as e:
             logger.error(f"启动 Steam Bot 后端时发生未知错误: {e}")
@@ -344,7 +344,7 @@ class SteamBotClient:
         }
 
         try:
-            logger.info(f"正在通过API向Steam群组 '{payload['groupId']}' 发送消息...")
+            logger.info(f"正在通过API向Steam群组 \"{payload['groupId']}\" 发送消息...")
             response = self._make_authenticated_request(
                 requests.post, f"{self.base_url}/send-message", json=payload, headers=self.headers, timeout=10
             )
