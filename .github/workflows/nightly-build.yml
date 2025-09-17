@@ -12,6 +12,8 @@ jobs:
   build_python:
     name: Build Python Executable
     runs-on: windows-latest
+    env:
+      PYTHONUTF8: "1"  # 强制 Python 使用 UTF-8 模式
 
     steps:
       - name: Checkout repository
