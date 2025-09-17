@@ -131,7 +131,7 @@ jobs:
         shell: pwsh
 
       - name: Create or update Nightly Release
-        uses: andelf/nightly-release@v1
+        uses: andelf/nightly-release@main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
