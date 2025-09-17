@@ -1,0 +1,138 @@
+name: Stable Release
+
+on:
+  # 只允许手动触发
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: '要创建的 tag (例如 v1.0.0)'
+        required: true
+      release_name:
+        description: 'Release 的标题 (例如 Version 1.0.0)'
+        required: true
+      body:
+        description: 'Release 的描述内容 (支持 Markdown)'
+        required: false
+        default: '这是一个稳定的发行版本。'
+      is_draft:
+        description: '是否创建为草稿 (Draft)?'
+        type: boolean
+        required: true
+        default: true
+
+jobs:
+  # --- 构建 Python 部分 ---
+  build_python:
+    name: Build Python Executable
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install ViGEmBus Driver from local MSI
+        run: |
+          $msiPath = Join-Path $env:GITHUB_WORKSPACE "assets\ViGEmBusSetup_x64.msi"
+          msiexec /i "$msiPath" /qn /norestart
+          Write-Host "Waiting for ViGEmBus driver to settle..."
+          Start-Sleep -Seconds 5
+        shell: pwsh
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Setup MSVC Developer Command Prompt
+        uses: ilammy/msvc-dev-cmd@v1
+      - name: Package with Nuitka
+        run: |
+          nuitka --msvc=latest --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter --output-dir=dist --include-package-data=rapidocr --windows-icon-from-ico=./assets/johnny_guns.ico --product-name=德瑞Bot --product-version=${{ github.event.inputs.tag_name }} --file-description=德瑞Bot自动开车脚本 main.py
+        shell: cmd
+      - name: Upload Python artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-artifact
+          path: ./dist/main.dist/
+
+  # --- 构建 Node.js 部分 ---
+  build_node:
+    name: Build Node.js Executable
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Node.js dependencies and build
+        run: |
+          cd steam_bot
+          npm install
+          npm run build
+        shell: bash
+      - name: Upload Node.js artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: node-artifact
+          path: ./steam_bot/dist/steam_bot.exe
+
+  # --- 合并产物并创建 Release ---
+  create_release:
+    name: Create Stable Release
+    runs-on: windows-latest
+    needs: [build_python, build_node]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: build_output
+
+      - name: Prepare and package release files
+        id: package
+        run: |
+          $publishDir = "publish"
+          $releaseSubDir = "$publishDir/release"
+          # 使用 tag 命名 zip 文件，更具可读性
+          $zipName = "JNTMbot_python_${{ github.event.inputs.tag_name }}.zip"
+          $zipPath = "$publishDir/$zipName"
+
+          New-Item -ItemType Directory -Force -Path $publishDir
+          New-Item -ItemType Directory -Force -Path $releaseSubDir
+          
+          Copy-Item -Path "./build_output/python-artifact/*" -Destination $releaseSubDir -Recurse -Force
+          Copy-Item -Path "./build_output/node-artifact/steam_bot.exe" -Destination $releaseSubDir -Force
+          
+          Rename-Item -Path "$releaseSubDir/main.exe" -NewName "德瑞Bot.exe" -Force
+          Copy-Item -Path "./config.yaml.example" -Destination "$releaseSubDir/config.yaml" -Force
+          
+          Compress-Archive -Path "$releaseSubDir/*" -DestinationPath $zipPath -Force
+          
+          echo "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
+        shell: pwsh
+
+      # 使用 actions/create-release 来创建稳定版 Release
+      - name: Create Release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # 使用输入的 tag 作为 release 的 tag
+          tag_name: ${{ github.event.inputs.tag_name }}
+          # 使用输入的 name 作为 release 的标题
+          release_name: ${{ github.event.inputs.release_name }}
+          # 使用输入的 body 作为 release 的描述
+          body: ${{ github.event.inputs.body }}
+          # 根据输入决定是否为草稿
+          draft: ${{ github.event.inputs.is_draft }}
+          # 稳定版通常不是 prerelease
+          prerelease: false
+          # 上传打包好的文件
+          files: ${{ steps.package.outputs.zip_path }}
