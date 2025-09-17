@@ -178,11 +178,12 @@
 -   `main.py`: 主函数，负责整合所有模块并执行核心逻辑。
 -   `config.py`: 读取和初始化 `config.yaml` 中的配置。
 -   `gta5_utils.py`: 封装了所有 GTA5 游戏内的自动化操作脚本。
--   `steam_utils.py`: Python 客户端，用于管理 `steam_bot` 后端并调用其 API 发送消息。
+-   `steambot_utils.py`: 用于管理 `steam_bot` 后端并调用其 API 发送消息。
 -   `ocr_engine.py`: 对 RapidOCR 的封装，用于游戏画面识别。
 -   `process_utils.py`: 提供了获取进程信息、暂停进程（用于卡单人战局）等功能。
 -   `keyboard_utils.py`: 模拟键盘输入。
 -   `push_utils.py`: 消息平台推送，目前实现了基于 PushPlus 的微信推送。
+-   `health_check`: 监控 Bot 是否正常工作。
 -   `logger.py`: 简单的日志格式化工具。
 -   `steam_bot/server.js`: 基于 `node-steam-user` 的 Node.js 后端，将 Steam 功能封装为 HTTP API。
 -   `steam_bot/SteamChatBot.js`: 对 `node-steam-user` 库的核心封装。
