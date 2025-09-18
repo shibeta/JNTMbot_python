@@ -6,23 +6,12 @@ from rapidocr import RapidOCR, EngineType, LangDet, LangRec, ModelType, OCRVersi
 import threading
 from time import sleep
 import mss
-from ctypes import windll, byref, c_int
 
 from process_utils import is_window_handler_exist
 from logger import get_logger
 
 logger = get_logger("ocr_engine")
 
-# 提前加载DLLs
-user32 = windll.user32
-shcore = windll.shcore
-# 设置DPI感知，这对于GetDpiForMonitor很重要
-# PROCESS_PER_MONITOR_DPI_AWARE = 2
-try:
-    shcore.SetProcessDpiAwareness(2)
-except Exception:
-    # 在旧版Windows上，使用SetProcessDPIAware
-    user32.SetProcessDPIAware()
 
 # 全局变量，用于存储初始化后的 OCR 引擎实例，避免重复加载模型
 GOCREngine = None
@@ -75,16 +64,9 @@ class OCREngine:
                 False: 基于客户区计算 (排除标题栏和边框)
 
         Returns:
-            一个有4个元素的元组，对应窗口或客户区上下左右的物理像素坐标。如果获取失败，返回 None
+            一个有4个元素的元组，对应窗口或客户区左上右下的物理像素坐标。如果获取失败，返回 None
         """
         try:
-            # 使用更现代的API获取DPI
-            monitor = user32.MonitorFromWindow(hwnd, 2)  # MONITOR_DEFAULTTONEAREST
-            dpi_x = c_int()
-            dpi_y = c_int()
-            shcore.GetDpiForMonitor(monitor, 0, byref(dpi_x), byref(dpi_y))
-            scale_factor = dpi_x.value / 96.0  # 96 DPI是Windows的基准
-            logger.debug(f"缩放比: {scale_factor} 。")
 
             if include_title_bar:
                 left, top, right, bottom = win32gui.GetWindowRect(hwnd)
@@ -101,16 +83,7 @@ class OCREngine:
                     f"指定仅包含客户区，客户区大小: {client_width} * {client_height}。左上角坐标({left},{top})，右下角坐标({right},{bottom})。"
                 )
 
-            # 应用DPI缩放，转换为物理像素
-            physical_left = int(left * scale_factor)
-            physical_top = int(top * scale_factor)
-            physical_right = int(right * scale_factor)
-            physical_bottom = int(bottom * scale_factor)
-            logger.debug(
-                f"缩放后的客户区大小: {physical_right-physical_left} * {physical_bottom-physical_top}。左上角坐标({physical_left},{physical_top})，右下角坐标({physical_right},{physical_bottom})。"
-            )
-
-            return physical_left, physical_top, physical_right, physical_bottom
+            return left, top, right, bottom
         except Exception as e:
             logger.error(f"获取物理坐标失败: {e}")
             return None
@@ -212,7 +185,7 @@ class OCREngine:
         if not is_window_handler_exist(hwnd):
             logger.error(f"要截图的窗口{hwnd}是一个无效的窗口句柄。")
             return ""
-        
+
         # 截图
         logger.debug(
             f"开始对句柄为{hwnd}的窗口截图，{'' if include_title_bar else '不'}包括标题栏。截图范围左上角相对坐标为({left}, {top})，右下角相对坐标为({left+width}, {top+height})。"
