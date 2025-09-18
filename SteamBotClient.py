@@ -8,6 +8,7 @@ import atexit
 import os
 from urllib.request import getproxies
 
+from Config import Config
 from logger import get_logger
 
 logger = get_logger("steambot_utils")
@@ -79,7 +80,7 @@ class _SupervisorThread(threading.Thread):
             # 使用 event.wait() 代替 time.sleep() 可以让线程在收到停止信号时立即响应
             self.stop_event.wait(self.check_interval)
 
-        logger.info("Supervisor 线程已接收到停止信号，正在退出。")
+        logger.debug("Supervisor 线程已接收到停止信号，正在退出。")
 
     def _wait_for_health(self, timeout) -> bool:
         """轮询 /health 端点，直到服务就绪或超时。"""
@@ -108,7 +109,7 @@ class SteamBotClient:
     采用 Supervisor 线程模式，将进程管理与业务逻辑解耦。
     """
 
-    def __init__(self, config):
+    def __init__(self, config:Config):
         self.config = config
         self.process = None
         self.process_lock = threading.Lock()  # 用于操作子进程的锁
@@ -187,14 +188,14 @@ class SteamBotClient:
             # 等待一小段时间让进程响应
             # .wait() 比 time.sleep() 循环更高效
             proc_to_kill.wait(timeout=2)
-            logger.info(f"进程 {proc_to_kill.pid} 已成功终止。")
+            logger.debug(f"进程 {proc_to_kill.pid} 已成功终止。")
 
         except subprocess.TimeoutExpired:
             # 如果等待超时，则采取强制措施
             if proc_to_kill.poll() is None:
                 logger.warning(f"进程 {proc_to_kill.pid} 未能退出，将执行强制终止。")
                 proc_to_kill.kill()
-                logger.info(f"进程 {proc_to_kill.pid} 已被强制终止。")
+                logger.debug(f"进程 {proc_to_kill.pid} 已被强制终止。")
 
         except Exception as e:
             # 捕获其他可能的错误 (例如进程在操作期间突然消失)
