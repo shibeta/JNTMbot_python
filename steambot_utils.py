@@ -109,14 +109,14 @@ class SteamBotClient:
     采用 Supervisor 线程模式，将进程管理与业务逻辑解耦。
     """
 
-    def __init__(self, config:Config):
+    def __init__(self, config: Config):
         self.config = config
         self.process = None
         self.process_lock = threading.Lock()  # 用于操作子进程的锁
         self.base_url = f"http://{config.steamBotHost}:{config.steamBotPort}"
         self.headers = {"Authorization": f"Bearer {config.steamBotToken}"}
         self.last_send_monotonic_time = time.monotonic()  # 上次向 Steam 发送消息的相对时间
-        self.last_send_system_time = time.time()  # 上次向 Steam 发送消息的系统时间，注意该时间受系统 NTP 对时影响，不够精确，仅作参考
+        self.last_send_system_time = time.time()  # 上次向 Steam 发送消息的系统时间，仅作参考
         self.login_lock = threading.Lock()  # 为登录操作创建一个专用的锁
         self._is_login_in_progress = False  # 一个辅助标志
 
@@ -148,7 +148,7 @@ class SteamBotClient:
         elif os.path.exists(script_path):
             command = [node_executable, script_path]
         else:
-            logger.error(f"Steam Bot 启动失败: 未找到 \"{executable_path}\" 或 \"{script_path}\"。")
+            logger.error(f'Steam Bot 启动失败: 未找到 "{executable_path}" 或 "{script_path}"。')
             self.process = None
             return
 
@@ -169,7 +169,7 @@ class SteamBotClient:
             self.process = subprocess.Popen(command, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
             logger.warning(f"Steam Bot 后端已启动，新进程ID: {self.process.pid}")
         except FileNotFoundError:
-            logger.error("启动失败: 未找到 \"node\" 可执行文件。")
+            logger.error('启动失败: 未找到 "node" 可执行文件。')
             self.process = None
         except Exception as e:
             logger.error(f"启动 Steam Bot 后端时发生未知错误: {e}")
@@ -305,7 +305,7 @@ class SteamBotClient:
             logger.info("正在尝试登录 Steam...")
             try:
                 response = requests.post(
-                    f"{self.base_url}/login", headers=self.headers, timeout=30
+                    f"{self.base_url}/login", headers=self.headers, timeout=(5, 30)
                 )  # 登录可能耗时较长
                 response.raise_for_status()
                 logger.info("登录请求已成功发送。")
@@ -320,7 +320,7 @@ class SteamBotClient:
         try:
             # 将实际的 requests 调用包裹起来
             response = self._make_authenticated_request(
-                requests.get, f"{self.base_url}/userinfo", headers=self.headers, timeout=5
+                requests.get, f"{self.base_url}/userinfo", headers=self.headers, timeout=(5, 20)
             )
             response.raise_for_status()
             return response.json()
@@ -347,7 +347,11 @@ class SteamBotClient:
         try:
             logger.info(f"正在通过API向Steam群组 \"{payload['groupId']}\" 发送消息...")
             response = self._make_authenticated_request(
-                requests.post, f"{self.base_url}/send-message", json=payload, headers=self.headers, timeout=10
+                requests.post,
+                f"{self.base_url}/send-message",
+                json=payload,
+                headers=self.headers,
+                timeout=(5, 20),
             )
             response.raise_for_status()
             logger.info("消息发送成功。")
@@ -362,7 +366,7 @@ class SteamBotClient:
 
     def get_last_send_monotonic_time(self) -> float:
         return self.last_send_monotonic_time
-    
+
     def get_last_send_system_time(self) -> float:
         return self.last_send_system_time
 
@@ -396,7 +400,7 @@ class SteamBotClient:
         logger.debug(f"正在关闭 Steam Bot 后端 (PID: {proc_to_shutdown.pid})...")
         try:
             logger.debug("正在通过 API 请求后端从 Steam 登出...")
-            requests.post(f"{self.base_url}/logout", headers=self.headers, timeout=5)
+            requests.post(f"{self.base_url}/logout", headers=self.headers, timeout=(5, 10))
             logger.debug("已成功向后端发送登出请求。")
         except requests.RequestException as e:
             logger.debug(f"请求后端登出失败 (这可能是正常的，如果进程已无响应): {e}")
