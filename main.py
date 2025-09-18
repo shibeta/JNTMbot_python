@@ -32,7 +32,8 @@ def interrupt_decorator(func):
 
 
 # 安全退出程序而不需要调用 return 或 sys.exit
-def safe_exit():
+# 因为有人抱怨这不安全，所以改名为 unsafe_exit()
+def unsafe_exit():
     try:
         # os._exit() 不会触发 atexit，因此需要手动触发
         trigger_atexit()
@@ -86,7 +87,7 @@ def main():
     # 退出热键
     def toggle_exit():
         logger.warning("退出热键被按下，退出程序。。。")
-        safe_exit()
+        unsafe_exit()
 
     keyboard.add_hotkey("ctrl+f10", toggle_exit)
     logger.warning("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
@@ -142,7 +143,7 @@ def main():
         monitor = HealthMonitor(
             steam_bot,
             pause_event,
-            safe_exit,
+            unsafe_exit,
             config
         )
         monitor.start()
