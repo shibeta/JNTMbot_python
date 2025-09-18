@@ -144,14 +144,22 @@ app.post("/send-message", async (req, res) => {
             channelName,
             message
         );
+        console.debug(
+            `🧑‍💻 后端已完成发送消息操作。`
+        );
         res.status(200).json({
             success: true,
             message: "消息已成功发送。",
             ...result,
         });
     } catch (error) {
-        // 根据错误类型返回更具体的状态码
-        if (error.message.includes("找不到群组")) {
+        // 根据错误类型返回具体的状态码
+        if (error.message.includes("发送操作超时")) {
+            res.status(202).json({
+                error: "服务器确认超时，但消息有可能已成功发送。",
+                details: error.message,
+            });
+        } else if (error.message.includes("找不到群组")) {
             res.status(400).json({
                 error: "发送失败：找不到指定的群组。",
                 details: error.message,
@@ -179,21 +187,27 @@ app.post("/logout", async (req, res) => {
 
         if (status.loggedIn) {
             console.log("👋 收到 API 登出请求，正在从 Steam 登出...");
-            
+
             await bot.logOff();
-            
+
             console.log("✅ 已成功从 Steam 登出。");
-            res.status(200).json({ success: true, message: "已成功从 Steam 登出。" });
+            res.status(200).json({
+                success: true,
+                message: "已成功从 Steam 登出。",
+            });
         } else {
             console.log("👋 收到 API 登出请求，但 Bot 本身未登录。");
-            res.status(200).json({ success: true, message: "Bot 当前未登录，无需执行登出操作。" });
+            res.status(200).json({
+                success: true,
+                message: "Bot 当前未登录，无需执行登出操作。",
+            });
         }
     } catch (error) {
-        console.error("❌ 在登出过程中发生错误:", error);
+        console.error("💥 在登出过程中发生错误:", error);
         res.status(500).json({
             success: false,
             message: "登出过程中发生内部错误。",
-            details: error.message
+            details: error.message,
         });
     }
 });

@@ -307,6 +307,7 @@ class SteamChatBot {
         }
 
         if (!targetGroupState) {
+            console.error(`💥 找不到群组 ID: ${groupId}。请确认机器人是该群组成员。`);
             throw new Error(
                 `找不到群组 ID: ${groupId}。请确认机器人是该群组成员。`
             );
@@ -316,13 +317,35 @@ class SteamChatBot {
             (room) => room.chat_name === channelName
         );
         if (!targetChannel) {
+            console.error(`💥 在群组 "${targetGroupState.header_state.chat_name}" 中找不到频道: "${channelName}"。`);
             throw new Error(
                 `在群组 "${targetGroupState.header_state.chat_name}" 中找不到频道: "${channelName}"。`
             );
         }
 
         const chatId = targetChannel.chat_id;
-        return this.#client.chat.sendChatMessage(groupId, chatId, message);
+
+        // 处理发送信息超时，我们没有义务等待 Steam 的回执
+        const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => {
+                reject(new Error("发送操作超时，但消息可能已发出。"));
+            }, 12000); // 延迟被设置为 12 秒，因为 10 秒有点短
+        });
+
+        // 发送消息
+        try {
+            const result = await Promise.race([
+                this.#client.chat.sendChatMessage(groupId, chatId, message),
+                timeoutPromise,
+            ]);
+            console.log(`✅ 成功发送消息到群组 ${groupId}。`);
+            return result;
+        }catch (error) {
+            if (error.message.includes("发送操作超时")) {
+                console.warn(`⚠️ 对群组 ${groupId} 的消息发送确认超时。`);
+            }
+            throw error;
+        }
     }
 
     /**
