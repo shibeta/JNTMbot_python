@@ -6,7 +6,7 @@ import atexit
 
 from config import Config
 from ocr_engine import OCREngine
-from keyboard_utils import *  # 导入所有键盘功能和常量
+from keyboard_utils import KeyboardSimulator
 from steambot_utils import SteamBotClient
 from process_utils import (
     find_window,
@@ -48,6 +48,7 @@ class GameAutomator:
         self.steam_bot = steam_bot
         self.hwnd = hwnd
         self.pid = pid
+        self.keyboard = KeyboardSimulator()
 
         # 注册一个退出处理函数，以确保Python程序退出时 GTA V 进程不会被挂起
         atexit.register(self._resume_gta_process)
@@ -193,63 +194,74 @@ class GameAutomator:
         )
 
     # 各种动作序列
+    def fix_key_stuck(self):
+        """
+        把 wasdqe 全按一遍以试图解决卡键。
+        为尽量避免影响当前游戏状态，会按照 w->s a->d q->e 的顺序按键。
+        这无法避免按 e 导致触发任务黄圈。
+        """
+        logger.info("正在按下 wasdqe 键以避免卡键。")
+        self.keyboard.click("w", 200)
+        time.sleep(0.1)
+        self.keyboard.click("s", 200)
+        time.sleep(0.1)
+        self.keyboard.click("a", 200)
+        time.sleep(0.1)
+        self.keyboard.click("d", 200)
+        time.sleep(0.1)
+        self.keyboard.click("q", 200)
+        time.sleep(0.1)
+        self.keyboard.click("e", 200)
+        time.sleep(0.1)
+
+
     def go_job_point_from_bed(self):
-        """从事务所的床出发，下到一楼，移动到任务点附近"""
+        """从事务所的床出发，下到一楼，移动到任务点附近。"""
         logger.info("动作：正在从事务所个人空间走到楼梯间...")
         # 走到柱子上卡住
-        press_keyboard("a")
-        press_keyboard("w")
-        time.sleep(2.0)
-        release_keyboard("w")
-        release_keyboard("a")
+        self.keyboard.click(["a", "w"], 2000)
         # 走到楼梯口
-        press_keyboard("d")
-        time.sleep(6.0)
+        self.keyboard.click("d", 2000)
         start_time = time.monotonic()
         while time.monotonic() - start_time < 2.5:
-            click_keyboard("s", 150)
-            click_keyboard("w", 150)
-        time.sleep(2.0)
-        release_keyboard("d")
+            self.keyboard.click(["d","s"], 150)
+            self.keyboard.click(["d","w"], 150)
+        self.keyboard.click("d", 2000)
         # 走进楼梯门
-        click_keyboard("w", 2000)
+        self.keyboard.click("w", 2000)
         # 走下楼梯
         logger.info("动作：正在下楼...")
-        click_keyboard("s", 4000)
-        press_keyboard("d")
-        press_keyboard("w")
-        time.sleep(2.0)
-        release_keyboard("w")
-        release_keyboard("d")
-        click_keyboard("a", 5000)
+        self.keyboard.click("s", 4000)
+        self.keyboard.click(["d","w"],2000)
+        self.keyboard.click("a", 5000)
         # 走出楼梯间
         start_time = time.monotonic()
         while time.monotonic() - start_time < self.config.goOutStairsTime / 1000.0:
-            click_keyboard("s", self.config.pressSTimeStairs)
-            click_keyboard("a", self.config.pressATimeStairs)
+            self.keyboard.click("s", self.config.pressSTimeStairs)
+            self.keyboard.click("a", self.config.pressATimeStairs)
         logger.info("动作：正在穿过一楼走廊...")
         # 穿过走廊
         start_time = time.monotonic()
         while time.monotonic() - start_time < self.config.crossAisleTime / 1000.0:
-            click_keyboard("s", self.config.pressSTimeAisle)
-            click_keyboard("a", self.config.pressATimeAisle)
+            self.keyboard.click("s", self.config.pressSTimeAisle)
+            self.keyboard.click("a", self.config.pressATimeAisle)
 
     def find_job(self) -> bool:
         """检查是否到达任务点。如果没有，会尝试向任务点移动。"""
         # 一边搜索任务标记，一边向任务黄圈移动
         start_time = time.monotonic()
         while time.monotonic() - start_time < self.config.waitFindJobTimeout / 1000.0:
-            click_keyboard("s", self.config.pressSTimeGoJob)
+            self.keyboard.click("s", self.config.pressSTimeGoJob)
             if self.is_job_marker_found():
                 return True
-            click_keyboard("a", self.config.pressATimeGoJob)
+            self.keyboard.click("a", self.config.pressATimeGoJob)
             if self.is_job_marker_found():
                 return True
         return False
 
     def enter_job(self):
         """在差事点上开始差事，目前只需要按一下 E。"""
-        click_keyboard("e")
+        self.keyboard.click("e")
 
     def start_new_match(self) -> bool:
         """尝试从一个战局中切换到另一个仅邀请战局，必须在自由模式下才能工作。"""
@@ -260,14 +272,14 @@ class GameAutomator:
             if new_match_error_count % 3 == 2:
                 logger.info("尝试通过多次按 ESCAPE 键来恢复正常状态。")
                 for _ in range(7):
-                    click_keyboard(KEY_ESCAPE)
+                    self.keyboard.click(self.keyboard.KEY_ESCAPE)
                     time.sleep(0.5)
             if (new_match_error_count + 1) % 3 == 0:
                 logger.info("尝试通过多次按 ESCAPE 键和 ENTER 键来恢复正常状态。")
                 for _ in range(4):
-                    click_keyboard(KEY_ESCAPE)
+                    self.keyboard.click(self.keyboard.KEY_ESCAPE)
                     time.sleep(0.5)
-                    click_keyboard(KEY_ENTER)
+                    self.keyboard.click(self.keyboard.KEY_ENTER)
                     time.sleep(0.5)
             # if new_match_error_count == 10:
             #     GLogger.info("尝试通过加入差传 Bot 战局来恢复正常状态。")
@@ -278,45 +290,45 @@ class GameAutomator:
             # 以下开始是正常的开始新战局的指令
             # 处理警告屏幕
             if self.is_on_warning_page():
-                click_keyboard(KEY_ENTER)
+                self.keyboard.click(self.keyboard.KEY_ENTER)
                 time.sleep(0.5)
 
             # 打开暂停菜单
             if not self.is_on_pause_menu():
-                click_keyboard(KEY_ESCAPE)
+                self.keyboard.click(self.keyboard.KEY_ESCAPE)
                 time.sleep(2)
 
             # 检查暂停菜单是否被打开，未打开则按 ESC 并进行下一次尝试
             if not self.is_on_pause_menu():
-                click_keyboard(KEY_ESCAPE)
+                self.keyboard.click(self.keyboard.KEY_ESCAPE)
                 logger.warning(f"开始新战局失败 (尝试次数 {new_match_error_count})。正在重试...")
                 continue
 
             # 尝试切换到在线选项卡以切换战局
-            click_keyboard("e")
+            self.keyboard.click("e")
             time.sleep(2)
-            click_keyboard(KEY_ENTER)
+            self.keyboard.click(self.keyboard.KEY_ENTER)
             time.sleep(1)
             for _ in range(5):
-                click_keyboard("w", 100)
+                self.keyboard.click("w", 100)
                 time.sleep(0.6)
-            click_keyboard(KEY_ENTER)
+            self.keyboard.click(self.keyboard.KEY_ENTER)
             time.sleep(1)
 
             # 验证当前是否在切换战局的菜单，未打开则按3次 ESC 并进行下一次尝试
             if not self.is_on_go_online_menu():
                 for _ in range(3):
-                    click_keyboard(KEY_ESCAPE)
+                    self.keyboard.click(self.keyboard.KEY_ESCAPE)
                     time.sleep(1)
                 logger.warning(f"开始新战局失败 (尝试次数 {new_match_error_count})。正在重试...")
                 continue
 
             # 选择"仅邀请战局"选项，确认
-            click_keyboard("s")
+            self.keyboard.click("s")
             time.sleep(0.6)
-            click_keyboard(KEY_ENTER)
+            self.keyboard.click(self.keyboard.KEY_ENTER)
             time.sleep(2)
-            click_keyboard(KEY_ENTER)
+            self.keyboard.click(self.keyboard.KEY_ENTER)
             return True
         else:
             return False
@@ -340,13 +352,13 @@ class GameAutomator:
             pass
 
         # 导航面板以选中"开始差事"选项
-        click_keyboard("w")
+        self.keyboard.click("w")
         time.sleep(0.8)
-        click_keyboard(KEY_ENTER)
+        self.keyboard.click(self.keyboard.KEY_ENTER)
         time.sleep(1)
-        click_keyboard("a")  # 关闭匹配功能，防止玩家通过匹配功能意外进入该差事
+        self.keyboard.click("a")  # 关闭匹配功能，防止玩家通过匹配功能意外进入该差事
         time.sleep(0.8)
-        click_keyboard("w")
+        self.keyboard.click("w")
 
         while True:
             time.sleep(self.config.checkLoopTime)
@@ -384,7 +396,7 @@ class GameAutomator:
                 and last_joining_count > 0
                 and joining_count > 0
             ):
-                logger.info("玩家长期卡在\"正在加入\"状态，退出差事并重新开始。")
+                logger.info('玩家长期卡在"正在加入"状态，退出差事并重新开始。')
                 try:
                     self.steam_bot.send_group_message(self.config.msgJoiningPlayerKick)
                 except requests.RequestException as e:
@@ -407,7 +419,7 @@ class GameAutomator:
                 except requests.RequestException as e:
                     # 发送信息失败，小事罢了，不影响自动化运行
                     pass
-                click_keyboard(KEY_ENTER)
+                self.keyboard.click(self.keyboard.KEY_ENTER)
                 for _ in range(3):
                     if self.is_job_starting():
                         # 成功启动，可喜可贺
@@ -417,7 +429,7 @@ class GameAutomator:
                     # 有时确实启动不了
                     # 处理警告页面
                     if self.is_on_warning_page():
-                        click_keyboard(KEY_ENTER)
+                        self.keyboard.click(self.keyboard.KEY_ENTER)
                         time.sleep(0.5)
 
                     if self.is_on_job_panel():
@@ -454,24 +466,24 @@ class GameAutomator:
         """从差事准备面板退出到自由模式，如果不在差事准备面板中则行为是未定义的"""
         # 处理警告屏幕
         if self.is_on_warning_page():
-            click_keyboard(KEY_ENTER)
+            self.keyboard.click(self.keyboard.KEY_ENTER)
             time.sleep(0.5)
 
         # 从差事准备面板退出
         ocr_result = self.ocr.ocr(self.hwnd, 0, 0, 1, 0.8)
         if re.search("|".join(["匹配", "邀请", "帮会"]), ocr_result) is not None:
             # 如果在差事面板的第二个页面，按两次 ESC 和回车退出
-            click_keyboard(KEY_ESCAPE)
+            self.keyboard.click(self.keyboard.KEY_ESCAPE)
             time.sleep(1)
-            click_keyboard(KEY_ESCAPE)
+            self.keyboard.click(self.keyboard.KEY_ESCAPE)
             time.sleep(1)
-            click_keyboard(KEY_ENTER)
+            self.keyboard.click(self.keyboard.KEY_ENTER)
             time.sleep(5)
         elif re.search("|".join(["设置", "镜头", "武器"]), ocr_result) is not None:
             # 如果在差事面板的第一个页面，按一次 ESC 和回车退出
-            click_keyboard(KEY_ESCAPE)
+            self.keyboard.click(self.keyboard.KEY_ESCAPE)
             time.sleep(1)
-            click_keyboard(KEY_ENTER)
+            self.keyboard.click(self.keyboard.KEY_ENTER)
             time.sleep(5)
 
     # 不认为加入差传bot是一个好主意，应当重启
@@ -517,9 +529,9 @@ class GameAutomator:
             start_join_time = time.monotonic()
             has_suspended = False
             while time.monotonic() - start_join_time < 300:  # 5分钟加载超时
-                click_keyboard(KEY_ENTER)
+                self.keyboard.click(self.keyboard.KEY_ENTER)
                 time.sleep(0.5)
-                click_keyboard("z")
+                self.keyboard.click("z")
                 time.sleep(1)
                 if self._find_text("在线模式", 0, 0, 0.5, 0.5):
                     # 进入了在线模式
@@ -586,7 +598,7 @@ class GameAutomator:
             elif self._find_multi_text(["导览", "跳过"], 0.5, 0.8, 0.5, 0.2):
                 # 有时候主菜单会展示一个显示 GTA+ 广告的窗口
                 time.sleep(2)
-                click_keyboard(KEY_ENTER)
+                self.keyboard.click(self.keyboard.KEY_ENTER)
                 logger.info("主菜单已加载。")
                 break
             time.sleep(5)
@@ -599,9 +611,9 @@ class GameAutomator:
         # 进入故事模式
         time.sleep(2)
         for _ in range(2):
-            click_keyboard("e")
+            self.keyboard.click("e")
             time.sleep(3)
-        click_keyboard(KEY_ENTER)
+        self.keyboard.click(self.keyboard.KEY_ENTER)
 
         # 等待进入故事模式
         logger.info("正在等待进入故事模式...")
@@ -610,7 +622,7 @@ class GameAutomator:
             if self.is_on_pause_menu():
                 logger.info("已进入故事模式。")
                 break
-            click_keyboard(KEY_ESCAPE)
+            self.keyboard.click(self.keyboard.KEY_ESCAPE)
             time.sleep(5)
         else:
             logger.error("重启 GTA 失败：等待进入故事模式超时。")
@@ -621,13 +633,13 @@ class GameAutomator:
         # 进入在线模式
         for _ in range(3):  # 尝试3次
             for _ in range(5):
-                click_keyboard("e")
+                self.keyboard.click("e")
                 time.sleep(2)
-            click_keyboard(KEY_ENTER)
+            self.keyboard.click(self.keyboard.KEY_ENTER)
             time.sleep(1)
-            click_keyboard("w")
+            self.keyboard.click("w")
             time.sleep(1)
-            click_keyboard(KEY_ENTER)
+            self.keyboard.click(self.keyboard.KEY_ENTER)
             time.sleep(1)
 
             # 验证是否打开了进入在线模式的菜单
@@ -637,12 +649,12 @@ class GameAutomator:
             else:
                 # 找不到则关闭菜单
                 for _ in range(3):
-                    click_keyboard(KEY_ESCAPE)
+                    self.keyboard.click(self.keyboard.KEY_ESCAPE)
                     time.sleep(1)
                 # 再次打开地图
                 time.sleep(3)
                 if not self.is_on_pause_menu():
-                    click_keyboard(KEY_ESCAPE)
+                    self.keyboard.click(self.keyboard.KEY_ESCAPE)
                     time.sleep(5)
                 continue
         else:
@@ -652,11 +664,11 @@ class GameAutomator:
             return False
 
         # 选择进入仅邀请战局
-        click_keyboard("s")
+        self.keyboard.click("s")
         time.sleep(1)
-        click_keyboard(KEY_ENTER)
+        self.keyboard.click(self.keyboard.KEY_ENTER)
         time.sleep(2)
-        click_keyboard(KEY_ENTER)
+        self.keyboard.click(self.keyboard.KEY_ENTER)
 
         # 等待进入在线模式
         logger.info("正在等待进入在线模式...")
@@ -668,7 +680,7 @@ class GameAutomator:
             elif self.is_on_warning_page():
                 # 有些时候会弹出错误窗口，这一般是网络不好导致的
                 time.sleep(2)
-                click_keyboard(KEY_ENTER)
+                self.keyboard.click(self.keyboard.KEY_ENTER)
             elif self.is_on_main_menu():
                 # 在线模式，很神奇吧
                 logger.error("重启 GTA 失败：加入在线模式失败，被回退到主菜单，请检查网络。")
