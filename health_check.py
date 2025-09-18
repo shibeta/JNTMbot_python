@@ -3,10 +3,10 @@ import threading
 import time
 from typing import Callable
 
-from config import Config
+from Config import Config
 from logger import get_logger
 from push_utils import push_wechat
-from steambot_utils import SteamBotClient
+from SteamBotClient import SteamBotClient
 
 logger = get_logger(name="health_check")
 
