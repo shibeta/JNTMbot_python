@@ -221,14 +221,14 @@ class GameAutomator:
         # 走到柱子上卡住
         self.keyboard.click(["a", "w"], 2000)
         # 走到楼梯口
-        self.keyboard.click("d", 2000)
+        self.keyboard.click("d", 6000)
         start_time = time.monotonic()
         while time.monotonic() - start_time < 2.5:
             self.keyboard.click(["d","s"], 150)
             self.keyboard.click(["d","w"], 150)
         self.keyboard.click("d", 2000)
         # 走进楼梯门
-        self.keyboard.click("w", 2000)
+        self.keyboard.click("w", 2500)
         # 走下楼梯
         logger.info("动作：正在下楼...")
         self.keyboard.click("s", 4000)
@@ -249,6 +249,7 @@ class GameAutomator:
     def find_job(self) -> bool:
         """检查是否到达任务点。如果没有，会尝试向任务点移动。"""
         # 一边搜索任务标记，一边向任务黄圈移动
+        logger.info("动作：正在寻找差事点...")
         start_time = time.monotonic()
         while time.monotonic() - start_time < self.config.waitFindJobTimeout / 1000.0:
             self.keyboard.click("s", self.config.pressSTimeGoJob)
