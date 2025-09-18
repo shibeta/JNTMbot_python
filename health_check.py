@@ -29,8 +29,8 @@ class HealthMonitor(threading.Thread):
         self.exit_func = exit_func
 
         # 从config对象中解构配置
-        self.check_interval = config.healthCheckInterval * 60  # 直接转换为秒
-        self.steam_chat_timeout_threshold = config.healthCheckSteamChatTimeoutThreshold * 60  # 直接转换为秒
+        self.check_interval = config.healthCheckInterval  # 分钟
+        self.steam_chat_timeout_threshold = config.healthCheckSteamChatTimeoutThreshold  # 分钟
         self.enable_wechat_push = config.enableWechatPush
         self.wechat_push_token = config.pushplusToken
         self.enable_exit_on_unhealthy = config.enableExitOnUnhealthy
@@ -39,7 +39,7 @@ class HealthMonitor(threading.Thread):
         self._is_healthy_on_last_check = True  # 初始假定为健康
         self._stop_event = threading.Event()  # 用于停止线程
 
-        logger.info(f"健康检查已配置：每 {self.check_interval / 60:.1f} 分钟检查一次。")
+        logger.info(f"健康检查已配置：每 {self.check_interval} 分钟检查一次。")
         logger.info(
             f"不健康阈值：连续 {self.steam_chat_timeout_threshold} 分钟未发送消息。"
         )
@@ -51,11 +51,11 @@ class HealthMonitor(threading.Thread):
 
     def run(self):
         """线程的主执行逻辑。"""
-        logger.info(f"健康检查监控已启动，每 {self.check_interval / 60:.1f} 分钟检查一次。")
+        logger.info(f"健康检查监控已启动，每 {self.check_interval} 分钟检查一次。")
 
         while not self._stop_event.is_set():
             # 使用 Event.wait() 代替 time.sleep()，这样可以被 stop_event 立即中断
-            is_stopped = self._stop_event.wait(timeout=self.check_interval)
+            is_stopped = self._stop_event.wait(timeout=self.check_interval * 60)
             if is_stopped:
                 break  # 如果是 stop_event 触发了 wait 的返回，则退出循环
 
@@ -74,7 +74,7 @@ class HealthMonitor(threading.Thread):
         logger.debug(f"健康检查：距离上次发送消息已过去 {timedelta(seconds=elapsed_time)}。")
 
         unhealthy_reason = None
-        if elapsed_time > self.steam_chat_timeout_threshold:
+        if elapsed_time > self.steam_chat_timeout_threshold * 60:
             is_healthy_now = False
             unhealthy_reason = "SteamChatTimeout"
         else:
@@ -83,7 +83,7 @@ class HealthMonitor(threading.Thread):
         # --- 状态转换逻辑 ---
         if self._is_healthy_on_last_check and not is_healthy_now:
             logger.warning(
-                f"Bot 状态变为不健康。原因: 超过 {self.steam_chat_timeout_threshold / 60:.1f} 分钟未通过 Steam 发送消息。"
+                f"Bot 状态变为不健康。原因: 超过 {self.steam_chat_timeout_threshold} 分钟未通过 Steam 发送消息。"
             )
             self._on_become_unhealthy(unhealthy_reason, last_send_monotonic_time)
 
@@ -109,7 +109,7 @@ class HealthMonitor(threading.Thread):
         if reason == "SteamChatTimeout":
             last_send_system_time = datetime.fromtimestamp(self.steam_bot.get_last_send_system_time())
             formatted_time = last_send_system_time.strftime("%Y-%m-%d %H:%M:%S")
-            msg = f"Bot 超过 {self.steam_chat_timeout_threshold / 60:.1f} 分钟未向 Steam 发送消息。上一次发送时间为 {formatted_time}。"
+            msg = f"Bot 超过 {self.steam_chat_timeout_threshold} 分钟未向 Steam 发送消息。上一次发送时间为 {formatted_time}。"
         else:
             msg = f"未知原因: {reason}"
 

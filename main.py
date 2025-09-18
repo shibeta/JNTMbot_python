@@ -158,7 +158,7 @@ def main():
             if config.enableHealthCheck:
                 logger.info("当健康检查发现 Bot 状态发生变化时，将通过微信通知。")
             logger.info(
-                f"当程序运行超过 {config.wechatPushActivationDelay / 60:.1f} 分钟后，因发生异常而退出时，将通过微信通知。"
+                f"当程序运行超过 {config.wechatPushActivationDelay} 分钟后，因发生异常而退出时，将通过微信通知。"
             )
 
         else:
