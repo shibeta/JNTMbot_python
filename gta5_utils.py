@@ -4,10 +4,10 @@ import requests
 import re
 import atexit
 
-from Config import Config
-from OCREngine import OCREngine
-from KeyboardSimulator import KeyboardSimulator
-from SteamBotClient import SteamBotClient
+from config import Config
+from ocr_utils import OCREngine
+from keyboard_utils import KeyboardSimulator
+from steambot_utils import SteamBotClient
 from process_utils import (
     find_window,
     resume_process_from_suspend,

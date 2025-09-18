@@ -8,11 +8,11 @@ import requests
 from atexit import _run_exitfuncs as trigger_atexit
 
 from logger import setup_logging, get_logger
-from Config import Config
-from OCREngine import get_ocr_engine
-from SteamBotClient import SteamBotClient
+from config import Config
+from ocr_utils import get_ocr_engine
+from steambot_utils import SteamBotClient
 from push_utils import push_wechat
-from GameAutomator import GameAutomator
+from gta5_utils import GameAutomator
 from health_check import HealthMonitor
 
 logger = get_logger(name="main")

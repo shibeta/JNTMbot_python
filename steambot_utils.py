@@ -8,7 +8,7 @@ import atexit
 import os
 from urllib.request import getproxies
 
-from Config import Config
+from config import Config
 from logger import get_logger
 
 logger = get_logger("steambot_utils")
