@@ -187,7 +187,7 @@
 -   `logger.py`: 简单的日志格式化工具。
 -   `steam_bot/server.js`: 基于 `node-steam-user` 的 Node.js 后端，将 Steam 功能封装为 HTTP API。
 -   `steam_bot/SteamChatBot.js`: 对 `node-steam-user` 库的核心封装。
--   `gamepad_util.py` / `steam_bot/demo.js`: 未使用的文件。
+-   `gamepad_utils.py` / `steam_bot/demo.js`: 未使用的文件。
 
 ## 🤝 贡献指南
 
