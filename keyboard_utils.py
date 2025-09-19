@@ -17,22 +17,6 @@ class KeyboardSimulator:
     # 定义一个类型别名，方便注解
     KeyType = Union[KeyCode, Key, str]
 
-    # 常用按键的类属性常量
-    KEY_ENTER: Key = Key.enter
-    KEY_ESCAPE: Key = Key.esc
-    KEY_SPACE: Key = Key.space
-    KEY_BACKSPACE: Key = Key.backspace
-    KEY_TAB: Key = Key.tab
-    KEY_DELETE: Key = Key.delete
-
-    # 修饰键
-    KEY_LCONTROL: Key = Key.ctrl_l
-    KEY_RCONTROL: Key = Key.ctrl_r
-    KEY_LSHIFT: Key = Key.shift_l
-    KEY_RSHIFT: Key = Key.shift_r
-    KEY_LALT: Key = Key.alt_l
-    KEY_RALT: Key = Key.alt_r
-
     def __init__(self):
         """
         初始化 KeyboardSimulator 实例。
