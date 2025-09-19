@@ -1,3 +1,4 @@
+import atexit
 import time
 import vgamepad as vg
 
@@ -6,65 +7,81 @@ from logger import get_logger
 logger = get_logger(name="gamepad_utils")
 
 
-class Gamepad:
+class Button:
     # 手柄按键映射
-    button_A = vg.XUSB_BUTTON.XUSB_GAMEPAD_A
-    button_B = vg.XUSB_BUTTON.XUSB_GAMEPAD_B
-    button_X = vg.XUSB_BUTTON.XUSB_GAMEPAD_X
-    button_Y = vg.XUSB_BUTTON.XUSB_GAMEPAD_Y
-    button_DPAD_UP = vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP
-    button_DPAD_DOWN = vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN
-    button_DPAD_LEFT = vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT
-    button_DPAD_RIGHT = vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT
-    button_START = vg.XUSB_BUTTON.XUSB_GAMEPAD_START
-    button_BACK = vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK
-    button_LEFT_STICK = vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_THUMB
-    button_RIGHT_STICK = vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB
-    button_LEFT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER
-    button_RIGHT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER
+    A = vg.XUSB_BUTTON.XUSB_GAMEPAD_A
+    B = vg.XUSB_BUTTON.XUSB_GAMEPAD_B
+    X = vg.XUSB_BUTTON.XUSB_GAMEPAD_X
+    Y = vg.XUSB_BUTTON.XUSB_GAMEPAD_Y
+    DPAD_UP = vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_UP
+    DPAD_DOWN = vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN
+    DPAD_LEFT = vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT
+    DPAD_RIGHT = vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT
+    START = vg.XUSB_BUTTON.XUSB_GAMEPAD_START
+    BACK = vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK
+    LEFT_STICK = vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_THUMB
+    RIGHT_STICK = vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB
+    LEFT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER
+    RIGHT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER
 
+
+class JoystickDirection:
     # 常用摇杆方向映射
-    stick_half_up = (0.0, 0.7)
-    stick_half_right = (0.7, 0.0)
-    stick_half_left = (-0.7, 0.0)
-    stick_half_down = (0.0, -0.7)
+    center = (0.0, 0.0)
 
-    stick_half_upleft = (-0.6, 0.6)
-    stick_half_upright = (0.6, 0.6)
-    stick_half_downleft = (-0.6, -0.6)
-    stick_half_downright = (0.6, -0.6)
+    half_up = (0.0, 0.7)
+    half_right = (0.7, 0.0)
+    half_left = (-0.7, 0.0)
+    half_down = (0.0, -0.7)
 
-    stick_full_up = (0.0, 1)
-    stick_full_right = (1, 0.0)
-    stick_full_left = (-1, 0.0)
-    stick_full_down = (0.0, -1)
+    half_upleft = (-0.6, 0.6)
+    half_upright = (0.6, 0.6)
+    half_downleft = (-0.6, -0.6)
+    half_downright = (0.6, -0.6)
 
-    stick_full_upleft = (-1, 1)
-    stick_full_upright = (1, 1)
-    stick_full_downleft = (-1, -1)
-    stick_full_downright = (1, -1)
+    full_up = (0.0, 1)
+    full_right = (1, 0.0)
+    full_left = (-1, 0.0)
+    full_down = (0.0, -1)
+
+    full_upleft = (-1, 1)
+    full_upright = (1, 1)
+    full_downleft = (-1, -1)
+    full_downright = (1, -1)
+
+
+class GamepadSimulator:
 
     def __init__(self):
+        self.pad = None
+        self.connected = False
         try:
-            self.pad = vg.VX360Gamepad()  # Or use vg.XBox360Gamepad() if you prefer
+            self.pad = vg.VX360Gamepad()
+            self.connected = True
+            logger.debug("虚拟手柄设备已创建。")
+
+            # 注册清理函数
+            atexit.register(self._cleanup)
+
+            # 按一下A键以唤醒手柄
+            self.click_button(Button.A)
+            logger.info("初始化虚拟手柄完成。")
+
         except Exception as e:
-            logger.error(f"初始化虚拟手柄失败: {e}")
-            self.pad = None  # Mark as uninitialized
-            self.connected = False
-            return
+            logger.error(f"初始化虚拟手柄失败: {e}。请确保已安装 ViGEmBus 驱动。")
 
-        self.connected = True
-        self.MAX_ANALOG = 255  # 摇杆的最大值
 
-        # 按一下A键以唤醒手柄
-        self.pad.press_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
-        self.pad.update()
-        time.sleep(0.1)
-        self.pad.release_button(button=vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
-        self.pad.update()
-        time.sleep(0.1)
-        logger.info("初始化虚拟手柄完成。")
-
+    def _cleanup(self):
+        """程序退出时调用的清理函数。"""
+        if self.connected and self.pad:
+            try:
+                logger.info("程序退出，正在重置虚拟手柄状态...")
+                self.pad.reset()
+                self.pad.update()
+                logger.info("虚拟手柄状态已重置。")
+            except Exception as e:
+                logger.error(f"重置虚拟手柄时出错: {e}")
+    
     def _check_connected(self):
         if not self.connected or self.pad is None:
             logger.error("没有安装虚拟手柄驱动，或没有初始化")
@@ -72,14 +89,14 @@ class Gamepad:
         return True
 
     def press_button(self, button):
-        """按住一个按钮"""
+        """按下一个按钮"""
         if not self._check_connected():
             return
         try:
             self.pad.press_button(button)
             self.pad.update()
         except Exception as e:
-            logger.error(f"按住按钮 {button} 时出错: {e}")
+            logger.error(f"按下按钮 {button} 时出错: {e}")
 
     def release_button(self, button):
         """松开一个按钮"""
@@ -98,11 +115,15 @@ class Gamepad:
         try:
             self.press_button(button)
             time.sleep(duration_seconds)
-            self.release_button(button)
         except Exception as e:
             logger.error(f"点按按钮 {button} 时出错: {e}")
+        finally:
+            self.release_button(button)
 
-    def move_left_stick(self, x_percent: float, y_percent: float):
+    def return_left_joystick_to_center(self):
+        self.move_left_joystick(JoystickDirection.center)
+
+    def move_left_joystick(self, x_percent: float, y_percent: float):
         """
         推动左摇杆到某位置。
 
@@ -118,7 +139,7 @@ class Gamepad:
         except Exception as e:
             logger.error(f"移动左摇杆时出错: {e}")
 
-    def hold_left_stick_percent(self, x_percent: float, y_percent: float, duration_seconds: float):
+    def hold_left_joystick(self, x_percent: float, y_percent: float, duration_seconds: float):
         """
         推动左摇杆到某位置，一段时间后回中。
 
@@ -129,12 +150,15 @@ class Gamepad:
         """
         if not self._check_connected():
             return
-        self.move_left_stick(x_percent, y_percent)
+        self.move_left_joystick(x_percent, y_percent)
         time.sleep(duration_seconds)
-        self.move_left_stick(self.MAX_ANALOG // 2, self.MAX_ANALOG // 2)  # Return to center
+        self.move_left_joystick(JoystickDirection.center)
         self.pad.update()
 
-    def move_right_stick(self, x_percent: float, y_percent: float):
+    def return_right_joystick_to_center(self):
+        self.move_right_joystick(JoystickDirection.center)
+
+    def move_right_joystick(self, x_percent: float, y_percent: float):
         """
         推动右摇杆到某位置。
 
@@ -150,7 +174,7 @@ class Gamepad:
         except Exception as e:
             logger.error(f"Error moving right stick: {e}")
 
-    def hold_right_stick_percent(self, x_percent: float, y_percent: float, duration_seconds: float):
+    def hold_right_joystick(self, x_percent: float, y_percent: float, duration_seconds: float):
         """
         推动右摇杆到某位置，一段时间后回中。
 
@@ -161,9 +185,9 @@ class Gamepad:
         """
         if not self._check_connected():
             return
-        self.move_right_stick(x_percent, y_percent)
+        self.move_right_joystick(x_percent, y_percent)
         time.sleep(duration_seconds)
-        self.move_right_stick(self.MAX_ANALOG // 2, self.MAX_ANALOG // 2)  # Return to center
+        self.move_right_joystick(JoystickDirection.center)
         self.pad.update()
 
 
@@ -171,20 +195,20 @@ class Gamepad:
 if __name__ == "__main__":
     from time import sleep
 
-    gamepad = Gamepad()
+    gamepad = GamepadSimulator()
     if not gamepad.connected:
         print("Gamepad not connected.  Exiting test.")
         exit()
 
     print("--- 手柄测试 ---")
     print("按下 A 键...")
-    gamepad.click_button(gamepad.button_A)
+    gamepad.click_button(Button.A)
     sleep(1)
     print("左摇杆向前50%...")
-    gamepad.move_left_stick(0, 0.5)
+    gamepad.move_left_joystick(0, 0.5)
     sleep(1)
-    gamepad.move_left_stick(0, 0)
+    gamepad.move_left_joystick(0, 0)
     sleep(1)
     print("右摇杆向后50%...")
-    gamepad.hold_right_stick_percent(*gamepad.stick_half_down, 1)
+    gamepad.hold_right_joystick(JoystickDirection.half_down, 1)
     print("测试结束.")
