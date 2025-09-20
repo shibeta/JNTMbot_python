@@ -1,5 +1,7 @@
 import atexit
+import copy
 import time
+from typing import Callable
 import vgamepad as vg
 from collections import defaultdict
 from functools import total_ordering
@@ -96,8 +98,11 @@ class Macro:
     事件在添加时会自动排序，使其始终保持可播放状态。
     """
 
-    def __init__(self):
+    def __init__(self, events: list[MacroEvent] = None):
         self._events: list[MacroEvent] = []
+        if events:
+            # 允许从一个已有的、排序好的事件列表初始化
+            self._events = events
 
     def __repr__(self):
         return f"<Macro with {len(self._events)} events, duration: {self.get_duration_ms()}ms>"
@@ -123,6 +128,55 @@ class Macro:
         event = MacroEvent(time_ms=time_ms, action_name=action_type, params=params)
         bisect.insort(self._events, event)
         return self  # 返回 self 以支持链式调用
+
+    def copy(self):
+        """返回当前宏的一个精确副本。"""
+        # 使用 copy.deepcopy 确保事件对象也是新的，虽然在这里不是必须，但是个好习惯
+        return Macro(copy.deepcopy(self._events))
+
+    def time_shift(self, offset_ms: int):
+        """
+        返回一个所有事件时间戳都平移了指定毫秒数的新宏。
+
+        :param offset_ms: 平移的毫秒数，可以是正数（延迟）或负数（提前）。
+        """
+        new_events = []
+        for event in self._events:
+            new_time = event.time_ms + offset_ms
+            if new_time >= 0:
+                new_events.append(MacroEvent(new_time, event.action_name, event.params))
+        return Macro(new_events)
+
+    def append(self, other_macro, delay_ms: int = 0):
+        """
+        将另一个宏追加到当前宏的末尾，返回合并后的新宏。
+
+        :param other_macro: 要追加的 Macro 对象。
+        :param delay_ms: 在两个宏之间的延迟时间。
+        """
+        if not isinstance(other_macro, Macro):
+            raise TypeError("Can only append another Macro object.")
+
+        new_macro = self.copy()
+
+        # 计算偏移量 = 当前宏时长 + 额外延迟
+        offset = self.get_duration_ms() + delay_ms
+
+        shifted_other = other_macro.time_shift(offset)
+
+        new_macro._events.extend(shifted_other._events)
+        # 因为两个列表本身都是有序的，所以合并后只需排序一次（或使用更高效的合并）
+        new_macro._events.sort()
+        return new_macro
+
+    def filter(self, condition_func: Callable):
+        """
+        根据给定的条件函数过滤事件，返回一个新宏，以实现“删除”逻辑。
+
+        :param condition_func: 一个接收 MacroEvent 对象并返回 True (保留) 或 False (移除) 的函数。
+        """
+        new_events = [event for event in self._events if condition_func(event)]
+        return Macro(new_events)
 
     # --- 基础动作 (Primitive Actions) ---
     # 这些方法提供最精细的控制，只在时间轴上创建一个事件。
@@ -455,17 +509,18 @@ class GamepadSimulator:
         finally:
             # 重置手柄
             if reset_at_end:
-                logger.info("宏播放完毕，重置手柄状态。")
+                logger.debug("宏播放完毕，重置手柄状态。")
                 self.pad.reset()
                 self.pad.update()
             else:
-                logger.info("宏播放完毕，不重置手柄状态。")
+                logger.debug("宏播放完毕，不重置手柄状态。")
 
 
 # --- 使用示例 ---
 if __name__ == "__main__":
-    from time import sleep
+    from time import sleep, monotonic
     from pprint import pprint
+    from random import random, uniform
 
     gamepad = GamepadSimulator()
     if not gamepad.connected:
@@ -504,3 +559,49 @@ if __name__ == "__main__":
     gamepad.play_macro(hadouken_combo)
 
     print("\n宏播放完成。")
+
+    print("正在创建宏: 舒婷")
+    shooting_macro = (
+        Macro()
+        .move_left_joystick(0, JoystickDirection.FULL_LEFT)
+        .move_left_joystick(10, JoystickDirection.FULL_RIGHT)
+        .click_button(10, Button.X, 10)
+        .move_left_joystick(20, JoystickDirection.FULL_LEFTDOWN)
+    )
+
+    print("生成的 '舒婷' 宏:")
+    for event in shooting_macro:
+        pprint(event)
+
+    print("通过fitter创建一个小舒婷")
+    # 将按X键后移20ms，来打出小舒婷
+    fist_and_back_macro = (
+        Macro().click_button(10, Button.X, 10).move_left_joystick(20, JoystickDirection.FULL_LEFTDOWN)
+    )
+    bad_shooting_macro = (
+        shooting_macro.filter(lambda event: event.params[0] != Button.X)
+        .filter(lambda event: event.time_ms != 20)
+        .append(fist_and_back_macro, 20)
+    )
+
+    print("生成的 '小舒婷' 宏:")
+    for event in bad_shooting_macro:
+        pprint(event)
+
+    print("开始拉后并随机舒婷，快去用股裂吓死你的街霸好友吧! (按 Ctrl+C 退出)")
+    # 蹲后
+    gamepad.move_left_joystick(JoystickDirection.FULL_LEFTDOWN)
+    sleep(5)
+    # 随机舒婷
+    end_time = monotonic() + 60
+    while monotonic() < end_time:
+        if random() < 0.5:
+            # 不回中来实现无限蹲
+            print("舒婷!!!")
+            gamepad.play_macro(shooting_macro, False)
+        else:
+            print("舒婷。")
+            gamepad.play_macro(bad_shooting_macro, False)
+        sleep(uniform(0.5, 5))
+    else:
+        print("相信对面已经被无敌龟男打爆了。")
