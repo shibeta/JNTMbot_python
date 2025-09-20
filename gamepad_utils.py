@@ -23,8 +23,10 @@ class Button:
     DPAD_DOWN = vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_DOWN
     DPAD_LEFT = vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT
     DPAD_RIGHT = vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT
-    START = vg.XUSB_BUTTON.XUSB_GAMEPAD_START
-    BACK = vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK
+    START = vg.XUSB_BUTTON.XUSB_GAMEPAD_START  # 靠右的小按钮
+    MENU = vg.XUSB_BUTTON.XUSB_GAMEPAD_START  # 一种 START 的别名
+    BACK = vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK  # 靠左的小按钮
+    SELECT = vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK  # 一种 BACK 的别名
     LEFT_STICK = vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_THUMB
     RIGHT_STICK = vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB
     LEFT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER
@@ -529,7 +531,13 @@ if __name__ == "__main__":
 
     print("--- 手柄测试 ---")
     print("按下 A 键...")
-    gamepad.click_button(Button.A)
+    gamepad.click_button(Button.A, 500)
+    sleep(1)
+    print("按下 START 键...")
+    gamepad.click_button(Button.START, 500)
+    sleep(1)
+    print("按下 BACK 键...")
+    gamepad.click_button(Button.BACK, 500)
     sleep(1)
     print("左摇杆向前50%...")
     gamepad.move_left_joystick((0, 0.5))
@@ -593,7 +601,7 @@ if __name__ == "__main__":
     gamepad.move_left_joystick(JoystickDirection.FULL_LEFTDOWN)
     sleep(5)
     # 随机舒婷
-    end_time = monotonic() + 60
+    end_time = monotonic() + 20
     while monotonic() < end_time:
         if random() < 0.5:
             # 不回中来实现无限蹲
