@@ -1,6 +1,9 @@
 import atexit
 import time
 import vgamepad as vg
+from collections import defaultdict
+from functools import total_ordering
+import bisect
 
 from logger import get_logger
 
@@ -8,7 +11,8 @@ logger = get_logger(name="gamepad_utils")
 
 
 class Button:
-    # 手柄按键映射
+    """手柄按键映射"""
+
     A = vg.XUSB_BUTTON.XUSB_GAMEPAD_A
     B = vg.XUSB_BUTTON.XUSB_GAMEPAD_B
     X = vg.XUSB_BUTTON.XUSB_GAMEPAD_X
@@ -26,31 +30,166 @@ class Button:
 
 
 class JoystickDirection:
-    # 常用摇杆方向映射
-    center = (0.0, 0.0)
+    """常用摇杆方向映射"""
 
-    half_up = (0.0, 0.7)
-    half_right = (0.7, 0.0)
-    half_left = (-0.7, 0.0)
-    half_down = (0.0, -0.7)
+    CENTER = (0.0, 0.0)
 
-    half_upleft = (-0.6, 0.6)
-    half_upright = (0.6, 0.6)
-    half_downleft = (-0.6, -0.6)
-    half_downright = (0.6, -0.6)
+    HALF_UP = (0.0, 0.7)
+    HALF_DOWN = (0.0, -0.7)
+    HALF_LEFT = (-0.7, 0.0)
+    HALF_RIGHT = (0.7, 0.0)
 
-    full_up = (0.0, 1)
-    full_right = (1, 0.0)
-    full_left = (-1, 0.0)
-    full_down = (0.0, -1)
+    HALF_LEFTUP = (-0.6, 0.6)
+    HALF_RIGHTUP = (0.6, 0.6)
+    HALF_LEFTDOWN = (-0.6, -0.6)
+    HALF_RIGHTDOWN = (0.6, -0.6)
 
-    full_upleft = (-1, 1)
-    full_upright = (1, 1)
-    full_downleft = (-1, -1)
-    full_downright = (1, -1)
+    FULL_UP = (0.0, 1.0)
+    FULL_DOWN = (0.0, -1.0)
+    FULL_LEFT = (-1.0, 0.0)
+    FULL_RIGHT = (1.0, 0.0)
+
+    FULL_LEFTUP = (-1.0, 1.0)
+    FULL_RIGHTUP = (1.0, 1.0)
+    FULL_LEFTDOWN = (-1.0, -1.0)
+    FULL_RIGHTDOWN = (1.0, -1.0)
+
+
+class TriggerPressure:
+    """常用扳机压力值映射"""
+
+    released = 0.0  # 完全松开
+    light = 0.4  # 轻压 (适用于需要精确控制的场景，如半按加速)
+    full = 1.0  # 完全按下 (适用于射击等场景)
+
+
+@total_ordering
+class MacroEvent:
+    """宏中的一个独立事件，即在特定时间点执行的特定动作。"""
+
+    def __init__(self, time_ms: int, action_name: str, params: list):
+        self.time_ms = time_ms
+        self.action_name = action_name
+        self.params = params
+
+    def __repr__(self):
+        """提供一个清晰的、可读的字符串表示形式，方便调试。"""
+        return f"TimelineEvent(time={self.time_ms}ms, action='{self.action_name}', params={self.params})"
+
+    def __eq__(self, other):
+        """判断两个事件是否相等（主要用于排序）。"""
+        if not isinstance(other, MacroEvent):
+            return NotImplemented
+        return self.time_ms == other.time_ms
+
+    def __lt__(self, other):
+        """定义小于关系，即如何判断一个事件是否在另一个之前发生。"""
+        if not isinstance(other, MacroEvent):
+            return NotImplemented
+        return self.time_ms < other.time_ms
+
+
+class Macro:
+    """
+    一个自构建的宏对象。
+    它既是宏事件的容器，也是用于定义这些事件的构建器。
+    事件在添加时会自动排序，使其始终保持可播放状态。
+    """
+
+    def __init__(self):
+        self._events: list[MacroEvent] = []
+
+    def __repr__(self):
+        return f"<Macro with {len(self._events)} events, duration: {self.get_duration_ms()}ms>"
+
+    # --- 使 Macro 对象表现得像一个容器 (使其可迭代、可获取长度) ---
+    def __iter__(self):
+        return iter(self._events)
+
+    def __len__(self):
+        return len(self._events)
+
+    def get_duration_ms(self) -> int:
+        """返回宏的总时长（最后一个事件发生的时间点）。"""
+        if not self._events:
+            return 0
+        return self._events[-1].time_ms
+
+    def add_action(self, time_ms: int, action_type: str, params: list):
+        """
+        核心方法：创建一个新事件并将其有序地插入到宏中。
+        使用 bisect.insort 来保持列表排序。
+        """
+        event = MacroEvent(time_ms=time_ms, action_name=action_type, params=params)
+        bisect.insort(self._events, event)
+        return self  # 返回 self 以支持链式调用
+
+    # --- 基础动作 (Primitive Actions) ---
+    # 这些方法提供最精细的控制，只在时间轴上创建一个事件。
+
+    def press_button(self, time_ms: int, button: Button):
+        """在指定时间点按下一个按钮。"""
+        return self.add_action(time_ms, "press_button", [button])
+
+    def release_button(self, time_ms: int, button: Button):
+        """在指定时间点释放一个按钮。"""
+        return self.add_action(time_ms, "release_button", [button])
+
+    def move_left_joystick(self, time_ms: int, direction: tuple[float, float]):
+        """在指定时间点将左摇杆移动到特定位置。"""
+        return self.add_action(time_ms, "left_joystick_float", list(direction))
+
+    def move_right_joystick(self, time_ms: int, direction: tuple[float, float]):
+        """在指定时间点将右摇杆移动到特定位置。"""
+        return self.add_action(time_ms, "right_joystick_float", list(direction))
+
+    def press_left_trigger(self, time_ms: int, pressure: float):
+        """在指定时间点将左扳机按压到特定压力值。"""
+        return self.add_action(time_ms, "left_trigger_float", [pressure])
+
+    def press_right_trigger(self, time_ms: int, pressure: float):
+        """在指定时间点将右扳机按压到特定压力值。"""
+        return self.add_action(time_ms, "right_trigger_float", [pressure])
+
+    # --- 方便使用的复合动作 (Compound/Convenience Actions) ---
+    # 这些方法会自动创建开始和结束事件。
+
+    def click_button(self, start_time_ms: int, button, duration_ms: int):
+        """在指定时间点开始，按住并释放一个按钮。"""
+        self.press_button(start_time_ms, button)
+        self.release_button(start_time_ms + duration_ms, button)
+        return self
+
+    def hold_left_joystick(self, start_time_ms: int, direction: tuple[float, float], duration_ms: int):
+        """在指定时间点开始，推动并回中左摇杆。"""
+        self.move_left_joystick(start_time_ms, direction)
+        self.move_left_joystick(start_time_ms + duration_ms, JoystickDirection.CENTER)
+        return self
+
+    def hold_right_joystick(self, start_time_ms: int, direction: tuple[float, float], duration_ms: int):
+        """在指定时间点开始，推动并回中右摇杆。"""
+        self.move_right_joystick(start_time_ms, direction)
+        self.move_right_joystick(start_time_ms + duration_ms, JoystickDirection.CENTER)
+        return self
+
+    def hold_left_trigger(self, start_time_ms: int, pressure: float, duration_ms: int):
+        """在指定时间点开始，按压并松开左扳机。"""
+        self.press_left_trigger(start_time_ms, pressure)
+        self.press_left_trigger(start_time_ms + duration_ms, TriggerPressure.released)
+        return self
+
+    def hold_right_trigger(self, start_time_ms: int, pressure: float, duration_ms: int):
+        """在指定时间点开始，按压并松开右扳机。"""
+        self.press_right_trigger(start_time_ms, pressure)
+        self.press_right_trigger(start_time_ms + duration_ms, TriggerPressure.released)
+        return self
 
 
 class GamepadSimulator:
+    """
+    用于模拟手柄操作的类。
+    在程序退出时，会自动释放所有手柄按键、扳机和摇杆，防止卡住。
+    """
 
     def __init__(self):
         self.pad = None
@@ -65,11 +204,11 @@ class GamepadSimulator:
 
             # 按一下A键以唤醒手柄
             self.click_button(Button.A)
-            logger.info("初始化虚拟手柄完成。")
+            logger.debug("初始化虚拟手柄完成。")
 
         except Exception as e:
             logger.error(f"初始化虚拟手柄失败: {e}。请确保已安装 ViGEmBus 驱动。")
-
+            raise e
 
     def _cleanup(self):
         """程序退出时调用的清理函数。"""
@@ -81,15 +220,19 @@ class GamepadSimulator:
                 logger.info("虚拟手柄状态已重置。")
             except Exception as e:
                 logger.error(f"重置虚拟手柄时出错: {e}")
-    
+
     def _check_connected(self):
         if not self.connected or self.pad is None:
             logger.error("没有安装虚拟手柄驱动，或没有初始化")
             return False
         return True
 
-    def press_button(self, button):
-        """按下一个按钮"""
+    def press_button(self, button: Button):
+        """
+        按下一个按钮。
+
+        :param button: 要按下的按钮
+        """
         if not self._check_connected():
             return
         try:
@@ -98,8 +241,12 @@ class GamepadSimulator:
         except Exception as e:
             logger.error(f"按下按钮 {button} 时出错: {e}")
 
-    def release_button(self, button):
-        """松开一个按钮"""
+    def release_button(self, button: Button):
+        """
+        松开一个按钮。
+
+        :param button: 要松开的按钮
+        """
         if not self._check_connected():
             return
         try:
@@ -108,92 +255,217 @@ class GamepadSimulator:
         except Exception as e:
             logger.error(f"松开按钮 {button} 时出错: {e}")
 
-    def click_button(self, button, duration_seconds=0.2):
-        """按住一个按钮一段时间"""
+    def click_button(self, button: Button, duration_milliseconds: int = 90):
+        """
+        按住一个按钮，一段时间后松开。
+
+        :param button: 要按住的按钮
+        :param duration_milliseconds: 持续时间，单位为毫秒
+        """
         if not self._check_connected():
             return
         try:
             self.press_button(button)
-            time.sleep(duration_seconds)
+            time.sleep(duration_milliseconds / 1000.0)
         except Exception as e:
             logger.error(f"点按按钮 {button} 时出错: {e}")
         finally:
             self.release_button(button)
 
     def return_left_joystick_to_center(self):
-        self.move_left_joystick(JoystickDirection.center)
+        self.move_left_joystick(JoystickDirection.CENTER)
 
-    def move_left_joystick(self, x_percent: float, y_percent: float):
+    def move_left_joystick(self, direction: tuple[float, float]):
         """
         推动左摇杆到某位置。
 
-        Args:
-            x_percent: 左右方向，取值范围为 -1.0 ~ 1.0. (0代表回中)。
-            y_percent: 后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)。
+        :param direction: 左右方向和后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)
         """
         if not self._check_connected():
             return
         try:
-            self.pad.left_joystick_float(x_percent, y_percent)
+            self.pad.left_joystick_float(*direction)
             self.pad.update()
         except Exception as e:
             logger.error(f"移动左摇杆时出错: {e}")
 
-    def hold_left_joystick(self, x_percent: float, y_percent: float, duration_seconds: float):
+    def hold_left_joystick(self, direction: tuple[float, float], duration_milliseconds: int = 80):
         """
         推动左摇杆到某位置，一段时间后回中。
 
-        Args:
-            x_percent: 左右方向，取值范围为 -1.0 ~ 1.0. (0代表回中)。
-            y_percent: 后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)。
-            duration_seconds: 持续时间，单位为秒
+        :param direction: 左右方向和后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)
+        :param duration_milliseconds: 持续时间，单位为毫秒
         """
         if not self._check_connected():
             return
-        self.move_left_joystick(x_percent, y_percent)
-        time.sleep(duration_seconds)
-        self.move_left_joystick(JoystickDirection.center)
+        self.move_left_joystick(direction)
+        time.sleep(duration_milliseconds / 1000.0)
+        self.return_left_joystick_to_center()
         self.pad.update()
 
     def return_right_joystick_to_center(self):
-        self.move_right_joystick(JoystickDirection.center)
+        self.move_right_joystick(JoystickDirection.CENTER)
 
-    def move_right_joystick(self, x_percent: float, y_percent: float):
+    def move_right_joystick(self, direction: tuple[float, float]):
         """
         推动右摇杆到某位置。
 
-        Args:
-            x_percent: 左右方向，取值范围为 -1.0 ~ 1.0. (0代表回中)。
-            y_percent: 后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)。
+        :param direction: 左右方向和后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)
         """
         if not self._check_connected():
             return
         try:
-            self.pad.right_joystick_float(x_percent, y_percent)
+            self.pad.right_joystick_float(*direction)
             self.pad.update()
         except Exception as e:
             logger.error(f"Error moving right stick: {e}")
 
-    def hold_right_joystick(self, x_percent: float, y_percent: float, duration_seconds: float):
+    def hold_right_joystick(self, direction: tuple[float, float], duration_milliseconds: int = 80):
         """
         推动右摇杆到某位置，一段时间后回中。
 
-        Args:
-            x_percent: 左右方向，取值范围为 -1.0 ~ 1.0. (0代表回中)。
-            y_percent: 后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)。
-            duration_seconds: 持续时间，单位为秒
+        :param direction: 左右方向和后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)
+        :param duration_milliseconds: 持续时间，单位为毫秒
         """
         if not self._check_connected():
             return
-        self.move_right_joystick(x_percent, y_percent)
-        time.sleep(duration_seconds)
-        self.move_right_joystick(JoystickDirection.center)
+        self.move_right_joystick(direction)
+        time.sleep(duration_milliseconds / 1000.0)
+        self.return_right_joystick_to_center()
         self.pad.update()
+
+    def press_left_trigger(self, pressure_float: float):
+        """
+        按压左扳机到指定压力值。
+
+        :param pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
+        """
+        if not self._check_connected():
+            return
+        try:
+            self.pad.left_trigger_float(value_float=pressure_float)
+            self.pad.update()
+        except Exception as e:
+            logger.error(f"按压左扳机时出错: {e}")
+
+    def release_left_trigger(self):
+        """完全松开左扳机。"""
+        self.press_left_trigger(TriggerPressure.released)
+
+    def hold_left_trigger(self, pressure_float: float, duration_milliseconds: int = 80):
+        """
+        按住左扳机一段时间后松开。
+
+        Args:
+            pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
+            duration_milliseconds: 持续时间，单位为毫秒。
+        """
+        if not self._check_connected():
+            return
+        self.press_left_trigger(pressure_float)
+        time.sleep(duration_milliseconds / 1000.0)
+        self.release_left_trigger()
+
+    def press_right_trigger(self, pressure_float: float):
+        """
+        按压右扳机到指定压力值。
+
+        Args:
+            pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
+        """
+        if not self._check_connected():
+            return
+        try:
+            self.pad.right_trigger_float(value_float=pressure_float)
+            self.pad.update()
+        except Exception as e:
+            logger.error(f"按压右扳机时出错: {e}")
+
+    def release_right_trigger(self):
+        """完全松开右扳机。"""
+        self.press_right_trigger(TriggerPressure.released)
+
+    def hold_right_trigger(self, pressure_float: float, duration_milliseconds: int = 80):
+        """
+        按住右扳机一段时间后松开。
+
+        :param pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
+        :param duration_milliseconds: 持续时间，单位为毫秒。
+        """
+        if not self._check_connected():
+            return
+        self.press_right_trigger(pressure_float)
+        time.sleep(duration_milliseconds / 1000.0)
+        self.release_right_trigger()
+
+    def play_macro(self, micro: Macro, reset_at_end: bool = True):
+        """
+        根据给定的 MacroEvent 列表，执行一段宏。
+
+        :param micro: 一个宏对象。
+        :param reset_at_end: 宏播放完毕后是否松开所有键。默认松开
+        """
+        if not self._check_connected():
+            return
+        if not micro:
+            logger.warning("宏为空，不执行任何操作。")
+            return
+
+        # 将事件按时间戳分组
+        event_groups = defaultdict(list)
+        for event in micro:
+            event_groups[event.time_ms].append(event)
+
+        # 获取所有事件发生的时间点，并排序
+        sorted_timestamps = sorted(event_groups.keys())
+
+        logger.debug(
+            f"开始播放宏，总时长: {sorted_timestamps[-1] / 1000.0:.2f} 秒，共 {len(sorted_timestamps)} 个动作。"
+        )
+
+        start_time_monotonic = time.monotonic()
+
+        try:
+            for timestamp_ms in sorted_timestamps:
+                # 计算并执行休眠
+                target_elapsed_sec = timestamp_ms / 1000.0
+                current_elapsed_sec = time.monotonic() - start_time_monotonic
+                sleep_duration_sec = target_elapsed_sec - current_elapsed_sec
+
+                if sleep_duration_sec > 0:
+                    time.sleep(sleep_duration_sec)
+
+                # 执行当前时间戳下的所有事件
+                events_to_run = event_groups[timestamp_ms]
+                log_actions = []
+                for event in events_to_run:
+                    method_to_call = getattr(self.pad, event.action_name, None)
+                    if callable(method_to_call):
+                        method_to_call(*event.params)
+                        log_actions.append(f"{event.action_name}({event.params})")
+                    else:
+                        logger.warning(f"未知的手柄动作: {event.action_name}")
+
+                # 5. 更新手柄状态
+                self.pad.update()
+
+                actual_time_ms = round((time.monotonic() - start_time_monotonic) * 1000)
+                logger.debug(f"[{actual_time_ms}ms / 目标 {timestamp_ms}ms] 执行: {', '.join(log_actions)}")
+
+        finally:
+            # 重置手柄
+            if reset_at_end:
+                logger.info("宏播放完毕，重置手柄状态。")
+                self.pad.reset()
+                self.pad.update()
+            else:
+                logger.info("宏播放完毕，不重置手柄状态。")
 
 
 # --- 使用示例 ---
 if __name__ == "__main__":
     from time import sleep
+    from pprint import pprint
 
     gamepad = GamepadSimulator()
     if not gamepad.connected:
@@ -205,10 +477,30 @@ if __name__ == "__main__":
     gamepad.click_button(Button.A)
     sleep(1)
     print("左摇杆向前50%...")
-    gamepad.move_left_joystick(0, 0.5)
+    gamepad.move_left_joystick((0, 0.5))
     sleep(1)
-    gamepad.move_left_joystick(0, 0)
+    print("左摇杆复位...")
+    gamepad.move_left_joystick(JoystickDirection.CENTER)
     sleep(1)
     print("右摇杆向后50%...")
-    gamepad.hold_right_joystick(JoystickDirection.half_down, 1)
-    print("测试结束.")
+    gamepad.hold_right_joystick(JoystickDirection.HALF_DOWN, 1)
+    print("测试完成.")
+
+    print("\n--- 宏测试 ---")
+    print("正在创建宏: 波动拳")  # ↓ ↘ → A
+
+    hadouken_combo = Macro()
+    # 顺序是任意的，会自动排序
+    hadouken_combo.move_left_joystick(80, JoystickDirection.FULL_RIGHTDOWN)
+    hadouken_combo.move_left_joystick(0, JoystickDirection.FULL_DOWN)
+    # 支持链式调用
+    hadouken_combo.move_left_joystick(160, JoystickDirection.FULL_RIGHT).click_button(160, Button.A, 100)
+
+    print("生成的 '波动拳' 宏:")
+    for event in hadouken_combo:
+        pprint(event)
+
+    # 播放宏对象
+    gamepad.play_macro(hadouken_combo)
+
+    print("\n宏播放完成。")
