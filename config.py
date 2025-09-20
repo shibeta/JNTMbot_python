@@ -56,7 +56,7 @@ class Config:
             "comment": "微信推送报错退出的启用延迟。为节省API用量，只有程序运行时长超过该时间后，报错退出时才会向微信推送 (分钟)",
         },
         "mainLoopConsecutiveErrorThreshold": {
-            "value": 3,
+            "value": 10,
             "comment": "主循环连续报错的阈值，连续报错超过该次数将报错退出。设置为<=1则报错一次即退出",
         },
         "restartGTAConsecutiveFailThreshold": {
