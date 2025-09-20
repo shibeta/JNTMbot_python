@@ -14,6 +14,7 @@ from steambot_utils import SteamBotClient
 from push_utils import push_wechat
 from gta5_utils import GameAutomator
 from health_check import HealthMonitor
+from gameautomator_exception import *
 
 logger = get_logger(name="main")
 
@@ -177,54 +178,71 @@ def main():
             pause_event.wait()
             time.sleep(1)
 
+            logger.info("动作: 正在开始新一轮循环...")
             # 确保游戏启动
-            automator.setup_gta()
-
-            # 把方向键全按一遍，避免卡键
-            automator.fix_key_stuck()
+            try:
+                automator.setup_gta_window()
+            except GameAutomationException as e:
+                # 启动 GTA V 多次失败
+                logger.error(f"初始化 GTA V 窗口时， {e}")
+                raise e
 
             # 开始新战局
-            if not automator.start_new_match():
-                logger.error("开始新战局失败次数过多。杀死 GTA V 进程并重启循环。")
+            try:
+                automator.start_new_match()
+            except UnexpectedGameState as e:
+                # 开始新战局多次失败
+                logger.error("开始新战局失败次数过多。杀死 GTA V 进程。")
                 automator.kill_gta()
-                continue
-
-            logger.info("成功初始化新战局。")
+                raise e
 
             # 等待复活
+            logger.info("等待在事务所床上复活...")
             start_time = time.monotonic()
             while time.monotonic() - start_time < 60:
-                if automator.is_respawned():
+                if automator.is_respawned_in_agency():
                     break
                 time.sleep(0.3)
             else:
-                logger.warning("等待复活超时。重启循环。")
-                continue
+                logger.error("等待复活超时。")
+                raise OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)
+            logger.info("在事务所床上复活成功。")
 
             # 导航并寻找差事
             automator.go_job_point_from_bed()
-            if not automator.find_job():
-                logger.warning("未能找到差事标记。重启循环。")
-                continue
+            try:
+                automator.find_job_point()
+            except UIElementNotFound as e:
+                # 没找到差事黄圈
+                logger.error(f"寻找差事点时，{e}")
+                raise e
 
             # 进入差事
-            automator.enter_job()
+            automator.enter_job_setup()
 
             # 等待差事面板
+            logger.info("等待差事面板打开...")
             start_time = time.monotonic()
             while time.monotonic() - start_time < 60:
                 if automator.is_on_job_panel():
                     break
                 time.sleep(1)
             else:
-                logger.warning("等待差事面板打开超时。重启循环。")
+                logger.error("等待差事面板打开超时。")
                 logger.info("正在确保离开面板回到自由模式。")
                 automator.exit_job_panel()
-                continue
+                raise OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)
 
             # 等待队伍并开始差事
-            if not automator.wait_team():
-                logger.warning("等待队伍时出错。重启循环。")
+            try:
+                automator.setup_wait_start_job()
+            except UIElementNotFound as e:
+                # 不知为何离开了面板
+                logger.error(f"等待队伍并开始差事时，{e}")
+                raise e
+            except OperationTimeout as e:
+                # 超时是因为其他玩家造成的，无须 Bot 处理，直接开始下一轮
+                logger.warning(f"等待队伍并开始差事时，{e}")
                 logger.info("正在确保离开面板回到自由模式。")
                 automator.exit_job_panel()
                 continue
@@ -238,14 +256,15 @@ def main():
                     break
                 time.sleep(1)
             else:
+                # 差事加载超时不影响 Bot 工作，直接开始下一轮
                 logger.warning("等待差事加载超时。卡单并重启循环。")
                 time.sleep(config.delaySuspendTime)
-                automator.enter_single_player_session()
+                automator.glitch_single_player_session()
                 continue
 
             logger.info(f"面板已消失。{config.delaySuspendTime} 秒后将卡单。")
             time.sleep(config.delaySuspendTime)
-            automator.enter_single_player_session()
+            automator.glitch_single_player_session()
 
             # 差事落地后卡单，避免加恶意值
             landing_start_time = time.monotonic()
@@ -257,16 +276,16 @@ def main():
             else:
                 logger.warning("等待人物落地超时。卡单并重启循环。")
                 time.sleep(config.delaySuspendTime)
-                automator.enter_single_player_session()
+                automator.glitch_single_player_session()
                 continue
 
             logger.info(f"人物已落地。{config.delaySuspendTime} 秒后将卡单。")
             time.sleep(config.delaySuspendTime)
-            automator.enter_single_player_session()
+            automator.glitch_single_player_session()
 
             # 如果战局中有其他 CEO，卡单后任务会失败并进入计分板
             # 检查当前任务状态来处理卡单后可能遇到的各种情况
-            logger.info("正在检查当前差事状态。")
+            logger.info("动作: 正在检查当前差事状态...")
             # 等待5秒以响应玩家离开
             time.sleep(5)
             mission_status_check_start_time = time.monotonic()
@@ -282,6 +301,7 @@ def main():
                 while time.monotonic() - possible_mission_fail_time < 15:
                     if automator.is_on_scoreboard():
                         # 由于 CEO 退出的计分板只能通过等待来退出
+                        logger.info("当前在任务失败计分板。")
                         logger.info("有神人不卡单导致任务失败，等待20秒以离开计分板。")
                         try:
                             steam_bot.send_group_message(config.msgDetectedSB)
@@ -294,9 +314,9 @@ def main():
                 else:
                     # 既检测不到在任务中，也检测不到任务失败
                     # 反正已经卡过单了，就这样吧
-                    logger.warning("任务状态异常，但还是尝试继续执行。")
+                    logger.warning("无法确定当前差事状态，但还是尝试继续执行。")
 
-            logger.info("本轮循环完成。开始新一轮。")
+            logger.info("本轮循环完成。")
             # 清空连续出错次数
             main_loop_consecutive_error_count = 0
 
@@ -310,12 +330,14 @@ def main():
             logger.error(traceback.format_exc())
 
             # 重启循环还是退出?
+            logger.info("当前连续失败次数 {main_loop_consecutive_error_count}，最大失败次数阈值 {config.mainLoopConsecutiveErrorThreshold}。")
             if main_loop_consecutive_error_count <= config.mainLoopConsecutiveErrorThreshold:
                 # 未超过报错退出的阈值，重启
-                logger.error(f"将在{wait_before_restart_loop}秒后重启循环...")
+                logger.info(f"未超过连续失败阈值，将在{wait_before_restart_loop}秒后重启循环...")
                 time.sleep(wait_before_restart_loop)
             else:
                 # 超过报错退出的阈值，退出
+                logger.error(f"超过连续失败阈值，程序将退出...")
                 if config.wechatPush:
                     # 启用了微信推送并且运行超过 wechatPushActivationDelay 分钟则推送消息
                     if time.monotonic() - global_start_time > config.wechatPushActivationDelay * 60:
