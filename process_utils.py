@@ -2,7 +2,15 @@ import time
 import psutil
 import win32gui
 import win32process
-from win32con import SW_RESTORE
+from win32con import (
+    SW_RESTORE,
+    HWND_TOPMOST,
+    HWND_NOTOPMOST,
+    SWP_NOMOVE,
+    SWP_NOSIZE,
+    SWP_NOACTIVATE,
+    SWP_SHOWWINDOW,
+)
 from typing import Tuple, Optional
 
 from logger import get_logger
@@ -131,8 +139,7 @@ def get_process_pid_by_window_handler(handler: int) -> int:
             raise Exception(f"找不到句柄{handler}对应的进程")
         return pid
     except Exception as e:
-        e.args = f"获取句柄{handler}的进程ID时发生异常: {e}"
-        raise e
+        raise Exception(f"获取句柄{handler}的进程ID时发生异常: {e}") from e
 
 
 def suspend_process_for_duration(pid: int, duration_seconds: int):
@@ -152,8 +159,7 @@ def suspend_process_for_duration(pid: int, duration_seconds: int):
     except psutil.NoSuchProcess:
         raise ValueError(f"挂起失败：未找到 PID 为 {pid} 的进程。")
     except Exception as e:
-        e.args = f"挂起进程({pid})时发生异常: {e}"
-        raise e
+        raise Exception(f"挂起进程({pid})时发生异常: {e}") from e
     finally:
         # 恢复进程
         try:
@@ -183,8 +189,7 @@ def resume_process_from_suspend(pid: int):
     except psutil.NoSuchProcess:
         pass  # 进程可能在操作期间关闭了
     except Exception as e:
-        e.args = f"恢复进程 {pid} 时出错: {e}"
-        raise e
+        raise Exception(f"恢复进程 {pid} 时出错: {e}") from e
 
 
 def kill_processes(process_names: list[str]):
@@ -211,18 +216,19 @@ def set_active_window(hwnd: int):
     """
     if is_window_handler_exist(hwnd):
         try:
+            # 如果最小化，从最小化中恢复
             if win32gui.IsIconic(hwnd):
                 win32gui.ShowWindow(hwnd, SW_RESTORE)
-                time.sleep(0.1)  # 等待窗口恢复
+                time.sleep(0.2)  # 等待窗口恢复
+            # 如果不是活动窗口，将其激活
             if hwnd != win32gui.GetForegroundWindow():
                 win32gui.SetForegroundWindow(hwnd)
-                time.sleep(0.5)  # 等待窗口重绘
         except Exception as e:
-            e.args = f"激活窗口({hwnd})时出错: {e}"
-            raise e
+            raise Exception(f"激活窗口({hwnd})时出错: {e}") from e
     else:
         return
-    
+
+
 def set_top_window(hwnd: int):
     """
     将传入的窗口句柄从最小化还原并置顶。传入的句柄无效则不做任何事。
@@ -232,14 +238,18 @@ def set_top_window(hwnd: int):
     """
     if is_window_handler_exist(hwnd):
         try:
+            # 如果最小化，从最小化中恢复
             if win32gui.IsIconic(hwnd):
                 win32gui.ShowWindow(hwnd, SW_RESTORE)
-                time.sleep(0.1)  # 等待窗口恢复
-            win32gui.ShowWindow(hwnd, SW_RESTORE)
-            # 给 Windows 一点时间完成窗口重绘
-            time.sleep(0.5)
+                time.sleep(0.2)  # 等待窗口恢复
+            # 将窗口置顶
+            win32gui.SetWindowPos(
+                hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
+            )
+            win32gui.SetWindowPos(
+                hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
+            )
         except Exception as e:
-            e.args = f"置顶窗口({hwnd})时出错: {e}"
-            raise e
+            raise Exception(f"置顶窗口({hwnd})时出错: {e}") from e
     else:
         return
