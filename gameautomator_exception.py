@@ -1,5 +1,4 @@
 import enum
-from typing import Callable
 
 
 class OperationTimeoutContext(enum.Enum):
@@ -21,29 +20,29 @@ class GameState(enum.Enum):
     # is_running: 游戏正在运行
     # is_playable: 可以控制角色
     # is_online: 处于在线模式中
-    UNKNOWN = "无法识别的未知状态", {"is_running": True, "is_playable": False, "is_online": False}
-    OFF = "游戏未运行", {"is_running": False, "is_playable": False, "is_online": False}
-    MAIN_MENU = "主菜单", {"is_running": True, "is_playable": False, "is_online": False}
-    IN_STORY_MODE = "故事模式", {"is_running": True, "is_playable": True, "is_online": False}
-    IN_ONLINE_LOBBY = "在线战局自由模式", {"is_running": True, "is_playable": True, "is_online": True}
-    DEAD_ONLINE = "在线模式死亡", {"is_running": True, "is_playable": False, "is_online": True}
-    LOADING_SCREEN = "加载界面", {"is_running": True, "is_playable": False, "is_online": False}
-    IN_MISSION = "任务中", {"is_running": True, "is_playable": True, "is_online": True}
-    SCOREBOARD = "任务失败计分板", {"is_running": True, "is_playable": False, "is_online": True}
-    STORY_PAUSED = "故事模式暂停菜单", {"is_running": True, "is_playable": False, "is_online": False}
-    ONLINE_PAUSED = "在线模式暂停菜单", {"is_running": True, "is_playable": False, "is_online": True}
-    JOB_PANNEL_1 = "任务面板第一页", {"is_running": True, "is_playable": False, "is_online": True}
-    JOB_PANNEL_2 = "任务面板第二页", {"is_running": True, "is_playable": False, "is_online": True}
-    WARNING = "警告/错误页面", {"is_running": True, "is_playable": False, "is_online": False}
-    BAD_PCSETTING_BIN = "此时无法载入您保存的数据", {
-        "is_running": True,
-        "is_playable": False,
-        "is_online": False,
-    }
+    ON = "游戏运行中的任意状态"  # 仅用于expected
+    UNKNOWN = "游戏运行中的无法识别的状态"  # 仅用于actual
+    OFF = "游戏未运行"
+    MAIN_MENU = "主菜单"
+    IN_STORY_MODE = "故事模式"
+    IN_ONLINE_LOBBY = "在线战局自由模式"
+    DEAD_ONLINE = "在线模式死亡"
+    LOADING_SCREEN = "加载界面"
+    IN_MISSION = "任务中"
+    SCOREBOARD = "任务失败计分板"
+    STORY_PAUSED = "故事模式暂停菜单"
+    ONLINE_PAUSED = "在线模式暂停菜单"
+    JOB_PANNEL_1 = "任务面板第一页"
+    JOB_PANNEL_2 = "任务面板第二页"
+    WARNING = "警告/错误页面"
+    BAD_PCSETTING_BIN = "此时无法载入您保存的数据"
 
 
 class NavigationFailedContext(enum.Enum):
     """抛出 NavigationFailed 异常时，可能处于的上下文"""
+
+    ENTER_AGENCY = "进入事务所"
+    EXIT_AGENCY = "离开事务所"
 
 
 class UIElementNotFoundContext(enum.Enum):
@@ -88,28 +87,24 @@ class UnexpectedGameState(GameAutomationException):
 
     def __init__(
         self,
-        # 期望可以是：单个状态，一组状态，或一个返回布尔值的函数
-        expected: GameState | set[GameState] | Callable[[GameState], bool],
+        expected: GameState | set[GameState],
         actual: GameState,
     ):
         self.expected = expected
         self.actual_state = actual
         expected_str = self._format_expected()
 
-        self.message = f'期望状态为 "{expected_str}", 但实际状态为 "{actual.name}"。'
+        self.message = f'期望状态为 "{expected_str}", 但实际状态为 "{actual.name}"'
 
-        super.__init__(self.message)
+        super().__init__(self.message)
 
     def _format_expected(self) -> str:
         """辅助方法，用于生成清晰的期望描述。"""
         if isinstance(self.expected, GameState):
             return self.expected.name
         if isinstance(self.expected, set):
-            return " or ".join(s.name for s in self.expected)
-        if callable(self.expected):
-            # 尝试从函数名中获取有意义的描述
-            # 例如 lambda s: s.is_playable -> "is_playable"
-            return f"满足属性 '{self.expected.__name__}'"
+            return " 或 ".join(s.name for s in self.expected)
+
         return "未知期望"
 
 
@@ -138,3 +133,63 @@ class NetworkError(GameAutomationException):
         self.context = context
         self.message = f"{context.value}时发生网络错误"
         super().__init__(self.message)
+
+
+if __name__ == "__main__":
+    print("--- 开始测试自定义异常 ---")
+
+    # 1. 测试 OperationTimeout
+    try:
+        print("\n测试: OperationTimeout")
+        raise OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)
+    except OperationTimeout as e:
+        print(f"成功捕获异常: {e}")
+        assert e.message == "等待游戏窗口启动超时"
+
+    # 2. 测试 UnexpectedGameState
+    # 2a. 期望是单个状态
+    try:
+        print("\n测试: UnexpectedGameState (期望单个状态)")
+        raise UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.LOADING_SCREEN)
+    except UnexpectedGameState as e:
+        print(f"成功捕获异常: {e}")
+        assert e.message == '期望状态为 "IN_ONLINE_LOBBY", 但实际状态为 "LOADING_SCREEN"'
+
+    # 2b. 期望是一组状态
+    try:
+        print("\n测试: UnexpectedGameState (期望一组状态)")
+        expected_states = {GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}
+        raise UnexpectedGameState(expected=expected_states, actual=GameState.ONLINE_PAUSED)
+    except UnexpectedGameState as e:
+        print(f"成功捕获异常: {e}")
+        assert (
+            e.message == '期望状态为 "IN_ONLINE_LOBBY 或 IN_MISSION", 但实际状态为 "ONLINE_PAUSED"'
+            or e.message == '期望状态为 "IN_MISSION 或 IN_ONLINE_LOBBY", 但实际状态为 "ONLINE_PAUSED"'
+        )
+
+    # 3. 测试 NavigationFailed
+    try:
+        print("\n测试: NavigationFailed")
+        # 注意: 我为 NavigationFailedContext 添加了示例成员，以便测试
+        raise NavigationFailed(NavigationFailedContext.ENTER_AGENCY)
+    except NavigationFailed as e:
+        print(f"成功捕获异常: {e}")
+        assert e.message == "无法进入事务所"
+
+    # 4. 测试 UIElementNotFound
+    try:
+        print("\n测试: UIElementNotFound")
+        raise UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)
+    except UIElementNotFound as e:
+        print(f"成功捕获异常: {e}")
+        assert e.message == "找不到任务触发点"
+
+    # 5. 测试 NetworkError
+    try:
+        print("\n测试: NetworkError")
+        raise NetworkError(NetworkErrorContext.JOIN_WARPBOT_SESSION)
+    except NetworkError as e:
+        print(f"成功捕获异常: {e}")
+        assert e.message == "加入差传Bot战局时发生网络错误"
+
+    print("\n--- 所有测试用例执行完毕 ---")
