@@ -247,8 +247,7 @@ def main():
                 automator.exit_job_panel()
                 continue
 
-            # 面板消失后卡单
-            # TODO 面板消失后卡单真的是必要的吗
+            # 等待面板消失
             match_start_time = time.monotonic()
             logger.info("差事启动成功！等待面板消失。")
             while time.monotonic() - match_start_time < config.exitMatchTimeout:
@@ -262,6 +261,8 @@ def main():
                 automator.glitch_single_player_session()
                 continue
 
+            # 面板消失后卡单
+            # TODO 面板消失后卡单真的是必要的吗
             logger.info(f"面板已消失。{config.delaySuspendTime} 秒后将卡单。")
             time.sleep(config.delaySuspendTime)
             automator.glitch_single_player_session()

@@ -208,7 +208,7 @@ class OCREngine:
 
         # 拼接所有识别到的文本
         recognized_text = "".join(result.txts)
-        logger.debug(recognized_text)
+        logger.debug(f"OCR 结果: {recognized_text}")
 
         return recognized_text
 

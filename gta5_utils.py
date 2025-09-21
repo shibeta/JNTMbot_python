@@ -104,6 +104,7 @@ class GameAutomator:
                     continue
             else:
                 # 达到最大失败次数后抛出异常
+                logger.error("GTA V 启动失败次数过多，认为游戏处于无法启动的状态。")
                 raise UnexpectedGameState(expected=lambda state: state.is_running, actual=GameState.OFF)
         else:
             # 如果启动了则更新 PID 和窗口句柄
@@ -146,7 +147,7 @@ class GameAutomator:
             else:
                 logger.warning(f'要查找的文本: "{texts}" 是空列表或空元组。')
                 return False
-
+    
     def get_job_setup_status(self) -> tuple[bool, int, int]:
         """
         检查差事面板状态，包括是否在面板中，以及加入的玩家数。
@@ -202,7 +203,7 @@ class GameAutomator:
 
     def is_on_onlinemode_info_panel(self) -> bool:
         """检查游戏是否在在线模式的左上角显示玩家信息的菜单。"""
-        return self._find_text("在线模式", 0, 0, 0.5, 0.1)
+        return self._find_text("在线模式", 0, 0, 0.4, 0.1)
 
     def is_respawned_in_agency(self) -> bool:
         """检查玩家是否已在事务所的床上复活。"""
@@ -315,11 +316,11 @@ class GameAutomator:
         start_time = time.monotonic()
         while time.monotonic() - start_time < self.config.waitFindJobTimeout / 1000.0:
             self.gamepad.hold_left_joystick(JoystickDirection.HALF_DOWN, self.config.pressSTimeGoJob)
-            time.sleep(0.05)
+            time.sleep(0.1)
             if self.is_job_marker_found():
                 break
             self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFT, self.config.pressATimeGoJob)
-            time.sleep(0.05)
+            time.sleep(0.1)
             if self.is_job_marker_found():
                 break
         else:
@@ -342,6 +343,8 @@ class GameAutomator:
         logger.info("动作: 正在切换新战局...")
         # 切换新战局会尝试15次，在某些次数中，会使用不同措施尝试使游戏回到"正常状态"。
         for new_match_error_count in range(15):
+            if new_match_error_count > 0:
+                logger.info("正在重试...")
             logger.info("动作: 正在打开暂停菜单...")
             # 各种措施，很难说效果究竟如何，瞎猫撞死耗子
             if new_match_error_count % 3 == 2:
@@ -349,7 +352,7 @@ class GameAutomator:
                 for _ in range(7):
                     self.gamepad.click_button(Button.B)
                     time.sleep(0.5)
-                    logger.info("已停止按 B 键。")
+                logger.info("已停止按 B 键。")
             if (new_match_error_count + 1) % 3 == 0:
                 logger.info("动作: 尝试通过多次按 B 键和 A 键来恢复正常状态...")
                 for _ in range(4):
@@ -357,7 +360,7 @@ class GameAutomator:
                     time.sleep(0.5)
                     self.gamepad.click_button(Button.A)
                     time.sleep(0.5)
-                    logger.info("已停止按 B 键和 A 键。")
+                logger.info("已停止按 B 键和 A 键。")
             # if new_match_error_count == 10:
             #     GLogger.info("尝试通过加入差传 Bot 战局来恢复正常状态。")
             #     self.try_to_join_jobwarp_bot()
@@ -379,7 +382,7 @@ class GameAutomator:
             # 检查暂停菜单是否被打开，未打开则按菜单键并进行下一次尝试
             if not self.is_on_pause_menu():
                 self.gamepad.click_button(Button.MENU)
-                logger.warning(f"打开暂停菜单失败 (尝试次数 {new_match_error_count})。正在重试...")
+                logger.warning(f"打开暂停菜单失败 (尝试次数 {new_match_error_count + 1})。")
                 continue
 
             logger.info("成功打开暂停菜单。")
@@ -399,7 +402,7 @@ class GameAutomator:
             # 验证当前是否在切换战局的菜单，未打开则按菜单键并进行下一次尝试
             if not self.is_on_go_online_menu():
                 self.gamepad.click_button(Button.MENU)
-                logger.warning(f"打开切换战局菜单失败 (尝试次数 {new_match_error_count})。正在重试...")
+                logger.warning(f"打开切换战局菜单失败 (尝试次数 {new_match_error_count})。")
                 continue
 
             logger.info("成功打开切换战局菜单。")
@@ -412,6 +415,7 @@ class GameAutomator:
             self.gamepad.click_button(Button.A)
             break
         else:
+            logger.error(f"切换新战局失败次数过多，认为游戏正处于未知状态。")
             raise UnexpectedGameState(set(GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION), GameState.UNKNOWN)
 
         logger.info("成功进入新战局。")
@@ -893,7 +897,7 @@ class GameAutomator:
         online_mode_load_start_time = time.monotonic()
         while time.monotonic() - online_mode_load_start_time < 300:  # 5分钟加载超时
             self.gamepad.click_button(Button.DPAD_DOWN)
-            time.sleep(0.1)
+            time.sleep(0.6)
             # TODO: R星有时候会更新用户协议，需要确认新的用户协议，但暂时不清楚如何判断在用户协议页面和如何用手柄确认
             if self.is_on_onlinemode_info_panel():
                 break
@@ -907,9 +911,13 @@ class GameAutomator:
                 time.sleep(2)
                 self.gamepad.click_button(Button.A)
             elif self.is_on_mainmenu_online_page():
-                # 在线模式，很神奇吧
+                # 增强版由于网络不好或者被BE踢了，会被回退到主菜单
                 # logger.error("进入在线模式失败：进入在线模式时被回退到主菜单，请检查网络。")
                 raise UnexpectedGameState(GameState.IN_ONLINE_LOBBY, GameState.MAIN_MENU)
+            # 不支持，因为没有很好的办法检测当前是否在故事模式
+            # elif self.is_in_story_mode():
+            #     # 传承版由于网络不好或者被BE踢了，会被回退到故事模式
+            #     raise UnexpectedGameState(GameState.IN_ONLINE_LOBBY, GameState.IN_STORY_MODE)
             time.sleep(10)
         else:
             logger.error("进入在线模式失败：等待进入在线模式超时。")
