@@ -1,6 +1,4 @@
-from typing import Optional
 import win32gui
-import win32con
 import numpy as np
 from rapidocr import RapidOCR, EngineType, LangDet, LangRec, ModelType, OCRVersion
 import threading
@@ -81,8 +79,7 @@ class OCREngine:
 
             return left, top, right, bottom
         except Exception as e:
-            e.args = f"获取物理坐标失败: {e}"
-            raise e
+            raise Exception(f"获取物理坐标失败: {e}") from e
 
     def _capture_window_area_mss(
         self, hwnd: int, left: float, top: float, width: float, height: float, include_title_bar: bool = False
@@ -105,6 +102,7 @@ class OCREngine:
             )
             # 将要截图的窗口置顶
             set_top_window(hwnd)
+            sleep(0.2)  # 等待窗口重绘
 
             # DEBUG: 输出窗口原始大小
             window_left, window_top, window_right, window_bottom = win32gui.GetWindowRect(hwnd)
@@ -145,8 +143,7 @@ class OCREngine:
             return np.ascontiguousarray(img_np[:, :, :3])
 
         except Exception as e:
-            e.args = f"截图失败: {e}"
-            raise e
+            raise Exception(f"截图失败: {e}") from e
 
     def ocr(
         self,
