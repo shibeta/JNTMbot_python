@@ -141,12 +141,7 @@ def main():
     # 初始化健康检查
     if config.enableHealthCheck:
         logger.warning(f"已启用健康检查。正在初始化监控模块...")
-        monitor = HealthMonitor(
-            steam_bot,
-            pause_event,
-            unsafe_exit,
-            config
-        )
+        monitor = HealthMonitor(steam_bot, pause_event, unsafe_exit, config)
         monitor.start()
 
     else:
@@ -181,20 +176,27 @@ def main():
             logger.info("动作: 正在开始新一轮循环...")
             # 确保游戏启动
             try:
-                automator.setup_gta_window()
-            except GameAutomationException as e:
+                automator.setup_gta()
+            except UnexpectedGameState as e:
                 # 启动 GTA V 多次失败
-                logger.error(f"初始化 GTA V 窗口时， {e}")
-                raise e
+                logger.error(f"初始化 GTA V 窗口时，启动游戏失败次数过多。")
+                raise Exception(f"初始化 GTA V 窗口时，发生异常: {e}") from e
 
             # 开始新战局
             try:
                 automator.start_new_match()
             except UnexpectedGameState as e:
-                # 开始新战局多次失败
-                logger.error("开始新战局失败次数过多。杀死 GTA V 进程。")
-                automator.kill_gta()
-                raise e
+                if e.actual_state == GameState.UNKNOWN:
+                    # 开始新战局多次失败
+                    logger.error("开始新战局失败次数过多。杀死 GTA V 进程。")
+                    automator.kill_gta()
+                elif e.actual_state == GameState.OFF:
+                    # 游戏被意外关闭
+                    logger.error("开始新战局时游戏被意外关闭。")
+                else:
+                    logger.error(f"开始新战局时发生预期外的异常: {e}")
+
+                raise Exception(f"开始新战局时，发生异常: {e}") from e
 
             # 等待复活
             logger.info("等待在事务所床上复活...")
@@ -214,8 +216,8 @@ def main():
                 automator.find_job_point()
             except UIElementNotFound as e:
                 # 没找到差事黄圈
-                logger.error(f"寻找差事点时，{e}")
-                raise e
+                logger.error(f"未能找到任务触发点。")
+                raise Exception(f"寻找差事触发点时，发生异常: {e}") from e
 
             # 进入差事
             automator.enter_job_setup()
@@ -238,8 +240,8 @@ def main():
                 automator.setup_wait_start_job()
             except UIElementNotFound as e:
                 # 不知为何离开了面板
-                logger.error(f"等待队伍并开始差事时，{e}")
-                raise e
+                logger.error(f"等待队伍并开始差事时，意外离开了任务准备面板。")
+                raise Exception(f"等待队伍并开始差事时，发生异常: {e}") from e
             except OperationTimeout as e:
                 # 超时是因为其他玩家造成的，无须 Bot 处理，直接开始下一轮
                 logger.warning(f"等待队伍并开始差事时，{e}")
@@ -331,7 +333,9 @@ def main():
             logger.error(traceback.format_exc())
 
             # 重启循环还是退出?
-            logger.info("当前连续失败次数 {main_loop_consecutive_error_count}，最大失败次数阈值 {config.mainLoopConsecutiveErrorThreshold}。")
+            logger.info(
+                f"当前连续失败次数 {main_loop_consecutive_error_count}，最大失败次数阈值 {config.mainLoopConsecutiveErrorThreshold}。"
+            )
             if main_loop_consecutive_error_count <= config.mainLoopConsecutiveErrorThreshold:
                 # 未超过报错退出的阈值，重启
                 logger.info(f"未超过连续失败阈值，将在{wait_before_restart_loop}秒后重启循环...")
