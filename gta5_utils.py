@@ -19,7 +19,7 @@ from process_utils import (
     resume_process_from_suspend,
     suspend_process_for_duration,
     kill_processes,
-    set_active_window,
+    set_top_window,
 )
 from logger import get_logger
 from gameautomator_exception import *
@@ -67,13 +67,46 @@ class GameAutomator:
     def glitch_single_player_session(self):
         """通过暂停进程卡单人战局"""
         logger.info("动作: 正在卡单人战局。。。")
-        suspend_process_for_duration(self.pid, self.config.suspendGTATime)
+        try:
+            suspend_process_for_duration(self.pid, self.config.suspendGTATime)
+        except ValueError as e:
+            logger.error(f"卡单人战局失败，GTA V 进程 PID({self.pid}) 无效。")
+            self._update_gta_window_info()
+        except Exception as e:
+            # 其他异常不做处理
+            logger.error(f"卡单人战局时，发生异常: {e}")
+
         logger.info("卡单人战局完成。")
+
+    def _update_gta_window_info(self):
+        """
+        根据窗口标题和进程名称，更新 GTA V 窗口句柄和进程 PID。
+
+        如果未找到 GTA V 窗口，将设置窗口句柄和 PID 为 None。
+        """
+        # 仅适用于增强版
+        logger.info("正在更新 GTA V 窗口信息...")
+        window_info = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
+        if window_info:
+            logger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
+            self.hwnd, self.pid = window_info
+            logger.info("更新 GTA V 窗口信息完成。")
+        else:
+            logger.error("未找到 GTA V 窗口，更新窗口信息失败。")
+            self.hwnd, self.pid = None
+            return
 
     def _resume_gta_process(self):
         """将 GTA V 进程从挂起中恢复"""
         if self.pid:
-            resume_process_from_suspend(self.pid)
+            try:
+                resume_process_from_suspend(self.pid)
+            except Exception as e:
+                # 所有异常都不做处理
+                logger.error(f"恢复 GTA V 进程时，发生异常: {e}")
+
+    def _is_running_state() -> bool:
+        """用于抛出UnexpectedGameState时，expected为"游戏已启动"的"""
 
     def kill_gta(self):
         """杀死 GTA V 进程，并且清除窗口句柄和 PID 。"""
@@ -105,15 +138,18 @@ class GameAutomator:
             else:
                 # 达到最大失败次数后抛出异常
                 logger.error("GTA V 启动失败次数过多，认为游戏处于无法启动的状态。")
-                raise UnexpectedGameState(expected=lambda state: state.is_running, actual=GameState.OFF)
+                raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
         else:
             # 如果启动了则更新 PID 和窗口句柄
-            self.hwnd, self.pid = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
+            self._update_gta_window_info()
             logger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
         # 以防万一将其从挂起中恢复
         self._resume_gta_process()
-        # 设置为活动窗口
-        set_active_window(self.hwnd)
+        # 设置为置顶窗口
+        try:
+            set_top_window(self.hwnd)
+        except Exception as e:
+            logger.error(e)
 
         logger.info("初始化 GTA V 窗口状态完成。")
 
@@ -147,7 +183,7 @@ class GameAutomator:
             else:
                 logger.warning(f'要查找的文本: "{texts}" 是空列表或空元组。')
                 return False
-    
+
     def get_job_setup_status(self) -> tuple[bool, int, int]:
         """
         检查差事面板状态，包括是否在面板中，以及加入的玩家数。
@@ -609,7 +645,7 @@ class GameAutomator:
         logger.info("动作: 正在加入差传 Bot 战局...")
 
         if not self.is_game_started():
-            raise UnexpectedGameState(expected=lambda state: state.is_running, actual=GameState.OFF)
+            raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
         # 从 mageangela 的接口获取差传 Bot 的战局链接
         try:
             res = requests.get("http://quellgtacode.mageangela.cn:52014/botJvp/", timeout=10)
@@ -660,7 +696,7 @@ class GameAutomator:
         logger.info(f"动作: 正在加入战局: {steam_jvp}")
 
         if not self.is_game_started():
-            raise UnexpectedGameState(expected=lambda state: state.is_running, actual=GameState.OFF)
+            raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
 
         steam_url = f"steam://rungame/3240220/76561199074735990/-steamjvp={steam_jvp}"
         os.startfile(steam_url)
@@ -708,9 +744,9 @@ class GameAutomator:
 
         # 启动游戏
         try:
-            self.start_gta()
+            self.start_gta_steam()
         except OperationTimeout as e:
-            logger.error(f"启动 GTA V 时，{e}")
+            logger.error(f"启动 GTA V 时，发生异常: {e}")
             self.kill_gta()
 
         # 进入故事模式
@@ -718,10 +754,10 @@ class GameAutomator:
         try:
             self.enter_storymode_from_mainmenu()
         except OperationTimeout as e:
-            logger.error(f"进入故事模式时，{e}")
+            logger.error(f"进入故事模式时，发生异常: {e}")
             self.kill_gta()
         except UIElementNotFound as e:
-            logger.error(f"进入故事模式时，{e}")
+            logger.error(f"进入故事模式时，发生异常: {e}")
             self.kill_gta()
 
         # 进入在线模式
@@ -729,22 +765,22 @@ class GameAutomator:
         try:
             self.enter_onlinemode_from_storymode()
         except UIElementNotFound as e:
-            logger.error(f"进入在线模式时，{e}")
+            logger.error(f"进入在线模式时，发生异常: {e}")
             self.kill_gta()
         except UnexpectedGameState as e:
-            logger.error(f"进入在线模式时，{e}")
+            logger.error(f"进入在线模式时，发生异常: {e}")
             if e.actual_state == GameState.BAD_PCSETTING_BIN:
                 self.kill_gta()
                 self.clean_pcsetting()
             else:
                 self.kill_gta()
         except OperationTimeout as e:
-            logger.error(f"进入在线模式时，{e}")
+            logger.error(f"进入在线模式时，发生异常: {e}")
             self.kill_gta()
 
         logger.info("重启 GTA V 成功。")
 
-    def start_gta(self):
+    def start_gta_steam(self):
         """
         如果 GTA V 没有启动，通过 Steam 启动游戏，并更新 pid 和 hwnd。
 
@@ -753,30 +789,27 @@ class GameAutomator:
         :raise ``OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)``: 等待游戏窗口出现超时
         :raise ``OperationTimeout(OperationTimeoutContext.MAIN_MENU_LOAD)``: 待主菜单加载超时
         """
-        logger.info("动作: 正在启动 GTA V...")
+        # 游戏启动则仅更新 pid 和 hwnd
         if self.is_game_started():
-            # 游戏已启动
-            window_info = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
-            if window_info:
-                self.hwnd, self.pid = window_info
+            self._update_gta_window_info()
+            logger.warning(
+                "在游戏运行时，调用启动游戏方法将仅更新 GTA V 窗口信息。如果需要重启，请调用重启方法。"
+            )
             return
 
-        # 游戏未启动
-        logger.info("正在通过 Steam 启动游戏...")
+        logger.info("动作: 正在通过 Steam 启动 GTA V...")
         os.startfile("steam://rungameid/3240220")
 
         # 等待 GTA V 进程启动
-        logger.info("正在等待 GTA 窗口出现...")
+        logger.info("正在等待 GTA V 窗口出现...")
         process_start_time = time.monotonic()
         while time.monotonic() - process_start_time < 300:  # 5分钟总超时
-            window_info = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
-            if window_info:
-                self.hwnd, self.pid = window_info
-                logger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
+            if self.is_game_started():
+                logger.info("GTA V 窗口已出现，更新窗口信息。")
+                self._update_gta_window_info()
                 break
             time.sleep(5)
         else:
-            # logger.error("重启 GTA 失败：等待 GTA 窗口出现超时。")
             raise OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)
 
         # 等待主菜单加载

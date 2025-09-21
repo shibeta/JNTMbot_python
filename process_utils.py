@@ -168,6 +168,7 @@ def resume_process_from_suspend(pid: int):
     将一个挂起的进程恢复。如果进程未被挂起，将不做任何事。
 
     :param pid: 要恢复的进程的 PID
+    :raise ValueError: 提供的 PID 无效或不存在
     :raise Exception: 恢复进程失败
     """
     if not is_process_exist(pid):
@@ -190,8 +191,7 @@ def kill_processes(process_names: list[str]):
     """
     终止所有符合名称的进程。
 
-    Args:
-        process_names: 进程名称列表
+    :param process_names: 进程名称列表
     """
     for proc in psutil.process_iter(["pid", "name"]):
         if proc.info["name"] in process_names:
