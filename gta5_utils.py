@@ -115,13 +115,13 @@ class GameAutomator:
         self.hwnd, self.pid = None, None
         logger.info("杀死 GTA V 相关进程完成。")
 
-    def setup_gta_window(self):
+    def setup_gta(self):
         """
-        确保 GTA V 启动并且是当前活动窗口，同时更新 PID 和窗口句柄。
+        确保 GTA V 启动，同时更新 PID 和窗口句柄。
 
         :raise UnexpectedGameState(expected=lambda state: state.is_running, actual=GameState.OFF): 启动 GTA V 失败
         """
-        logger.info("动作: 正在初始化 GTA V 窗口状态。。。")
+        logger.info("动作: 正在初始化 GTA V 。。。")
 
         if not self.is_game_started():
             # 没启动就先启动
@@ -142,16 +142,11 @@ class GameAutomator:
         else:
             # 如果启动了则更新 PID 和窗口句柄
             self._update_gta_window_info()
-            logger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
+
         # 以防万一将其从挂起中恢复
         self._resume_gta_process()
-        # 设置为置顶窗口
-        try:
-            set_top_window(self.hwnd)
-        except Exception as e:
-            logger.error(e)
 
-        logger.info("初始化 GTA V 窗口状态完成。")
+        logger.info("初始化 GTA V 完成。")
 
     def _find_text(
         self,
@@ -310,35 +305,32 @@ class GameAutomator:
         """从事务所的床出发，下到一楼，移动到任务点附近。"""
         logger.info("动作：正在从事务所个人空间走到楼梯间...")
         # 走到柱子上卡住
-        # self.keyboard.click(["a", "w"], 2000)
-        self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFTUP, 2000)
-        # 走到楼梯口
-        # self.keyboard.click("d", 6000)
-        self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHT, 6000)
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFTUP, 1500)
+        # 走到个人空间门口
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHT, 5500)
+        # 走出个人空间的门
         start_time = time.monotonic()
-        while time.monotonic() - start_time < 2.5:
-            self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTDOWN, 150)
-            self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTUP, 150)
-        self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHT, 2000)
+        while time.monotonic() - start_time < 2:
+            self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTDOWN, 250)
+            self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTUP, 250)
+        # 走到楼梯间门口
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHT, 1000)
         # 走进楼梯门
-        self.gamepad.hold_left_joystick(JoystickDirection.HALF_UP, 2500)
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_UP, 2200)
         # 走下楼梯
         logger.info("动作：正在下楼...")
-        self.keyboard.click("s", 4000)
-        self.gamepad.hold_left_joystick(JoystickDirection.HALF_DOWN, 4000)
-        self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTUP, 2000)
-        self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFT, 5000)
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_DOWN, 4000)
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHTUP, 1500)
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFT, 4500)
         # 走出楼梯间
         start_time = time.monotonic()
         while time.monotonic() - start_time < self.config.goOutStairsTime / 1000.0:
-            self.gamepad.hold_left_joystick(JoystickDirection.HALF_DOWN, self.config.pressSTimeStairs)
-            self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFT, self.config.pressATimeStairs)
+            self.gamepad.hold_left_joystick(JoystickDirection.HALF_DOWN, 250)
+            self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFT, 250)
         # 穿过走廊
-        logger.info("动作：正在穿过一楼走廊...")
+        logger.info("动作：正在穿过差事层走廊...")
         start_time = time.monotonic()
-        while time.monotonic() - start_time < self.config.crossAisleTime / 1000.0:
-            self.gamepad.hold_left_joystick(JoystickDirection.HALF_DOWN, self.config.pressSTimeAisle)
-            self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFT, self.config.pressATimeAisle)
+        self.gamepad.hold_left_joystick((-0.95, -1.0), self.config.crossAisleTime)
 
     def find_job_point(self):
         """
@@ -351,11 +343,11 @@ class GameAutomator:
 
         start_time = time.monotonic()
         while time.monotonic() - start_time < self.config.waitFindJobTimeout / 1000.0:
-            self.gamepad.hold_left_joystick(JoystickDirection.HALF_DOWN, self.config.pressSTimeGoJob)
+            self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFT, self.config.WalkLeftTimeGoJob)
             time.sleep(0.1)
             if self.is_job_marker_found():
                 break
-            self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFT, self.config.pressATimeGoJob)
+            self.gamepad.hold_left_joystick(JoystickDirection.HALF_DOWN, self.config.WalkDownTimeGoJob)
             time.sleep(0.1)
             if self.is_job_marker_found():
                 break
@@ -374,7 +366,8 @@ class GameAutomator:
         """
         尝试从在线战局中切换到另一个仅邀请战局，必须在自由模式下才能工作。
 
-        :raise UnexpectedGameState(set(GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION), GameState.UNKNOWN): 游戏状态未知，无法切换战局
+        :raise UnexpectedGameState({GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, GameState.UNKNOWN): 游戏状态未知，无法切换战局
+        :raise UnexpectedGameState(expected={GameState.IN_MISSION, GameState.IN_ONLINE_LOBBY}, actual=GameState.OFF): 游戏未启动，无法切换战局
         """
         logger.info("动作: 正在切换新战局...")
         # 切换新战局会尝试15次，在某些次数中，会使用不同措施尝试使游戏回到"正常状态"。
@@ -404,6 +397,11 @@ class GameAutomator:
                 logger.info("尝试通过卡单来恢复正常状态。")
                 self.glitch_single_player_session()
             # 以下开始是正常的开始新战局的指令
+            # 检查游戏状态
+            if not self.is_game_started():
+                raise UnexpectedGameState(
+                    expected={GameState.IN_MISSION, GameState.IN_ONLINE_LOBBY}, actual=GameState.OFF
+                )
             # 处理警告屏幕
             if self.is_on_warning_page():
                 self.gamepad.click_button(Button.A)
@@ -452,7 +450,7 @@ class GameAutomator:
             break
         else:
             logger.error(f"切换新战局失败次数过多，认为游戏正处于未知状态。")
-            raise UnexpectedGameState(set(GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION), GameState.UNKNOWN)
+            raise UnexpectedGameState({GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, GameState.UNKNOWN)
 
         logger.info("成功进入新战局。")
 

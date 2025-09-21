@@ -77,25 +77,15 @@ class Config:
             "comment": '全部玩家已加入时立即开始差事而不等待 (绕过 "startMatchDelay" 时间)',
         },
         "exitMatchTimeout": {"value": 120, "comment": "等待差事启动落地超时时间 (秒)(防止卡在启动战局中)"},
-        "pressSTimeStairs": {
-            "value": 400,
-            "comment": '差事层楼梯口进行"走出门"动作时 每轮向后走的持续时间 (毫秒)',
-        },
-        "pressATimeStairs": {
-            "value": 400,
-            "comment": '差事层楼梯口进行"走出门"动作时 每轮向左走的持续时间 (毫秒)',
-        },
         "goOutStairsTime": {"value": 1000, "comment": '差事层楼梯口进行"走出门"动作持续时间 (毫秒)'},
-        "pressSTimeAisle": {"value": 360, "comment": '差事层进行"穿过走道"动作时 每轮向后走的持续时间 (毫秒)'},
-        "pressATimeAisle": {"value": 500, "comment": '差事层进行"穿过走道"动作时 每轮向左走的持续时间 (毫秒)'},
-        "crossAisleTime": {"value": 3000, "comment": '差事层进行"穿过走道"动作持续时间 (毫秒)'},
-        "pressSTimeGoJob": {
-            "value": 340,
-            "comment": '差事层进行"寻找差事黄圈"动作时 每轮向后走的持续时间 (毫秒)',
-        },
-        "pressATimeGoJob": {
-            "value": 480,
+        "crossAisleTime": {"value": 3500, "comment": '差事层进行"穿过走廊"动作持续时间 (毫秒)'},
+        "WalkLeftTimeGoJob": {
+            "value": 380,
             "comment": '差事层进行"寻找差事黄圈"动作时 每轮向左走的持续时间 (毫秒)',
+        },
+        "WalkDownTimeGoJob": {
+            "value": 330,
+            "comment": '差事层进行"寻找差事黄圈"动作时 每轮向后走的持续时间 (毫秒)',
         },
         "waitFindJobTimeout": {"value": 15000, "comment": '差事层进行"寻找差事黄圈"动作超时时间 (毫秒)'},
         "msgOpenJobPanel": {
