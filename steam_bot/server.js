@@ -1,5 +1,5 @@
 const express = require("express");
-const SteamChatBot = require("./SteamChatBot.js");
+const SteamChatBot = require("./SteamChatBot");
 
 // 解析启动参数
 // 设置代理
