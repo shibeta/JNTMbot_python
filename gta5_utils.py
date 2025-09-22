@@ -230,7 +230,7 @@ class GameAutomator:
 
     def is_on_mainmenu_storymode_page(self) -> bool:
         """检查游戏是否在主菜单的故事页面。"""
-        return self._find_text("故事模式", 0, 0.9, 0.5, 0.1)
+        return self._find_text("故事模式", 0, 0.5, 0.7, 0.5)
 
     def is_on_onlinemode_info_panel(self) -> bool:
         """检查游戏是否在在线模式的左上角显示玩家信息的菜单。"""
