@@ -744,6 +744,7 @@ class GameAutomator:
         except OperationTimeout as e:
             logger.error(f"启动 GTA V 时，发生异常: {e}")
             self.kill_gta()
+            return
 
         # 进入故事模式
         time.sleep(2)
@@ -752,9 +753,11 @@ class GameAutomator:
         except OperationTimeout as e:
             logger.error(f"进入故事模式时，发生异常: {e}")
             self.kill_gta()
+            return
         except UIElementNotFound as e:
             logger.error(f"进入故事模式时，发生异常: {e}")
             self.kill_gta()
+            return
 
         # 进入在线模式
         time.sleep(2)
@@ -763,6 +766,7 @@ class GameAutomator:
         except UIElementNotFound as e:
             logger.error(f"进入在线模式时，发生异常: {e}")
             self.kill_gta()
+            return
         except UnexpectedGameState as e:
             logger.error(f"进入在线模式时，发生异常: {e}")
             if e.actual_state == GameState.BAD_PCSETTING_BIN:
@@ -770,9 +774,11 @@ class GameAutomator:
                 self.clean_pcsetting()
             else:
                 self.kill_gta()
+            return
         except OperationTimeout as e:
             logger.error(f"进入在线模式时，发生异常: {e}")
             self.kill_gta()
+            return
 
         logger.info("重启 GTA V 成功。")
 
