@@ -51,11 +51,11 @@ exitMatchTimeout: 120
 # 差事层楼梯口进行"走出门"动作持续时间 (毫秒)
 goOutStairsTime: 1000
 # 差事层进行"穿过走廊"动作持续时间 (毫秒)
-crossAisleTime: 3500
+crossAisleTime: 3700
 # 差事层进行"寻找差事黄圈"动作时 每轮向左走的持续时间 (毫秒)
-WalkLeftTimeGoJob: 380
+WalkLeftTimeGoJob: 400
 # 差事层进行"寻找差事黄圈"动作时 每轮向后走的持续时间 (毫秒)
-WalkDownTimeGoJob: 330
+WalkDownTimeGoJob: 360
 # 差事层进行"寻找差事黄圈"动作超时时间 (毫秒)
 waitFindJobTimeout: 15000
 # 开好面板时发的消息 (设置为空字符串则不发这条消息)

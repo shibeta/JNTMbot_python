@@ -78,13 +78,13 @@ class Config:
         },
         "exitMatchTimeout": {"value": 120, "comment": "等待差事启动落地超时时间 (秒)(防止卡在启动战局中)"},
         "goOutStairsTime": {"value": 1000, "comment": '差事层楼梯口进行"走出门"动作持续时间 (毫秒)'},
-        "crossAisleTime": {"value": 3500, "comment": '差事层进行"穿过走廊"动作持续时间 (毫秒)'},
+        "crossAisleTime": {"value": 3700, "comment": '差事层进行"穿过走廊"动作持续时间 (毫秒)'},
         "WalkLeftTimeGoJob": {
-            "value": 380,
+            "value": 400,
             "comment": '差事层进行"寻找差事黄圈"动作时 每轮向左走的持续时间 (毫秒)',
         },
         "WalkDownTimeGoJob": {
-            "value": 330,
+            "value": 360,
             "comment": '差事层进行"寻找差事黄圈"动作时 每轮向后走的持续时间 (毫秒)',
         },
         "waitFindJobTimeout": {"value": 15000, "comment": '差事层进行"寻找差事黄圈"动作超时时间 (毫秒)'},
