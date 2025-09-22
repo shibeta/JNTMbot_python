@@ -95,8 +95,7 @@ def setup_logging(log_level: str = None):
     """
     初始化或设置日志。
 
-    Args:
-        log_level: 日志等级: 'DEBUG','INFO','WARNING','ERROR','CRITICAL'
+    :param log_level: 日志等级: 'DEBUG','INFO','WARNING','ERROR','CRITICAL'
     """
     logging_config = DEFAULT_LOGGING_CONFIG
 
@@ -129,11 +128,8 @@ def get_logger(name: str) -> logging.Logger:
     获取一个 logger 实例。
     应当在 setup_logging 后执行。
 
-    Args:
-        name: logger 的名称
-
-    Returns:
-        logging.Logger
+    :param name: logger 的名称
+    :return logging.Logger
     """
     return logging.getLogger(name)
 

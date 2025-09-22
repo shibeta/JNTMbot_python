@@ -37,8 +37,7 @@ class KeyboardSimulator:
         """
         模拟按下指定的按键。
 
-        Args:
-            key: 要按下的键 (pynput.Key, pynput.KeyCode 或 str)。
+        :param key: 要按下的键 (pynput.Key, pynput.KeyCode 或 str)。
         """
         with self._lock:
             self._controller.press(key)
@@ -49,8 +48,7 @@ class KeyboardSimulator:
         """
         模拟释放指定的按键。
 
-        Args:
-            key: 要释放的键。
+        :param key: 要释放的键。
         """
         with self._lock:
             try:
@@ -67,9 +65,8 @@ class KeyboardSimulator:
         - 如果 keys 是单个按键，则模拟单击该键。
         - 如果 keys 是一个列表或元组，则依次按下所有键，然后以相反的顺序释放它们。
 
-        Args:
-            keys: 要单击的单个键或多个键的列表/元组。
-            milliseconds: 按下和释放之间的延迟毫秒数。
+        :param keys: 要单击的单个键或多个键的列表/元组。
+        :param milliseconds: 按下和释放之间的延迟毫秒数。
         """
         # 判断是单个按键还是按键列表
         is_single_key = not isinstance(keys, (list, tuple))
@@ -96,9 +93,8 @@ class KeyboardSimulator:
         它会按下所有传入的按键，等待片刻，然后以相反的顺序释放它们。
         示例: hotkey(Key.ctrl, 'c')
 
-        Args:
-            *keys: 要同时按下的多个按键。
-            milliseconds: 按下和释放之间的延迟毫秒数。
+        :param *keys: 要同时按下的多个按键。
+        :param milliseconds: 按下和释放之间的延迟毫秒数。
         """
         if not keys:
             return
@@ -144,9 +140,8 @@ class KeyboardSimulator:
         """
         模拟输入字符串。
 
-        Args:
-            text: 要输入的字符串。
-            delay: 每个字符按下和释放后的延迟（秒）。
+        :param text: 要输入的字符串。
+        :param delay: 每个字符按下和释放后的延迟（秒）。
         """
         for char in text:
             self.press(char)

@@ -58,7 +58,7 @@ class OCREngine:
         :param hwnd: 目标窗口的句柄。
         :param include_title_bar: 是否将标题栏和边框计算在内。(True: 基于完整窗口计算 False: 基于客户区计算 (排除标题栏和边框))
         :return: 一个有4个元素的元组，对应窗口或客户区左上右下的物理像素坐标。
-        :raise Exception: 获取物理坐标失败
+        :raise ``Exception``: 获取物理坐标失败
         """
         try:
 
@@ -94,7 +94,7 @@ class OCREngine:
         :param height: 截图区域的相对高度 (0.0 to 1.0)。
         :param include_title_bar: 是否将标题栏和边框计算在内。(True: 基于完整窗口截图 False: 基于客户区截图 (排除标题栏和边框))
         :return: 一个 BGR 格式的 NumPy 数组。
-        :raise Exception: 截图失败
+        :raise ``Exception``: 截图失败
         """
         try:
             logger.debug(

@@ -5,7 +5,7 @@ from typing import Callable
 
 from config import Config
 from logger import get_logger
-from push_utils import push_wechat
+from push_utils import wechat_push
 from steambot_utils import SteamBotClient
 
 logger = get_logger(name="health_check")
@@ -114,7 +114,7 @@ class HealthMonitor(threading.Thread):
             msg = f"未知原因: {reason}"
 
         logger.warning(f"正在发送微信通知: {title}: {msg}")
-        push_wechat(self.wechat_push_token, title, msg)
+        wechat_push(self.wechat_push_token, title, msg)
 
     def _on_become_healthy(self):
         """从不健康恢复为健康时触发。"""
@@ -124,7 +124,7 @@ class HealthMonitor(threading.Thread):
         title = f"Bot: {self.steam_bot.get_login_status().get('name', 'N/A')} 状态恢复健康"
         msg = "现在一切正常。"
         logger.info(f"正在发送微信通知: {title}: {msg}")
-        push_wechat(self.wechat_push_token, title, msg)
+        wechat_push(self.wechat_push_token, title, msg)
 
     def _on_is_unhealthy(self):
         """每次检查结果为不健康时触发。"""

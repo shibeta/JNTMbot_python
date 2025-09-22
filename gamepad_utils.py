@@ -416,9 +416,8 @@ class GamepadSimulator:
         """
         按住左扳机一段时间后松开。
 
-        Args:
-            pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
-            duration_milliseconds: 持续时间，单位为毫秒。
+        :param pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
+        :param duration_milliseconds: 持续时间，单位为毫秒。
         """
         if not self._check_connected():
             return
@@ -430,8 +429,7 @@ class GamepadSimulator:
         """
         按压右扳机到指定压力值。
 
-        Args:
-            pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
+        :param pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
         """
         if not self._check_connected():
             return

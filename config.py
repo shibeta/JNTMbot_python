@@ -126,8 +126,7 @@ class Config:
         """
         初始化Config对象。
 
-        Args:
-            config_filename (str): 配置文件的路径，默认为'config.yaml'。
+        :param config_filename (str): 配置文件的路径，默认为'config.yaml'。
         """
         self.config_filename = config_filename
         self.yaml = YAML()
