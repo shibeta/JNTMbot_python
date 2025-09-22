@@ -32,8 +32,9 @@ class GameState(enum.Enum):
     SCOREBOARD = "任务失败计分板"
     STORY_PAUSED = "故事模式暂停菜单"
     ONLINE_PAUSED = "在线模式暂停菜单"
-    JOB_PANNEL_1 = "任务面板第一页"
-    JOB_PANNEL_2 = "任务面板第二页"
+    JOB_PANEL_1 = "任务面板第一页"
+    JOB_PANEL_2 = "任务面板第二页"
+    BAD_JOB_PANEL_STANDBY_PLAYER = "有待命状态玩家的任务面板"
     WARNING = "警告/错误页面"
     BAD_PCSETTING_BIN = "此时无法载入您保存的数据"
 

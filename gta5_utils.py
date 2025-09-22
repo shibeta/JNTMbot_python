@@ -119,7 +119,7 @@ class GameAutomator:
         """
         确保 GTA V 启动，同时更新 PID 和窗口句柄。
 
-        :raise UnexpectedGameState(expected=lambda state: state.is_running, actual=GameState.OFF): 启动 GTA V 失败
+        :raise ``UnexpectedGameState(expected=lambda state: state.is_running, actual=GameState.OFF)``: 启动 GTA V 失败
         """
         logger.info("动作: 正在初始化 GTA V 。。。")
 
@@ -184,8 +184,7 @@ class GameAutomator:
         检查差事面板状态，包括是否在面板中，以及加入的玩家数。
         如果不在面板中玩家数将固定返回-1。
 
-        Return:
-            是否在面板(bool)，正在加入的玩家数(int)，已经加入的玩家数(int)
+        :return: 是否在面板(bool)，正在加入的玩家数(int)，已经加入的玩家数(int)，待命状态的玩家数(int)
         """
         ocr_result = self.ocr.ocr(self.hwnd, 0.5, 0, 0.5, 1)
 
@@ -194,13 +193,15 @@ class GameAutomator:
         # pattern = "|".join(re.escape(text) for text in ["别惹", "德瑞", "搭档"])
         if re.search(pattern, ocr_result) is not None:
             # 在面板中则识别加入玩家数
-            joining_count = ocr_result.count("正在")
+            # "离开"是加入失败，可以认为这也是一种"正在加入"状态
+            joining_count = ocr_result.count("正在") + ocr_result.count("离开")
             joined_count = ocr_result.count("已加")
+            standby_count = ocr_result.count("待命")
 
-            return True, joining_count, joined_count
+            return True, joining_count, joined_count, standby_count
         else:
             # 不在面板中则跳过识别直接返回-1
-            return False, -1, -1
+            return False, -1, -1, -1
 
     # --- 状态检查方法 ---
     def is_game_started(self) -> bool:
@@ -336,7 +337,7 @@ class GameAutomator:
         """
         检查是否到达任务触发点。如果没有，会尝试向任务触发点移动。
 
-        :raise UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT): 未找到任务触发点
+        :raise ``UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)``: 未找到任务触发点
         """
         # 一边搜索任务标记，一边向任务黄圈移动
         logger.info("动作：正在寻找差事触发点...")
@@ -366,8 +367,8 @@ class GameAutomator:
         """
         尝试从在线战局中切换到另一个仅邀请战局，必须在自由模式下才能工作。
 
-        :raise UnexpectedGameState({GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, GameState.UNKNOWN): 游戏状态未知，无法切换战局
-        :raise UnexpectedGameState(expected={GameState.IN_MISSION, GameState.IN_ONLINE_LOBBY}, actual=GameState.OFF): 游戏未启动，无法切换战局
+        :raise ``UnexpectedGameState({GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, GameState.UNKNOWN)``: 游戏状态未知，无法切换战局
+        :raise ``UnexpectedGameState(expected={GameState.IN_MISSION, GameState.IN_ONLINE_LOBBY}, actual=GameState.OFF)``: 游戏未启动，无法切换战局
         """
         logger.info("动作: 正在切换新战局...")
         # 切换新战局会尝试15次，在某些次数中，会使用不同措施尝试使游戏回到"正常状态"。
@@ -460,6 +461,7 @@ class GameAutomator:
         :raise ``UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)``: 意外离开了任务面板
         :raise ``OperationTimeout(OperationTimeoutContext.WAIT_TEAMMATE)``: 长时间没有玩家加入，超时
         :raise ``OperationTimeout(OperationTimeoutContext.PLAYER_JOIN)``: 玩家长期卡在"正在加入"状态，超时
+        :raise ``UnexpectedGameState(GameState.JOB_PANEL_2, GameState.BAD_JOB_PANEL_STANDBY_PLAYER)``: 发现"待命"状态的玩家
 
         """
         logger.info("动作: 正在等待队伍成员并开始差事...")
@@ -494,14 +496,19 @@ class GameAutomator:
             current_time = time.monotonic()
 
             # 获取准备界面状态
-            is_on_job_panel, joining_count, joined_count = self.get_job_setup_status()
+            is_on_job_panel, joining_count, joined_count, standby_count = self.get_job_setup_status()
 
             # 不知为何离开任务面板
             if not is_on_job_panel:
-                logger.warning("等待玩家时意外离开了任务面板。")
+                logger.error("等待玩家时意外离开了任务面板。")
                 raise UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)
 
-            logger.info(f"队伍状态: {joined_count} 人已加入, {joining_count} 人正在加入。")
+            logger.info(f"队伍状态: {joined_count} 人已加入, {joining_count} 人正在加入, {standby_count} 人待命。")
+
+            # 有待命状态玩家说明bot匹配关慢了
+            if standby_count > 0:
+                logger.error("等待玩家时发现有玩家处于待命状态，无法在这种情况下启动差事。")
+                raise UnexpectedGameState(GameState.JOB_PANEL_2, GameState.BAD_JOB_PANEL_STANDBY_PLAYER)
 
             # 队伍人数从未满变为满员时，发送满员消息
             if joining_count + joined_count != last_joining_count + last_joined_count:

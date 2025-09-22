@@ -1,3 +1,4 @@
+import sys
 import time
 import threading
 import keyboard
@@ -11,7 +12,7 @@ from logger import setup_logging, get_logger
 from config import Config
 from ocr_utils import get_ocr_engine
 from steambot_utils import SteamBotClient
-from push_utils import push_wechat
+from push_utils import wechat_push
 from gta5_utils import GameAutomator
 from health_check import HealthMonitor
 from gameautomator_exception import *
@@ -39,6 +40,7 @@ def unsafe_exit():
         # os._exit() 不会触发 atexit，因此需要手动触发
         trigger_atexit()
     finally:
+        sys.exit()
         os._exit(0)
 
 
@@ -248,6 +250,12 @@ def main():
                 logger.info("正在确保离开面板回到自由模式。")
                 automator.exit_job_panel()
                 continue
+            except UnexpectedGameState as e:
+                # 有玩家待命，可以直接重开差事，但还是选择开启下一轮比较稳妥
+                logger.warning(f"等待队伍并开始差事时，{e}")
+                logger.info("正在确保离开面板回到自由模式。")
+                automator.exit_job_panel()
+                continue
 
             # 等待面板消失
             match_start_time = time.monotonic()
@@ -345,7 +353,7 @@ def main():
                 if config.wechatPush:
                     # 启用了微信推送并且运行超过 wechatPushActivationDelay 分钟则推送消息
                     if time.monotonic() - global_start_time > config.wechatPushActivationDelay * 60:
-                        push_wechat(config.pushplusToken, f"主循环中发生错误: {e}", traceback.format_exc())
+                        wechat_push(config.pushplusToken, f"主循环中发生错误: {e}", traceback.format_exc())
                 return
 
 
