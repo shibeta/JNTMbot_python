@@ -409,7 +409,6 @@ class GameAutomator:
 
             # 打开暂停菜单
             if not self.is_on_pause_menu():
-                self.keyboard.click(Key.esc)
                 self.gamepad.click_button(Button.MENU)
                 time.sleep(2)
 
@@ -481,7 +480,6 @@ class GameAutomator:
 
         # 导航面板以选中"开始差事"选项
         logger.info("动作: 正在设置差事面板...")
-        self.keyboard.click("w")
         self.gamepad.click_button(Button.DPAD_UP)
         time.sleep(0.8)
         self.gamepad.click_button(Button.A)
