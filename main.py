@@ -263,8 +263,7 @@ def main():
                 automator.glitch_single_player_session()
                 continue
 
-            # 面板消失后卡单
-            # TODO 面板消失后卡单真的是必要的吗
+            # 面板消失后卡单，否则会卡在启动战局
             logger.info(f"面板已消失。{config.delaySuspendTime} 秒后将卡单。")
             time.sleep(config.delaySuspendTime)
             automator.glitch_single_player_session()
