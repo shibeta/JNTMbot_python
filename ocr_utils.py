@@ -1,13 +1,11 @@
-from typing import Optional
 import win32gui
-import win32con
 import numpy as np
 from rapidocr import RapidOCR, EngineType, LangDet, LangRec, ModelType, OCRVersion
 import threading
 from time import sleep
 import mss
 
-from process_utils import is_window_handler_exist
+from process_utils import is_window_handler_exist, set_top_window
 from logger import get_logger
 
 logger = get_logger("ocr_engine")
@@ -53,18 +51,14 @@ class OCREngine:
         self.sct = mss.mss()
         logger.warning("OCR 引擎初始化完成。")
 
-    def _get_physical_rect(self, hwnd: int, include_title_bar: bool) -> Optional[tuple[int, int, int, int]]:
+    def _get_physical_rect(self, hwnd: int, include_title_bar: bool) -> tuple[int, int, int, int]:
         """
         辅助函数：获取窗口或客户区的指定区域的物理像素坐标
 
-        Args:
-            hwnd: 目标窗口的句柄。
-            include_title_bar: 是否将标题栏和边框计算在内。
-                True: 基于完整窗口计算
-                False: 基于客户区计算 (排除标题栏和边框)
-
-        Returns:
-            一个有4个元素的元组，对应窗口或客户区左上右下的物理像素坐标。如果获取失败，返回 None
+        :param hwnd: 目标窗口的句柄。
+        :param include_title_bar: 是否将标题栏和边框计算在内。(True: 基于完整窗口计算 False: 基于客户区计算 (排除标题栏和边框))
+        :return: 一个有4个元素的元组，对应窗口或客户区左上右下的物理像素坐标。
+        :raise Exception: 获取物理坐标失败
         """
         try:
 
@@ -85,34 +79,30 @@ class OCREngine:
 
             return left, top, right, bottom
         except Exception as e:
-            logger.error(f"获取物理坐标失败: {e}")
-            return None
+            raise Exception(f"获取物理坐标失败: {e}") from e
 
     def _capture_window_area_mss(
         self, hwnd: int, left: float, top: float, width: float, height: float, include_title_bar: bool = False
-    ) -> np.ndarray | None:
+    ) -> np.ndarray:
         """
         截取指定窗口的特定区域。
 
-        Args:
-            hwnd: 目标窗口的句柄。
-            left: 截图区域左上角的相对横坐标 (0.0 to 1.0)。
-            top: 截图区域左上角的相对纵坐标 (0.0 to 1.0)。
-            width: 截图区域的相对宽度 (0.0 to 1.0)。
-            height: 截图区域的相对高度 (0.0 to 1.0)。
-            include_title_bar: 是否将标题栏和边框计算在内。
-                True: 基于完整窗口截图
-                False: 基于客户区截图 (排除标题栏和边框)
-
-        Returns:
-            一个 BGR 格式的 NumPy 数组，如果失败则返回 None。
+        :param hwnd: 目标窗口的句柄。
+        :param left: 截图区域左上角的相对横坐标 (0.0 to 1.0)。
+        :param top: 截图区域左上角的相对纵坐标 (0.0 to 1.0)。
+        :param width: 截图区域的相对宽度 (0.0 to 1.0)。
+        :param height: 截图区域的相对高度 (0.0 to 1.0)。
+        :param include_title_bar: 是否将标题栏和边框计算在内。(True: 基于完整窗口截图 False: 基于客户区截图 (排除标题栏和边框))
+        :return: 一个 BGR 格式的 NumPy 数组。
+        :raise Exception: 截图失败
         """
         try:
-            # 将要截图的窗口置于前台
-            if hwnd != win32gui.GetForegroundWindow():
-                win32gui.SetForegroundWindow(hwnd)
-                sleep(0.01)
-            win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+            logger.debug(
+                f"开始对句柄为{hwnd}的窗口截图，{'' if include_title_bar else '不'}包括标题栏。截图范围左上角相对坐标为({left}, {top})，右下角相对坐标为({left+width}, {top+height})。"
+            )
+            # 将要截图的窗口置顶
+            set_top_window(hwnd)
+            sleep(0.2)  # 等待窗口重绘
 
             # DEBUG: 输出窗口原始大小
             window_left, window_top, window_right, window_bottom = win32gui.GetWindowRect(hwnd)
@@ -153,8 +143,7 @@ class OCREngine:
             return np.ascontiguousarray(img_np[:, :, :3])
 
         except Exception as e:
-            logger.error(f"截图失败: {e}")
-            return None
+            raise Exception(f"截图失败: {e}") from e
 
     def ocr(
         self,
@@ -168,18 +157,13 @@ class OCREngine:
         """
         对指定窗口的特定区域进行 OCR 识别。
 
-        Args:
-            hwnd: 目标窗口句柄。
-            left: 截图区域左上角的相对横坐标 (0.0 to 1.0)。
-            top: 截图区域左上角的相对纵坐标 (0.0 to 1.0)。
-            width: 截图区域的相对宽度 (0.0 to 1.0)。
-            height: 截图区域的相对高度 (0.0 to 1.0)。
-            include_title_bar: 是否将标题栏和边框计算在内。
-                True: 基于完整窗口截图
-                False: 基于客户区截图 (排除标题栏和边框)
-
-        Returns:
-            识别出的所有文本拼接成的字符串。
+        :param hwnd: 目标窗口句柄。
+        :param left: 截图区域左上角的相对横坐标 (0.0 to 1.0)。
+        :param top: 截图区域左上角的相对纵坐标 (0.0 to 1.0)。
+        :param width: 截图区域的相对宽度 (0.0 to 1.0)。
+        :param height: 截图区域的相对高度 (0.0 to 1.0)。
+        :param include_title_bar: 是否将标题栏和边框计算在内。(True: 基于完整窗口截图 False: 基于客户区截图 (排除标题栏和边框))
+        :return: 识别出的所有文本拼接成的字符串。
         """
         # 检查窗口句柄是否有效
         if not is_window_handler_exist(hwnd):
@@ -187,28 +171,26 @@ class OCREngine:
             return ""
 
         # 截图
-        logger.debug(
-            f"开始对句柄为{hwnd}的窗口截图，{'' if include_title_bar else '不'}包括标题栏。截图范围左上角相对坐标为({left}, {top})，右下角相对坐标为({left+width}, {top+height})。"
-        )
-        # screenshot_np = self._capture_window_area_GDI(hwnd, x, y, w, h, include_title_bar)
-        # 尝试新的mss截图方法
+        logger.debug(f"开始对句柄为{hwnd}的窗口截图。")
+        # 使用mss截图
         screenshot_np = self._capture_window_area_mss(hwnd, left, top, width, height, include_title_bar)
         logger.debug("截图完成。")
         if screenshot_np is None:
             return ""
 
         # 调用 OCR 引擎进行识别
-        logger.debug("开始对截图进行 OCR。")
+        logger.debug("开始对截图进行 OCR 识别。")
         result = self.engine(screenshot_np, use_det=True, use_cls=False, use_rec=True)
         logger.debug("OCR 完成。")
 
         # 处理空结果
         if result is None or result.txts is None:
+            logger.debug("OCR 识别结果为空。")
             return ""
 
         # 拼接所有识别到的文本
         recognized_text = "".join(result.txts)
-        logger.debug(recognized_text)
+        logger.debug(f"OCR 识别结果: {recognized_text}")
 
         return recognized_text
 

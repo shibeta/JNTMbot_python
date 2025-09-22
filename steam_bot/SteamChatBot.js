@@ -149,7 +149,10 @@ class SteamChatBot {
         return new Promise((resolve, reject) => {
             this.#client.once("loggedOn", resolve);
             this.#client.once("error", reject);
-            this.#client.logOn({ refreshToken: token });
+            this.#client.logOn({
+                refreshToken: token,
+                machineName: "steam_bot",
+            });
         });
     }
 
@@ -174,31 +177,36 @@ class SteamChatBot {
                     case SteamUser.EResult.AccountNotFound:
                         console.warn(`❌ 账户名或密码错误。(${err.message})`);
                         break;
-                    
+
                     case SteamUser.EResult.AccountLogonDenied:
                     case SteamUser.EResult.TwoFactorCodeMismatch:
-                        console.warn(`❌ Steam Guard 验证码错误。(${err.message})`);
+                        console.warn(
+                            `❌ Steam Guard 验证码错误。(${err.message})`
+                        );
                         // 这种情况通常是 _attemptPasswordLogin 内部处理了，但如果它失败了，我们在这里提示
                         break;
 
                     case SteamUser.EResult.RateLimitExceeded:
-                        console.error("❌ 登录尝试过于频繁，您的IP可能被临时限制。请稍后再试。");
+                        console.error(
+                            "❌ 登录尝试过于频繁，您的IP可能被临时限制。请稍后再试。"
+                        );
                         // 遇到速率限制，直接抛出错误，终止登录流程
                         throw err;
 
                     default:
-                        console.error(`❌ 发生未知的登录错误: ${err.message} (EResult: ${err.eresult})`);
+                        console.error(
+                            `❌ 发生未知的登录错误: ${err.message} (EResult: ${err.eresult})`
+                        );
                         break; // 对于未知错误，我们也会继续重试
                 }
             }
         }
-        
     }
 
     /**
      * [私有] 封装单次使用账户密码登录的尝试
-     * @param {string} accountName 
-     * @param {string} password 
+     * @param {string} accountName
+     * @param {string} password
      * @returns {Promise<void>}
      */
     _attemptPasswordLogin(accountName, password) {
@@ -216,11 +224,13 @@ class SteamChatBot {
                 if (lastCodeWrong) {
                     console.warn("❌ 上一个验证码错误！请重新输入。");
                 }
-                const promptMessage = `请输入发送至 ${domain || "Steam 手机应用"} 的验证码: `;
+                const promptMessage = `请输入发送至 ${
+                    domain || "Steam 手机应用"
+                } 的验证码: `;
                 const code = await promptUser(promptMessage);
                 callback(code);
             };
-            
+
             onLoggedOn = () => {
                 cleanup();
                 resolve();
@@ -237,7 +247,11 @@ class SteamChatBot {
             this.#client.once("loggedOn", onLoggedOn);
             this.#client.once("error", onError);
 
-            this.#client.logOn({ accountName, password });
+            this.#client.logOn({
+                accountName: accountName,
+                password: password,
+                machineName: "steam_bot",
+            });
         });
     }
 
@@ -307,7 +321,9 @@ class SteamChatBot {
         }
 
         if (!targetGroupState) {
-            console.error(`💥 找不到群组 ID: ${groupId}。请确认机器人是该群组成员。`);
+            console.error(
+                `💥 找不到群组 ID: ${groupId}。请确认机器人是该群组成员。`
+            );
             throw new Error(
                 `找不到群组 ID: ${groupId}。请确认机器人是该群组成员。`
             );
@@ -317,7 +333,9 @@ class SteamChatBot {
             (room) => room.chat_name === channelName
         );
         if (!targetChannel) {
-            console.error(`💥 在群组 "${targetGroupState.header_state.chat_name}" 中找不到频道: "${channelName}"。`);
+            console.error(
+                `💥 在群组 "${targetGroupState.header_state.chat_name}" 中找不到频道: "${channelName}"。`
+            );
             throw new Error(
                 `在群组 "${targetGroupState.header_state.chat_name}" 中找不到频道: "${channelName}"。`
             );
@@ -340,7 +358,7 @@ class SteamChatBot {
             ]);
             console.log(`✅ 成功发送消息到群组 ${groupId}。`);
             return result;
-        }catch (error) {
+        } catch (error) {
             if (error.message.includes("发送操作超时")) {
                 console.warn(`⚠️ 对群组 ${groupId} 的消息发送确认超时。`);
             }

@@ -29,7 +29,7 @@ pushplusToken: ''
 # 微信推送报错退出的启用延迟。为节省API用量，只有程序运行时长超过该时间后，报错退出时才会向微信推送 (分钟)
 wechatPushActivationDelay: 5
 # 主循环连续报错的阈值，连续报错超过该次数将报错退出。设置为<=1则报错一次即退出
-mainLoopConsecutiveErrorThreshold: 3
+mainLoopConsecutiveErrorThreshold: 10
 # 初始化GTA时重启GTA失败的阈值，连续重启失败超过该次数将抛出异常。设置为<=1则重启失败立即抛出异常
 restartGTAConsecutiveFailThreshold: 5
 # 卡单持续时间 (秒)
@@ -48,22 +48,14 @@ startMatchDelay: 15
 startOnAllJoined: true
 # 等待差事启动落地超时时间 (秒)(防止卡在启动战局中)
 exitMatchTimeout: 120
-# 差事层楼梯口进行"走出门"动作时 每轮按S的持续时间 (毫秒)
-pressSTimeStairs: 400
-# 差事层楼梯口进行"走出门"动作时 每轮按A的持续时间 (毫秒)
-pressATimeStairs: 400
 # 差事层楼梯口进行"走出门"动作持续时间 (毫秒)
 goOutStairsTime: 1000
-# 差事层进行"穿过走道"动作时 每轮按S的持续时间 (毫秒)
-pressSTimeAisle: 360
-# 差事层进行"穿过走道"动作时 每轮按A的持续时间 (毫秒)
-pressATimeAisle: 500
-# 差事层进行"穿过走道"动作持续时间 (毫秒)
-crossAisleTime: 3000
-# 差事层进行"寻找差事黄圈"动作时 每轮按S的持续时间 (毫秒)
-pressSTimeGoJob: 340
-# 差事层进行"寻找差事黄圈"动作时 每轮按A的持续时间 (毫秒)
-pressATimeGoJob: 480
+# 差事层进行"穿过走廊"动作持续时间 (毫秒)
+crossAisleTime: 3700
+# 差事层进行"寻找差事黄圈"动作时 每轮向左走的持续时间 (毫秒)
+WalkLeftTimeGoJob: 400
+# 差事层进行"寻找差事黄圈"动作时 每轮向后走的持续时间 (毫秒)
+WalkDownTimeGoJob: 360
 # 差事层进行"寻找差事黄圈"动作超时时间 (毫秒)
 waitFindJobTimeout: 15000
 # 开好面板时发的消息 (设置为空字符串则不发这条消息)

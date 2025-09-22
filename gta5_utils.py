@@ -1,22 +1,28 @@
+from pathlib import Path
+import struct
 import time
 import os
+from typing import List, Tuple, Union
 import requests
 import re
 import atexit
 from pynput.keyboard import Key
+import ctypes.wintypes
 
 from config import Config
 from ocr_utils import OCREngine
 from keyboard_utils import KeyboardSimulator
+from gamepad_utils import GamepadSimulator, Button, JoystickDirection
 from steambot_utils import SteamBotClient
 from process_utils import (
     find_window,
     resume_process_from_suspend,
     suspend_process_for_duration,
     kill_processes,
-    set_active_window,
+    set_top_window,
 )
 from logger import get_logger
+from gameautomator_exception import *
 
 logger = get_logger(name="gta5_utils")
 
@@ -50,6 +56,7 @@ class GameAutomator:
         self.hwnd = hwnd
         self.pid = pid
         self.keyboard = KeyboardSimulator()
+        self.gamepad = GamepadSimulator()
 
         # 注册一个退出处理函数，以确保Python程序退出时 GTA V 进程不会被挂起
         atexit.register(self._resume_gta_process)
@@ -57,32 +64,72 @@ class GameAutomator:
     def get_gta_hwnd(self) -> int:
         return self.hwnd
 
-    def enter_single_player_session(self):
+    def glitch_single_player_session(self):
         """通过暂停进程卡单人战局"""
-        logger.info("正在卡单人战局。。。")
-        suspend_process_for_duration(self.pid, self.config.suspendGTATime)
+        logger.info("动作: 正在卡单人战局。。。")
+        try:
+            suspend_process_for_duration(self.pid, self.config.suspendGTATime)
+        except ValueError as e:
+            logger.error(f"卡单人战局失败，GTA V 进程 PID({self.pid}) 无效。")
+            self._update_gta_window_info()
+        except Exception as e:
+            # 其他异常不做处理
+            logger.error(f"卡单人战局时，发生异常: {e}")
+
         logger.info("卡单人战局完成。")
+
+    def _update_gta_window_info(self):
+        """
+        根据窗口标题和进程名称，更新 GTA V 窗口句柄和进程 PID。
+
+        如果未找到 GTA V 窗口，将设置窗口句柄和 PID 为 None。
+        """
+        # 仅适用于增强版
+        logger.info("正在更新 GTA V 窗口信息...")
+        window_info = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
+        if window_info:
+            logger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
+            self.hwnd, self.pid = window_info
+            logger.info("更新 GTA V 窗口信息完成。")
+        else:
+            logger.error("未找到 GTA V 窗口，更新窗口信息失败。")
+            self.hwnd, self.pid = None
+            return
 
     def _resume_gta_process(self):
         """将 GTA V 进程从挂起中恢复"""
         if self.pid:
-            resume_process_from_suspend(self.pid)
+            try:
+                resume_process_from_suspend(self.pid)
+            except Exception as e:
+                # 所有异常都不做处理
+                logger.error(f"恢复 GTA V 进程时，发生异常: {e}")
+
+    def _is_running_state() -> bool:
+        """用于抛出UnexpectedGameState时，expected为"游戏已启动"的"""
 
     def kill_gta(self):
         """杀死 GTA V 进程，并且清除窗口句柄和 PID 。"""
-        logger.info("正在杀死 GTA V 相关进程。。。")
+        logger.info("动作: 正在杀死 GTA V 相关进程。。。")
         kill_processes(self.GTA_PROCESS_NAMES)
-        logger.info("杀死 GTA V 相关进程完成。")
         self.hwnd, self.pid = None, None
+        logger.info("杀死 GTA V 相关进程完成。")
 
     def setup_gta(self):
-        """确保 GTA V 启动并且是当前活动窗口，同时更新 PID 和窗口句柄。"""
+        """
+        确保 GTA V 启动，同时更新 PID 和窗口句柄。
+
+        :raise UnexpectedGameState(expected=lambda state: state.is_running, actual=GameState.OFF): 启动 GTA V 失败
+        """
+        logger.info("动作: 正在初始化 GTA V 。。。")
+
         if not self.is_game_started():
             # 没启动就先启动
             logger.warning("GTA V 未启动。正在启动游戏...")
             # 尝试启动 restartGTAConsecutiveFailThreshold 次，至少一次
             for retry_times in range(max(self.config.restartGTAConsecutiveFailThreshold, 1)):
-                if self.kill_and_restart_gta():
+                self.kill_and_restart_gta()
+                if self.is_game_started():
                     # 启动过程中会自己设置 PID 和窗口句柄, 不需要做任何事
                     return
                 else:
@@ -90,32 +137,47 @@ class GameAutomator:
                     continue
             else:
                 # 达到最大失败次数后抛出异常
-                raise Exception("无法启动 GTA V 或无法进入在线模式。")
+                logger.error("GTA V 启动失败次数过多，认为游戏处于无法启动的状态。")
+                raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
         else:
             # 如果启动了则更新 PID 和窗口句柄
-            self.hwnd, self.pid = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
-            logger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
+            self._update_gta_window_info()
+
         # 以防万一将其从挂起中恢复
         self._resume_gta_process()
-        # 设置为活动窗口
-        set_active_window(self.hwnd)
 
-    def _find_text(self, text, left, top, width, height) -> bool:
-        """辅助函数，用于检查文本是否存在于指定区域。"""
-        ocr_result = self.ocr.ocr(self.hwnd, left, top, width, height)
-        return text in ocr_result
+        logger.info("初始化 GTA V 完成。")
 
-    def _find_multi_text(self, texts: list[str], left, top, weight, height) -> bool:
-        """辅助函数，用于检查一组文本是否有部分存在于指定区域。"""
-        ocr_result = self.ocr.ocr(self.hwnd, left, top, weight, height)
+    def _find_text(
+        self,
+        texts: Union[str, List[str], Tuple[str, ...]],
+        left: float,
+        top: float,
+        width: float,
+        height: float,
+    ) -> bool:
+        """
+        辅助函数，用于检查文本是否存在于指定区域。
+        如果 texts 是单个字符串，会返回该文本是否存在。如果是空字符串会输出错误日志并总是返回 False。
+        如果 texts 是字符串列表或元组，会返回是否有至少一个元素存在, 传入空列表会输出错误日志并总是返回 False。
+        """
+        is_single_string = not isinstance(texts, (list, tuple))
 
-        # 避免生成空的正则表达式
-        if not texts:
-            return False
-
-        # 使用正则表达式搜索
-        pattern = "|".join(re.escape(text) for text in texts)  # 转义所有特殊字符
-        return re.search(pattern, ocr_result) is not None
+        if is_single_string:
+            if texts:
+                ocr_result = self.ocr.ocr(self.hwnd, left, top, width, height)
+                return texts in ocr_result
+            else:
+                logger.warning(f'要查找的文本: "{texts}" 是空字符串。')
+                return False
+        else:
+            if texts:
+                ocr_result = self.ocr.ocr(self.hwnd, left, top, width, height)
+                pattern = "|".join(re.escape(text) for text in texts)  # 转义所有特殊字符
+                return re.search(pattern, ocr_result) is not None
+            else:
+                logger.warning(f'要查找的文本: "{texts}" 是空列表或空元组。')
+                return False
 
     def get_job_setup_status(self) -> tuple[bool, int, int]:
         """
@@ -151,57 +213,79 @@ class GameAutomator:
             logger.debug("未找到 GTA V 窗口。GTA V 未启动。")
             return False
 
-    def is_on_main_menu(self) -> bool:
-        """检查游戏是否在主菜单。"""
+    def is_on_mainmenu_gtaplus_advertisement_page(self) -> bool:
+        """检查游戏是否在主菜单的gta+广告页面。"""
+        return self._find_text(["导览", "跳过"], 0.5, 0.8, 0.5, 0.2)
+
+    def is_on_mainmenu_logout(self) -> bool:
+        """
+        检查游戏是否在登出的主菜单页面。
+        注意无法确认是在线页面还是 GTA+ 页面，因为两个页面的 OCR 结果是相同的。
+        """
+        return self._find_text("已登出", 0, 0, 1, 1)
+
+    def is_on_mainmenu_online_page(self) -> bool:
+        """检查游戏是否在主菜单的在线页面。"""
         return self._find_text("加入自由模式", 0, 0, 1, 1)
 
-    def is_respawned(self) -> bool:
-        """检查玩家是否已在床上复活。"""
+    def is_on_mainmenu_storymode_page(self) -> bool:
+        """检查游戏是否在主菜单的故事页面。"""
+        return self._find_text("故事模式", 0, 0.5, 0.7, 0.5)
+
+    def is_on_onlinemode_info_panel(self) -> bool:
+        """检查游戏是否在在线模式的左上角显示玩家信息的菜单。"""
+        return self._find_text("在线模式", 0, 0, 0.4, 0.1)
+
+    def is_respawned_in_agency(self) -> bool:
+        """检查玩家是否已在事务所的床上复活。"""
         return self._find_text("床", 0, 0, 0.5, 0.5)
 
     def is_on_job_panel(self) -> bool:
         """检查当前是否在差事面板界面。"""
-        return self._find_multi_text(["别惹", "德瑞", "搭档"], 0, 0, 0.5, 0.5)
+        return self._find_text(["别惹", "德瑞", "搭档"], 0, 0, 0.5, 0.5)
 
     def is_on_scoreboard(self) -> bool:
         """检查当前是否在差事失败的计分板界面。"""
-        return self._find_multi_text(["别惹", "德瑞"], 0, 0, 0.5, 0.5)
+        return self._find_text(["别惹", "德瑞"], 0, 0, 0.5, 0.5)
 
     def is_job_marker_found(self) -> bool:
         """检查是否找到了差事的黄色光圈提示。"""
-        return self._find_multi_text(["猎杀", "约翰尼"], 0, 0, 0.5, 0.5)
+        return self._find_text(["猎杀", "约翰尼"], 0, 0, 0.5, 0.5)
 
     def is_job_started(self) -> bool:
         """检查是否在别惹德瑞任务中。"""
         # 有时任务会以英文启动，因此检查"团队生命数"作为保底
-        return self._find_multi_text(["前往", "出现", "汇报", "进度", "团队", "生命数"], 0, 0.8, 1, 0.2)
+        return self._find_text(["前往", "出现", "汇报", "进度", "团队", "生命数"], 0, 0.8, 1, 0.2)
 
     def is_job_starting(self) -> bool:
-        """检查任务是否在启动中。"""
-        return self._find_multi_text(["正在", "启动", "战局"], 0.7, 0.9, 0.3, 0.1)
+        """检查任务是否在启动中。每隔 0.1 秒检查一次，共 3 次，以避免游戏响应慢。"""
+        for _ in range(3):
+            if self._find_text(["正在", "启动", "战局"], 0.7, 0.9, 0.3, 0.1):
+                return True
+            time.sleep(0.1)
+        else:
+            return False
 
     def is_on_warning_page(self) -> bool:
         """检查是否在黑屏警告页面"""
-        return self._find_multi_text(["警告", "注意"], 0, 0, 1, 1)
+        return self._find_text(["警告", "注意"], 0, 0, 1, 1)
 
     def is_on_pause_menu(self) -> bool:
         """检查是否在暂停菜单"""
-        return self._find_multi_text(["地图", "职业", "简讯"], 0, 0, 0.5, 0.5)
+        return self._find_text(["地图", "职业", "简讯"], 0, 0, 0.5, 0.5)
 
     def is_on_go_online_menu(self) -> bool:
         """检查是否在"进入在线模式"菜单"""
-        return self._find_multi_text(
-            ["公开战局", "邀请的", "帮会战局", "公开帮会", "公开好友"], 0, 0, 0.5, 0.5
-        )
+        return self._find_text(["公开战局", "邀请的", "帮会战局", "公开帮会", "公开好友"], 0, 0, 0.5, 0.5)
 
     # 各种动作序列
     def fix_key_stuck(self):
         """
         把 wasdqe 全按一遍以试图解决卡键。
         为尽量避免影响当前游戏状态，会按照 w->s a->d q->e 的顺序按键。
-        这无法避免按 e 导致触发任务黄圈。
+        按 e 可能导致触发任务黄圈，不要在黄圈上调用。
         """
-        logger.info("正在按下 wasdqe 键以避免卡键。")
+        logger.info("动作: 正在按下 wasdqe 键以避免卡键...")
         self.keyboard.click("w", 200)
         time.sleep(0.1)
         self.keyboard.click("s", 200)
@@ -215,129 +299,170 @@ class GameAutomator:
         self.keyboard.click("e", 200)
         time.sleep(0.1)
 
+        logger.info("避免卡键完成。")
 
     def go_job_point_from_bed(self):
         """从事务所的床出发，下到一楼，移动到任务点附近。"""
         logger.info("动作：正在从事务所个人空间走到楼梯间...")
         # 走到柱子上卡住
-        self.keyboard.click(["a", "w"], 2000)
-        # 走到楼梯口
-        self.keyboard.click("d", 6000)
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFTUP, 1500)
+        # 走到个人空间门口
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHT, 5500)
+        # 走出个人空间的门
         start_time = time.monotonic()
-        while time.monotonic() - start_time < 2.5:
-            self.keyboard.click(["d","s"], 150)
-            self.keyboard.click(["d","w"], 150)
-        self.keyboard.click("d", 2000)
+        while time.monotonic() - start_time < 2:
+            self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTDOWN, 250)
+            self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTUP, 250)
+        # 走到楼梯间门口
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHT, 1000)
         # 走进楼梯门
-        self.keyboard.click("w", 2500)
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_UP, 2200)
         # 走下楼梯
         logger.info("动作：正在下楼...")
-        self.keyboard.click("s", 4000)
-        self.keyboard.click(["d","w"],2000)
-        self.keyboard.click("a", 5000)
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_DOWN, 4000)
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHTUP, 1500)
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFT, 4500)
         # 走出楼梯间
         start_time = time.monotonic()
         while time.monotonic() - start_time < self.config.goOutStairsTime / 1000.0:
-            self.keyboard.click("s", self.config.pressSTimeStairs)
-            self.keyboard.click("a", self.config.pressATimeStairs)
-        logger.info("动作：正在穿过一楼走廊...")
+            self.gamepad.hold_left_joystick(JoystickDirection.HALF_DOWN, 250)
+            self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFT, 250)
         # 穿过走廊
+        logger.info("动作：正在穿过差事层走廊...")
         start_time = time.monotonic()
-        while time.monotonic() - start_time < self.config.crossAisleTime / 1000.0:
-            self.keyboard.click("s", self.config.pressSTimeAisle)
-            self.keyboard.click("a", self.config.pressATimeAisle)
+        self.gamepad.hold_left_joystick((-0.95, -1.0), self.config.crossAisleTime)
 
-    def find_job(self) -> bool:
-        """检查是否到达任务点。如果没有，会尝试向任务点移动。"""
+    def find_job_point(self):
+        """
+        检查是否到达任务触发点。如果没有，会尝试向任务触发点移动。
+
+        :raise UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT): 未找到任务触发点
+        """
         # 一边搜索任务标记，一边向任务黄圈移动
-        logger.info("动作：正在寻找差事点...")
+        logger.info("动作：正在寻找差事触发点...")
+
         start_time = time.monotonic()
         while time.monotonic() - start_time < self.config.waitFindJobTimeout / 1000.0:
-            self.keyboard.click("s", self.config.pressSTimeGoJob)
+            self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFT, self.config.WalkLeftTimeGoJob)
+            time.sleep(0.1)
             if self.is_job_marker_found():
-                return True
-            self.keyboard.click("a", self.config.pressATimeGoJob)
+                break
+            self.gamepad.hold_left_joystick(JoystickDirection.HALF_DOWN, self.config.WalkDownTimeGoJob)
+            time.sleep(0.1)
             if self.is_job_marker_found():
-                return True
-        return False
+                break
+        else:
+            raise UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)
 
-    def enter_job(self):
-        """在差事点上开始差事，目前只需要按一下 E。"""
-        self.keyboard.click("e")
+        logger.info("成功找到差事触发点。")
 
-    def start_new_match(self) -> bool:
-        """尝试从一个战局中切换到另一个仅邀请战局，必须在自由模式下才能工作。"""
-        logger.info("动作：正在开始一个新差事...")
+    def enter_job_setup(self):
+        """在差事点上进入差事准备面板，目前只需要按一下十字键右键。"""
+        logger.info("动作: 正在进入差事准备面板...")
+        self.gamepad.click_button(Button.DPAD_RIGHT)
+        logger.info("成功进入差事准备面板。")
+
+    def start_new_match(self):
+        """
+        尝试从在线战局中切换到另一个仅邀请战局，必须在自由模式下才能工作。
+
+        :raise UnexpectedGameState({GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, GameState.UNKNOWN): 游戏状态未知，无法切换战局
+        :raise UnexpectedGameState(expected={GameState.IN_MISSION, GameState.IN_ONLINE_LOBBY}, actual=GameState.OFF): 游戏未启动，无法切换战局
+        """
+        logger.info("动作: 正在切换新战局...")
         # 切换新战局会尝试15次，在某些次数中，会使用不同措施尝试使游戏回到"正常状态"。
         for new_match_error_count in range(15):
+            if new_match_error_count > 0:
+                logger.info("正在重试...")
+            logger.info("动作: 正在打开暂停菜单...")
             # 各种措施，很难说效果究竟如何，瞎猫撞死耗子
             if new_match_error_count % 3 == 2:
-                logger.info("尝试通过多次按 ESCAPE 键来恢复正常状态。")
+                logger.info("动作: 尝试通过多次按 B 键来恢复正常状态...")
                 for _ in range(7):
-                    self.keyboard.click(Key.esc)
+                    self.gamepad.click_button(Button.B)
                     time.sleep(0.5)
+                logger.info("已停止按 B 键。")
             if (new_match_error_count + 1) % 3 == 0:
-                logger.info("尝试通过多次按 ESCAPE 键和 ENTER 键来恢复正常状态。")
+                logger.info("动作: 尝试通过多次按 B 键和 A 键来恢复正常状态...")
                 for _ in range(4):
-                    self.keyboard.click(Key.esc)
+                    self.gamepad.click_button(Button.B)
                     time.sleep(0.5)
-                    self.keyboard.click(Key.enter)
+                    self.gamepad.click_button(Button.A)
                     time.sleep(0.5)
+                logger.info("已停止按 B 键和 A 键。")
             # if new_match_error_count == 10:
             #     GLogger.info("尝试通过加入差传 Bot 战局来恢复正常状态。")
             #     self.try_to_join_jobwarp_bot()
             if new_match_error_count == 10:
                 logger.info("尝试通过卡单来恢复正常状态。")
-                self.enter_single_player_session()
+                self.glitch_single_player_session()
             # 以下开始是正常的开始新战局的指令
+            # 检查游戏状态
+            if not self.is_game_started():
+                raise UnexpectedGameState(
+                    expected={GameState.IN_MISSION, GameState.IN_ONLINE_LOBBY}, actual=GameState.OFF
+                )
             # 处理警告屏幕
             if self.is_on_warning_page():
-                self.keyboard.click(Key.enter)
+                self.gamepad.click_button(Button.A)
                 time.sleep(0.5)
 
             # 打开暂停菜单
             if not self.is_on_pause_menu():
-                self.keyboard.click(Key.esc)
+                self.gamepad.click_button(Button.MENU)
                 time.sleep(2)
 
-            # 检查暂停菜单是否被打开，未打开则按 ESC 并进行下一次尝试
+            # 检查暂停菜单是否被打开，未打开则按菜单键并进行下一次尝试
             if not self.is_on_pause_menu():
-                self.keyboard.click(Key.esc)
-                logger.warning(f"开始新战局失败 (尝试次数 {new_match_error_count})。正在重试...")
+                self.gamepad.click_button(Button.MENU)
+                logger.warning(f"打开暂停菜单失败 (尝试次数 {new_match_error_count + 1})。")
                 continue
+
+            logger.info("成功打开暂停菜单。")
 
             # 尝试切换到在线选项卡以切换战局
-            self.keyboard.click("e")
+            logger.info("动作: 正在打开切换战局菜单...")
+            self.gamepad.click_button(Button.RIGHT_SHOULDER)
             time.sleep(2)
-            self.keyboard.click(Key.enter)
+            self.gamepad.click_button(Button.A)
             time.sleep(1)
             for _ in range(5):
-                self.keyboard.click("w", 100)
+                self.gamepad.click_button(Button.DPAD_UP)
                 time.sleep(0.6)
-            self.keyboard.click(Key.enter)
+            self.gamepad.click_button(Button.A)
             time.sleep(1)
 
-            # 验证当前是否在切换战局的菜单，未打开则按3次 ESC 并进行下一次尝试
+            # 验证当前是否在切换战局的菜单，未打开则按菜单键并进行下一次尝试
             if not self.is_on_go_online_menu():
-                for _ in range(3):
-                    self.keyboard.click(Key.esc)
-                    time.sleep(1)
-                logger.warning(f"开始新战局失败 (尝试次数 {new_match_error_count})。正在重试...")
+                self.gamepad.click_button(Button.MENU)
+                logger.warning(f"打开切换战局菜单失败 (尝试次数 {new_match_error_count})。")
                 continue
 
-            # 选择"仅邀请战局"选项，确认
-            self.keyboard.click("s")
-            time.sleep(0.6)
-            self.keyboard.click(Key.enter)
-            time.sleep(2)
-            self.keyboard.click(Key.enter)
-            return True
-        else:
-            return False
+            logger.info("成功打开切换战局菜单。")
 
-    def wait_team(self) -> bool:
-        """在差事准备页面，等待队友，然后开始游戏。"""
-        logger.info("状态：等待队伍成员...")
+            # 选择"仅邀请战局"选项，确认
+            self.gamepad.click_button(Button.DPAD_DOWN)
+            time.sleep(0.6)
+            self.gamepad.click_button(Button.A)
+            time.sleep(2)
+            self.gamepad.click_button(Button.A)
+            break
+        else:
+            logger.error(f"切换新战局失败次数过多，认为游戏正处于未知状态。")
+            raise UnexpectedGameState({GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, GameState.UNKNOWN)
+
+        logger.info("成功进入新战局。")
+
+    def setup_wait_start_job(self) -> bool:
+        """
+        初始化差事准备页面，等待队友，然后开始差事。
+
+        :raise ``UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)``: 意外离开了任务面板
+        :raise ``OperationTimeout(OperationTimeoutContext.WAIT_TEAMMATE)``: 长时间没有玩家加入，超时
+        :raise ``OperationTimeout(OperationTimeoutContext.PLAYER_JOIN)``: 玩家长期卡在"正在加入"状态，超时
+
+        """
+        logger.info("动作: 正在等待队伍成员并开始差事...")
         start_wait_time = time.monotonic()  # 记录开启面板的时间
         last_activity_time = start_wait_time  # 记录最近队伍状态变化的时间，当发生人数变化或玩家由"正在加入"变成"已加入"时，更新该时间
         last_joining_time = (
@@ -354,99 +479,29 @@ class GameAutomator:
             pass
 
         # 导航面板以选中"开始差事"选项
-        self.keyboard.click("w")
+        logger.info("动作: 正在设置差事面板...")
+        self.gamepad.click_button(Button.DPAD_UP)
         time.sleep(0.8)
-        self.keyboard.click(Key.enter)
+        self.gamepad.click_button(Button.A)
         time.sleep(1)
-        self.keyboard.click("a")  # 关闭匹配功能，防止玩家通过匹配功能意外进入该差事
+        self.gamepad.click_button(Button.DPAD_LEFT)  # 关闭匹配功能，防止玩家通过匹配功能意外进入该差事
         time.sleep(0.8)
-        self.keyboard.click("w")
+        self.gamepad.click_button(Button.DPAD_UP)
+        logger.info("差事面板设置完成")
 
+        # 长循环实现等待玩家加入和启动差事
         while True:
-            time.sleep(self.config.checkLoopTime)
             current_time = time.monotonic()
 
             # 获取准备界面状态
             is_on_job_panel, joining_count, joined_count = self.get_job_setup_status()
 
-            # 找不到面板则直接返回出错
+            # 不知为何离开任务面板
             if not is_on_job_panel:
-                logger.warning("找不到启动面板。")
-                return False
+                logger.warning("等待玩家时意外离开了任务面板。")
+                raise UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)
 
             logger.info(f"队伍状态: {joined_count} 人已加入, {joining_count} 人正在加入。")
-
-            # 如果没人加入则超时
-            if (
-                current_time - start_wait_time > self.config.matchPanelTimeout
-                and last_joined_count == 0
-                and last_joining_count == 0
-                and joining_count == 0
-                and joined_count == 0
-            ):
-                logger.info("长时间没有玩家加入，退出差事并重新开始。")
-                try:
-                    self.steam_bot.send_group_message(self.config.msgWaitPlayerTimeout)
-                except requests.RequestException as e:
-                    # 发送信息失败，小事罢了，不影响自动化运行
-                    pass
-                return False
-
-            # 如果有人卡在“正在加入”则超时
-            if (
-                current_time - last_joining_time > self.config.joiningPlayerKick
-                and last_joining_count > 0
-                and joining_count > 0
-            ):
-                logger.info('玩家长期卡在"正在加入"状态，退出差事并重新开始。')
-                try:
-                    self.steam_bot.send_group_message(self.config.msgJoiningPlayerKick)
-                except requests.RequestException as e:
-                    # 发送信息失败，小事罢了，不影响自动化运行
-                    pass
-                return False
-
-            # 检查是否应该开始差事
-            # 满员且设置了满员立即启动
-            # 或者有已加入的并且没有未加入的，同时记录最近队伍状态变化的时间已经超过开始差事等待延迟
-            if (joined_count == 3 and self.config.startOnAllJoined) or (
-                current_time - last_activity_time > self.config.startMatchDelay
-                and joined_count > 0
-                and joining_count == 0
-            ):
-                logger.info("即将启动差事。")
-                # 发送差事启动消息
-                try:
-                    self.steam_bot.send_group_message(self.config.msgJobStarting)
-                except requests.RequestException as e:
-                    # 发送信息失败，小事罢了，不影响自动化运行
-                    pass
-                self.keyboard.click(Key.enter)
-                for _ in range(3):
-                    if self.is_job_starting():
-                        # 成功启动，可喜可贺
-                        return True
-                else:
-                    logger.warning("启动差事失败。")
-                    # 有时确实启动不了
-                    # 处理警告页面
-                    if self.is_on_warning_page():
-                        self.keyboard.click(Key.enter)
-                        time.sleep(0.5)
-
-                    if self.is_on_job_panel():
-                        # 如果还在差事页面可以等下次再试，直到超过卡比时间退出
-                        logger.info("回到面板，将尝试继续启动。")
-                        continue
-                    else:
-                        # 差事都没了就没办法了
-                        logger.warning("未回到面板，无法继续。")
-                        try:
-                            self.steam_bot.send_group_message(self.config.msgJobStartFail)
-                        except requests.RequestException as e:
-                            # 发送信息失败，小事罢了，不影响自动化运行
-                            pass
-                        return False
 
             # 队伍人数从未满变为满员时，发送满员消息
             if joining_count + joined_count != last_joining_count + last_joined_count:
@@ -457,6 +512,78 @@ class GameAutomator:
                         # 发送信息失败，小事罢了，不影响自动化运行
                         pass
 
+            # 没人加入超时
+            if (
+                current_time - start_wait_time > self.config.matchPanelTimeout
+                and last_joined_count == 0
+                and last_joining_count == 0
+                and joining_count == 0
+                and joined_count == 0
+            ):
+                logger.warning("长时间没有玩家加入，放弃本次差事。")
+                try:
+                    self.steam_bot.send_group_message(self.config.msgWaitPlayerTimeout)
+                except requests.RequestException as e:
+                    # 发送信息失败，小事罢了，不影响自动化运行
+                    pass
+                raise OperationTimeout(OperationTimeoutContext.WAIT_TEAMMATE)
+
+            # 有人卡在“正在加入”超时
+            if (
+                current_time - last_joining_time > self.config.joiningPlayerKick
+                and last_joining_count > 0
+                and joining_count > 0
+            ):
+                logger.warning('玩家长期卡在"正在加入"状态，放弃本次差事。')
+                try:
+                    self.steam_bot.send_group_message(self.config.msgJoiningPlayerKick)
+                except requests.RequestException as e:
+                    # 发送信息失败，小事罢了，不影响自动化运行
+                    pass
+                raise OperationTimeout(OperationTimeoutContext.PLAYER_JOIN)
+
+            # 检查是否应该开始差事
+            # 满员且设置了满员立即启动
+            # 或者有已加入的并且没有未加入的，同时记录最近队伍状态变化的时间已经超过开始差事等待延迟
+            if (joined_count == 3 and self.config.startOnAllJoined) or (
+                current_time - last_activity_time > self.config.startMatchDelay
+                and joined_count > 0
+                and joining_count == 0
+            ):
+                logger.info("动作: 正在启动差事...")
+                # 发送差事启动消息
+                try:
+                    self.steam_bot.send_group_message(self.config.msgJobStarting)
+                except requests.RequestException as e:
+                    # 发送信息失败，小事罢了，不影响自动化运行
+                    pass
+                self.gamepad.click_button(Button.A)
+                # "正在启动战局" 不一定会马上出现
+                time.sleep(0.5)
+                if self.is_job_starting():
+                    break
+                else:
+                    logger.warning("启动差事失败。")
+                    # 有时确实启动不了
+                    # 处理警告页面
+                    if self.is_on_warning_page():
+                        self.gamepad.click_button(Button.A)
+                        time.sleep(0.5)
+
+                    if self.is_on_job_panel():
+                        # 如果还在差事页面可以等下次再试，直到超过卡比时间退出
+                        logger.info("回到面板，将尝试继续启动。")
+                        continue
+                    else:
+                        # 差事都没了就没办法了
+                        logger.warning("未回到面板，无法继续，放弃本次差事。")
+                        try:
+                            self.steam_bot.send_group_message(self.config.msgJobStartFail)
+                        except requests.RequestException as e:
+                            # 发送信息失败，小事罢了，不影响自动化运行
+                            pass
+                        raise UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)
+
             # 队伍加入状态变化时，更新最近加入状态变化的时间，最近队伍状态变化的时间，上一次的正在加入人数，上一次的已加入人数
             if joining_count != last_joining_count or joined_count != last_joined_count:
                 if joining_count != last_joining_count:
@@ -464,49 +591,64 @@ class GameAutomator:
                 last_joining_count, last_joined_count = joining_count, joined_count
                 last_activity_time = current_time
 
+            # 休眠一段时间再继续检测
+            time.sleep(self.config.checkLoopTime)
+
+        logger.info("启动差事成功。")
+
     def exit_job_panel(self):
         """从差事准备面板退出到自由模式，如果不在差事准备面板中则行为是未定义的"""
+        logger.info("动作: 正在退出差事面板...")
         # 处理警告屏幕
         if self.is_on_warning_page():
-            self.keyboard.click(Key.enter)
+            self.gamepad.click_button(Button.A)
             time.sleep(0.5)
 
         # 从差事准备面板退出
         ocr_result = self.ocr.ocr(self.hwnd, 0, 0, 1, 0.8)
         if re.search("|".join(["匹配", "邀请", "帮会"]), ocr_result) is not None:
-            # 如果在差事面板的第二个页面，按两次 ESC 和回车退出
-            self.keyboard.click(Key.esc)
+            # 如果在差事面板的第二个页面，按两次 B 和一次 A 退出
+            self.gamepad.click_button(Button.B)
             time.sleep(1)
-            self.keyboard.click(Key.esc)
+            self.gamepad.click_button(Button.B)
             time.sleep(1)
-            self.keyboard.click(Key.enter)
+            self.gamepad.click_button(Button.A)
             time.sleep(5)
         elif re.search("|".join(["设置", "镜头", "武器"]), ocr_result) is not None:
-            # 如果在差事面板的第一个页面，按一次 ESC 和回车退出
-            self.keyboard.click(Key.esc)
+            # 如果在差事面板的第一个页面，按一次 B 和一次 A 退出
+            self.gamepad.click_button(Button.B)
             time.sleep(1)
-            self.keyboard.click(Key.enter)
+            self.gamepad.click_button(Button.A)
             time.sleep(5)
 
-    # 不认为加入差传bot是一个好主意，应当重启
-    def try_to_join_jobwarp_bot(self):
+        logger.info("已退出差事面板。")
+
+    # 不认为加入差传bot是一个好主意，重启游戏是更稳妥更快捷的处理方案
+    def deprecated_try_to_join_jobwarp_bot(self):
         """
         尝试通过 SteamJvp 加入差传 Bot 战局。
+
         该方法应当在游戏启动后才能运行，否则会卡在steam确认启动游戏。
-        注意该方法目前不再维护，且将来可能被废弃。
+
+        注意该方法目前已废弃，将在未来版本中被移除。
+
+        如何迁移到其他方法: 用于回到在线模式自由模式: 重启游戏。用于差传: alt+f4等40秒。用于换战局: 菜单寻找新战局
+
+        :raises ``UnexpectedGameState(expected=lambda state: state.is_running, actual=GameState.OFF)``: 游戏未启动所以无法加入差传 Bot 战局
+        :raises ``NetworkError(NetworkErrorContext.FETCH_WARPBOT_INFO)``: 从 mageangela 的接口获取差传 Bot 的战局链接时发生网络错误
+        :raises ``NetworkError(NetworkErrorContext.JOIN_WARPBOT_SESSION)``: 加入所有差传 Bot 战局均失败
         """
+        logger.info("动作: 正在加入差传 Bot 战局...")
+
         if not self.is_game_started():
-            logger.error("游戏未启动，因此不能加入差传 Bot 战局。")
-            return
-        logger.info("正在尝试加入一个差传 Bot 战局...")
-        # 从 mageangela 的接口获取差传 bot 的战局链接
+            raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
+        # 从 mageangela 的接口获取差传 Bot 的战局链接
         try:
             res = requests.get("http://quellgtacode.mageangela.cn:52014/botJvp/", timeout=10)
             res.raise_for_status()
             bot_list = res.text.replace("\r", "").split("\n")
         except requests.RequestException as e:
-            logger.error(f"获取差传 Bot 列表失败: {e}")
-            return
+            raise NetworkError(NetworkErrorContext.FETCH_WARPBOT_INFO)
 
         start_index = 3 + (self.config.jobTpBotIndex if self.config.jobTpBotIndex >= 0 else 0)
         bot_lines_to_try = (
@@ -522,179 +664,378 @@ class GameAutomator:
                 continue
 
             # 使用 Steam 加入差传 Bot 战局
-            steam_url = f"steam://rungame/3240220/76561199074735990/-steamjvp={jvp_id}"
-            logger.info(f"正在启动 Steam URL: {steam_url}")
-            os.startfile(steam_url)
-            time.sleep(3)
-
-            # 等待加入差传 Bot 战局，如果在线上，会掉回自由模式，如果在线下，会掉回公开战局。
-            start_join_time = time.monotonic()
-            has_suspended = False
-            while time.monotonic() - start_join_time < 300:  # 5分钟加载超时
-                self.keyboard.click(Key.enter)
-                time.sleep(0.5)
-                self.keyboard.click("z")
-                time.sleep(1)
-                if self._find_text("在线模式", 0, 0, 0.5, 0.5):
-                    # 进入了在线模式
-                    logger.info("成功加入差传 Bot 战局。5 秒后将卡单以避免战局中有其他玩家。")
-                    time.sleep(5)
-                    self.enter_single_player_session()
-                    return
-                if not has_suspended and time.monotonic() - start_join_time > 30:
-                    # 等待 30 秒的时候先卡一次单
-                    logger.info("为缓解进入公开战局卡云，进行卡单。")
-                    self.enter_single_player_session()
-                    has_suspended = True
-            else:
-                # 超时后再卡一次单，并且休息一会
-                logger.info("加入差传 Bot 战局时超时。尝试卡单以缓解。")
-                self.enter_single_player_session()
-                time.sleep(10)
+            try:
+                self.join_session_through_steam(jvp_id)
+            except OperationTimeout as e:
+                logger.error(f"加入差传 Bot 时，{e}")
+            except UnexpectedGameState as e:
+                logger.error(f"加入差传 Bot 时，{e}")
 
             if self.config.jobTpBotIndex >= 0:
                 # 如果指定了索引，只尝试一次
                 break
         else:
-            logger.warning("无法加入任何配置的差传 Bot 战局。")
+            raise NetworkError(NetworkErrorContext.JOIN_WARPBOT_SESSION)
+
+        logger.info("成功加入差传 Bot 战局。")
+
+    def join_session_through_steam(self, steam_jvp: str):
+        """
+        通过 Steam 的"加入游戏"功能，加入一个战局。
+
+        必须在游戏启动时运行，否则会弹出一个程序当前无法处理的 Steam 警告窗口。
+
+        :param steam_jvp: URL 编码后的 steam_jvp 参数
+        :raises ``UnexpectedGameState(expected=lambda state: state.is_running, actual=GameState.OFF)`: 游戏未启动所以无法加入战局
+        :raises ``OperationTimeout(OperationTimeoutContext.ONLINE_SESSION_JOIN)``: 加入战局时超时
+        """
+        logger.info(f"动作: 正在加入战局: {steam_jvp}")
+
+        if not self.is_game_started():
+            raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
+
+        steam_url = f"steam://rungame/3240220/76561199074735990/-steamjvp={steam_jvp}"
+        os.startfile(steam_url)
+        time.sleep(3)
+
+        # 等待加入战局
+        start_join_time = time.monotonic()
+        has_triggered_single_session = False
+        while time.monotonic() - start_join_time < 300:  # 5分钟加载超时
+            self.gamepad.click_button(Button.A)
+            time.sleep(0.5)
+            self.gamepad.click_button(Button.DPAD_DOWN)
+            time.sleep(1)
+            if self._find_text("在线模式", 0, 0, 0.5, 0.5):
+                # 进入了在线模式
+                logger.info("成功加入战局。5 秒后将卡单以避免战局中有其他玩家。")
+                time.sleep(5)
+                self.glitch_single_player_session()
+                break
+            if not has_triggered_single_session and time.monotonic() - start_join_time > 30:
+                # 等待 30 秒的时候先卡一次单
+                logger.info("为缓解进入公开战局卡云，进行卡单。")
+                self.glitch_single_player_session()
+                has_triggered_single_session = True
+        else:
+            # 超时后再卡一次单，并且休息一会
+            logger.info("加入战局时超时。尝试卡单以缓解。")
+            self.glitch_single_player_session()
+            time.sleep(10)
+            raise OperationTimeout(OperationTimeoutContext.JOIN_ONLINE_SESSION)
+
+        logger.info(f"成功加入战局: {steam_jvp}")
 
     def kill_and_restart_gta(self) -> bool:
         """
         杀死并重启 GTA V 游戏，并进入在线模式仅邀请战局。
-        如果重启游戏失败，将杀死游戏进程。
 
-        Returns:
-            bool: 重启是否成功。True: 成功重启并进入了在线模式。False: 失败了，并且杀死了游戏进程。
+        如果重启游戏失败，将杀死游戏进程。
         """
+        logger.info(f"动作: 正在杀死并重启 GTA V...")
+
         self.kill_gta()
         logger.info("20秒后将重启 GTA V...")
         time.sleep(20)  # 等待20秒钟用于 steam 客户端响应 GTA V 退出
 
-        logger.info("正在通过 Steam 重新启动游戏...")
+        # 启动游戏
+        try:
+            self.start_gta_steam()
+        except OperationTimeout as e:
+            logger.error(f"启动 GTA V 时，发生异常: {e}")
+            self.kill_gta()
+            return
+
+        # 进入故事模式
+        time.sleep(2)
+        try:
+            self.enter_storymode_from_mainmenu()
+        except OperationTimeout as e:
+            logger.error(f"进入故事模式时，发生异常: {e}")
+            self.kill_gta()
+            return
+        except UIElementNotFound as e:
+            logger.error(f"进入故事模式时，发生异常: {e}")
+            self.kill_gta()
+            return
+
+        # 进入在线模式
+        time.sleep(2)
+        try:
+            self.enter_onlinemode_from_storymode()
+        except UIElementNotFound as e:
+            logger.error(f"进入在线模式时，发生异常: {e}")
+            self.kill_gta()
+            return
+        except UnexpectedGameState as e:
+            logger.error(f"进入在线模式时，发生异常: {e}")
+            if e.actual_state == GameState.BAD_PCSETTING_BIN:
+                self.kill_gta()
+                self.clean_pcsetting()
+            else:
+                self.kill_gta()
+            return
+        except OperationTimeout as e:
+            logger.error(f"进入在线模式时，发生异常: {e}")
+            self.kill_gta()
+            return
+
+        logger.info("重启 GTA V 成功。")
+
+    def start_gta_steam(self):
+        """
+        如果 GTA V 没有启动，通过 Steam 启动游戏，并更新 pid 和 hwnd。
+
+        如果 GTA V 已经启动，则仅更新 pid 和 hwnd，不做其他事。
+
+        :raise ``OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)``: 等待游戏窗口出现超时
+        :raise ``OperationTimeout(OperationTimeoutContext.MAIN_MENU_LOAD)``: 待主菜单加载超时
+        """
+        # 游戏启动则仅更新 pid 和 hwnd
+        if self.is_game_started():
+            self._update_gta_window_info()
+            logger.warning(
+                "在游戏运行时，调用启动游戏方法将仅更新 GTA V 窗口信息。如果需要重启，请调用重启方法。"
+            )
+            return
+
+        logger.info("动作: 正在通过 Steam 启动 GTA V...")
         os.startfile("steam://rungameid/3240220")
 
         # 等待 GTA V 进程启动
-        logger.info("正在等待 GTA 窗口出现...")
+        logger.info("正在等待 GTA V 窗口出现...")
         process_start_time = time.monotonic()
         while time.monotonic() - process_start_time < 300:  # 5分钟总超时
-            window_info = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
-            if window_info:
-                self.hwnd, self.pid = window_info
-                logger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
+            if self.is_game_started():
+                logger.info("GTA V 窗口已出现，更新窗口信息。")
+                self._update_gta_window_info()
                 break
             time.sleep(5)
         else:
-            # 启动失败则杀死 GTA V 进程并返回
-            logger.error("重启 GTA 失败：等待 GTA 窗口出现超时。")
-            self.kill_gta()
-            self.hwnd, self.pid = None, None
-            return False
+            raise OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)
 
         # 等待主菜单加载
         logger.info("正在等待主菜单出现...")
         main_menu_load_start_time = time.monotonic()
         while time.monotonic() - main_menu_load_start_time < 180:  # 3分钟加载超时
-            if self.is_on_main_menu():
+            if self.is_on_mainmenu_online_page():
                 logger.info("主菜单已加载。")
                 break
-            elif self._find_multi_text(["导览", "跳过"], 0.5, 0.8, 0.5, 0.2):
+            elif self.is_on_mainmenu_gtaplus_advertisement_page():
                 # 有时候主菜单会展示一个显示 GTA+ 广告的窗口
                 time.sleep(2)
-                self.keyboard.click(Key.enter)
+                self.gamepad.click_button(Button.A)
                 logger.info("主菜单已加载。")
                 break
             time.sleep(5)
         else:
-            logger.error("重启 GTA 失败：等待主菜单加载超时。")
-            self.kill_gta()
-            self.hwnd, self.pid = None, None
-            return False
+            # logger.error("重启 GTA 失败：等待主菜单加载超时。")
+            raise OperationTimeout(OperationTimeoutContext.MAIN_MENU_LOAD)
 
-        # 进入故事模式
-        time.sleep(2)
-        for _ in range(2):
-            self.keyboard.click("e")
+        logger.info("已启动 GTA V。")
+
+    def enter_storymode_from_mainmenu(self):
+        """
+        从主菜单进入故事模式，并打开暂停菜单。
+
+        如果不在菜单中，其行为是未定义的。
+
+        :raise ``UIElementNotFound(UIElementNotFoundContext.FINDING_STORY_MODE_MENU)``: 无法找到故事模式菜单。
+        :raise ``OperationTimeout(OperationTimeoutContext.STORY_MODE_LOAD)``: 等待故事模式加载超时
+
+        """
+        # 在主菜单中切换到故事模式页面
+        logger.info("动作: 正在进入故事模式...")
+        if self.is_on_mainmenu_logout():
+            logger.warning("未登录 Social Club。将无法进入在线模式。")
+        for _ in range(3):
+            self.gamepad.click_button(Button.RIGHT_SHOULDER)
             time.sleep(3)
-        self.keyboard.click(Key.enter)
 
-        # 等待进入故事模式
-        logger.info("正在等待进入故事模式...")
+        # 检查是否在故事模式页面
+        if not self.is_on_mainmenu_storymode_page():
+            # logger.error("进入故事模式失败：无法找到故事模式菜单。")
+            raise UIElementNotFound(UIElementNotFoundContext.STORY_MODE_MENU)
+
+        self.gamepad.click_button(Button.A)
+        logger.info("正在等待故事模式加载...")
         story_mode_load_start_time = time.monotonic()
         while time.monotonic() - story_mode_load_start_time < 120:  # 2分钟加载超时
             if self.is_on_pause_menu():
-                logger.info("已进入故事模式。")
                 break
-            self.keyboard.click(Key.esc)
+            self.gamepad.click_button(Button.MENU)
             time.sleep(5)
         else:
-            logger.error("重启 GTA 失败：等待进入故事模式超时。")
-            self.kill_gta()
-            self.hwnd, self.pid = None, None
-            return False
+            # logger.error("进入故事模式失败：等待进入故事模式超时。")
+            raise OperationTimeout(OperationTimeoutContext.STORY_MODE_LOAD)
 
-        # 进入在线模式
-        for _ in range(3):  # 尝试3次
+        logger.info("已进入故事模式。")
+
+    def enter_onlinemode_from_storymode(self):
+        """
+        从故事模式进入在线模式的仅邀请战局。
+        如果不在菜单中，其行为是未定义的。
+
+        :raise ``UIElementNotFound(UIElementNotFoundContext.ONLINE_MODE_TAB)``: 找不到在线模式选择卡
+        :raise ``UnexpectedGameState(GameState.IN_ONLINE_LOBBY, GameState.BAD_PCSETTING_BIN)``: 无法进入在线模式，因为pcsetting.bin故障
+        :raise ``UnexpectedGameState(GameState.IN_ONLINE_LOBBY, GameState.MAIN_MENU)``: 无法进入在线模式，因为被回退到主菜单
+        :raise ``OperationTimeout(OperationTimeoutContext.ONLINE_SESSION_JOIN)``: 等待进入在线模式超时
+        """
+        logger.info("动作: 正在进入在线模式...")
+
+        # 打开暂停菜单
+        if not self.is_on_pause_menu():
+            self.gamepad.click_button(Button.MENU)
+
+        # 打开进入在线模式的菜单
+        # 有时会吞键或无法找到在线模式菜单，这里尝试 3 次
+        for _ in range(3):
             for _ in range(5):
-                self.keyboard.click("e")
+                self.gamepad.click_button(Button.RIGHT_SHOULDER)
                 time.sleep(2)
-            self.keyboard.click(Key.enter)
+            self.gamepad.click_button(Button.A)
             time.sleep(1)
-            self.keyboard.click("w")
+            self.gamepad.click_button(Button.DPAD_UP)
             time.sleep(1)
-            self.keyboard.click(Key.enter)
+            self.gamepad.click_button(Button.A)
             time.sleep(1)
 
             # 验证是否打开了进入在线模式的菜单
+            # 如果离线或未登录 RockStar Social Club，会无法找到在线模式菜单
             if self.is_on_go_online_menu():
                 # 进入下一步
                 break
             else:
                 # 找不到则关闭菜单
                 for _ in range(3):
-                    self.keyboard.click(Key.esc)
+                    self.gamepad.click_button(Button.B)
                     time.sleep(1)
                 # 再次打开地图
                 time.sleep(3)
                 if not self.is_on_pause_menu():
-                    self.keyboard.click(Key.esc)
+                    self.gamepad.click_button(Button.MENU)
                     time.sleep(5)
                 continue
         else:
-            logger.error("重启 GTA 失败：找不到在线模式选项卡。")
-            self.kill_gta()
-            self.hwnd, self.pid = None, None
-            return False
+            # logger.error("进入在线模式失败：找不到在线模式选项卡。")
+            raise UIElementNotFound(UIElementNotFoundContext.ONLINE_MODE_TAB)
 
         # 选择进入仅邀请战局
-        self.keyboard.click("s")
+        self.gamepad.click_button(Button.DPAD_DOWN)
         time.sleep(1)
-        self.keyboard.click(Key.enter)
+        self.gamepad.click_button(Button.A)
         time.sleep(2)
-        self.keyboard.click(Key.enter)
+        self.gamepad.click_button(Button.A)
 
         # 等待进入在线模式
         logger.info("正在等待进入在线模式...")
         online_mode_load_start_time = time.monotonic()
         while time.monotonic() - online_mode_load_start_time < 300:  # 5分钟加载超时
-            if self.is_respawned():
-                logger.info("已进入在线模式。")
+            self.gamepad.click_button(Button.DPAD_DOWN)
+            time.sleep(0.6)
+            # TODO: R星有时候会更新用户协议，需要确认新的用户协议，但暂时不清楚如何判断在用户协议页面和如何用手柄确认
+            if self.is_on_onlinemode_info_panel():
                 break
+            elif self._find_text(["目前无法", "此时无法"], 0, 0, 1, 1):
+                # 由于 pc_setting.bin 问题无法进线上
+                # 增强版识别元素是"目前无法从Rockstar云服务器下载您保存的数据"，确认后会返回主菜单
+                # 传承版识别元素是"此时无法从Rockstar云服务器载入您保存的数据"，确认后会返回故事模式
+                raise UnexpectedGameState(GameState.IN_ONLINE_LOBBY, GameState.BAD_PCSETTING_BIN)
             elif self.is_on_warning_page():
-                # 有些时候会弹出错误窗口，这一般是网络不好导致的
+                # 有些时候会弹出错误窗口，比如网络不好，R星发钱等情况
                 time.sleep(2)
-                self.keyboard.click(Key.enter)
-            elif self.is_on_main_menu():
-                # 在线模式，很神奇吧
-                logger.error("重启 GTA 失败：加入在线模式失败，被回退到主菜单，请检查网络。")
-                self.kill_gta()
-                self.hwnd, self.pid = None, None
-                return False
-            time.sleep(5)
+                self.gamepad.click_button(Button.A)
+            elif self.is_on_mainmenu_online_page():
+                # 增强版由于网络不好或者被BE踢了，会被回退到主菜单
+                # logger.error("进入在线模式失败：进入在线模式时被回退到主菜单，请检查网络。")
+                raise UnexpectedGameState(GameState.IN_ONLINE_LOBBY, GameState.MAIN_MENU)
+            # 不支持，因为没有很好的办法检测当前是否在故事模式
+            # elif self.is_in_story_mode():
+            #     # 传承版由于网络不好或者被BE踢了，会被回退到故事模式
+            #     raise UnexpectedGameState(GameState.IN_ONLINE_LOBBY, GameState.IN_STORY_MODE)
+            time.sleep(10)
         else:
-            logger.error("重启 GTA 失败：等待进入在线模式超时。")
-            self.kill_gta()
-            self.hwnd, self.pid = None, None
-            return False
+            logger.error("进入在线模式失败：等待进入在线模式超时。")
+            raise OperationTimeout(OperationTimeoutContext.JOIN_ONLINE_SESSION)
 
-        logger.info("重启 GTA 成功。")
-        return True
+        logger.info("已进入在线模式。")
+
+    def clean_pcsetting(self):
+        """
+        尝试保留设置并清洗 pc_setting.bin。
+        应当在 GTA V 未启动的情况下运行。否则无法生效。
+        """
+        logger.info("动作: 正在清理 pc_setting.bin...")
+
+        # 获取"我的文档"文件夹位置
+        try:
+            CSIDL_PERSONAL = 5  # My Documents
+            SHGFP_TYPE_CURRENT = 0  # Get current, not default value
+            buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
+            ctypes.windll.shell32.SHGetFolderPathW(None, CSIDL_PERSONAL, None, SHGFP_TYPE_CURRENT, buf)
+            documents_path = Path(buf.value)
+        except Exception as e:
+            logger.error(f'调用 Windows API 获取"我的文档"文件夹位置失败 ({e})，将使用默认路径。')
+            documents_path = Path.home() / "Documents"
+
+        # 游戏目录名，目前程序仅支持 GTA V 增强版
+        game_directory_name = "GTAV Enhanced"
+
+        # 用户资料文件路径
+        profiles_path = documents_path / "Rockstar Games" / game_directory_name / "Profiles"
+        if not profiles_path.is_dir():
+            logger.error(f"找不到用户资料文件目录: {profiles_path}")
+            return
+        logger.debug(f"找到用户资料文件目录: {profiles_path}")
+
+        # 枚举并遍历所有存档子目录
+        savedir_list = [d for d in profiles_path.iterdir() if d.is_dir()]
+        for savedir in savedir_list:
+            settings_file = savedir / "pc_settings.bin"
+
+            if not settings_file.is_file():
+                logger.debug(f"跳过 {savedir}，因为未找到 pc_settings.bin")
+                continue
+
+            logger.info(f"正在清理: {settings_file}")
+
+            # 检查每 8 字节数据块的前 2 个字节，将其作为一个小端整数进行解析。
+            # 如果这个整数值小于 850，则保留这个 8 字节的数据块
+            # 来源: https://github.com/mageangela/QuellGTA/
+            try:
+                # 以二进制打开文件
+                with open(settings_file, "rb") as f:
+                    p_byte_set = f.read()
+
+                # 创建一个bytearray用于存储需要保留的数据
+                o_byte_set = bytearray()
+                chunk_size = 8
+
+                # 以8字节为单位循环处理文件内容
+                for i in range(0, len(p_byte_set), chunk_size):
+                    chunk = p_byte_set[i : i + chunk_size]
+
+                    # 低于8字节不做处理
+                    if len(chunk) < chunk_size:
+                        continue
+
+                    # 将前2个字节按小端序解析为无符号短整数
+                    header_bytes = chunk[:2]
+                    value = struct.unpack("<H", header_bytes)[0]
+
+                    # 如果整数值小于850，则保留这个8字节块
+                    if value < 850:
+                        o_byte_set.extend(chunk)
+
+                # 将处理后的数据写回原文件
+                with open(settings_file, "wb") as f:
+                    f.write(o_byte_set)
+
+                logger.info(f"清理完成: {settings_file}")
+
+            except IOError as e:
+                logger.error(f"处理文件 {settings_file} 时发生IO错误: {e}")
+            except Exception as e:
+                logger.error(f"处理文件 {settings_file} 时发生未知错误: {e}")
+
+        logger.info("清理 pc_setting.bin 完成。")
