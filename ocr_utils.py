@@ -5,7 +5,7 @@ import threading
 from time import sleep
 import mss
 
-from process_utils import is_window_handler_exist, set_top_window
+from process_utils import is_window_handler_exist, set_top_window, unset_top_window
 from logger import get_logger
 
 logger = get_logger("ocr_engine")
@@ -136,6 +136,13 @@ class OCREngine:
             # 使用mss截图
             grab_area = {"top": grab_top, "left": grab_left, "width": grab_width, "height": grab_height}
             sct_img = self.sct.grab(grab_area)
+
+            # 取消截图窗口的置顶
+            try:
+                unset_top_window(hwnd)
+            except Exception:
+                # 取消置顶窗口出错也无所谓
+                pass
 
             # 转换为NumPy数组
             img_np = np.frombuffer(sct_img.raw, dtype=np.uint8).reshape((sct_img.height, sct_img.width, 4))

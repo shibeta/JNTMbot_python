@@ -214,19 +214,19 @@ def set_active_window(hwnd: int):
     :param hwnd: 窗口句柄 (整数)
     :raise ``Exception``: 激活窗口失败
     """
-    if is_window_handler_exist(hwnd):
-        try:
-            # 如果最小化，从最小化中恢复
-            if win32gui.IsIconic(hwnd):
-                win32gui.ShowWindow(hwnd, SW_RESTORE)
-                time.sleep(0.2)  # 等待窗口恢复
-            # 如果不是活动窗口，将其激活
-            if hwnd != win32gui.GetForegroundWindow():
-                win32gui.SetForegroundWindow(hwnd)
-        except Exception as e:
-            raise Exception(f"激活窗口({hwnd})时出错: {e}") from e
-    else:
+    if not is_window_handler_exist(hwnd):
         return
+
+    try:
+        # 如果最小化，从最小化中恢复
+        if win32gui.IsIconic(hwnd):
+            win32gui.ShowWindow(hwnd, SW_RESTORE)
+            time.sleep(0.2)  # 等待窗口恢复
+        # 如果不是活动窗口，将其激活
+        if hwnd != win32gui.GetForegroundWindow():
+            win32gui.SetForegroundWindow(hwnd)
+    except Exception as e:
+        raise Exception(f"激活窗口({hwnd})时出错: {e}") from e
 
 
 def set_top_window(hwnd: int):
@@ -236,20 +236,35 @@ def set_top_window(hwnd: int):
     :param hwnd: 窗口句柄 (整数)
     :raise ``Exception``: 置顶窗口失败
     """
-    if is_window_handler_exist(hwnd):
-        try:
-            # 如果最小化，从最小化中恢复
-            if win32gui.IsIconic(hwnd):
-                win32gui.ShowWindow(hwnd, SW_RESTORE)
-                time.sleep(0.2)  # 等待窗口恢复
-            # 将窗口置顶
-            win32gui.SetWindowPos(
-                hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
-            )
-            win32gui.SetWindowPos(
-                hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
-            )
-        except Exception as e:
-            raise Exception(f"置顶窗口({hwnd})时出错: {e}") from e
-    else:
+    if not is_window_handler_exist(hwnd):
         return
+
+    try:
+        # 如果最小化，从最小化中恢复
+        if win32gui.IsIconic(hwnd):
+            win32gui.ShowWindow(hwnd, SW_RESTORE)
+            time.sleep(0.2)  # 等待窗口恢复
+        # 将窗口置顶
+        win32gui.SetWindowPos(
+            hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
+        )
+    except Exception as e:
+        raise Exception(f"置顶窗口({hwnd})时出错: {e}") from e
+
+
+def unset_top_window(hwnd: int):
+    """
+    将传入的窗口句柄设置为非置顶状态。传入的句柄无效则不做任何事。
+
+    :param hwnd: 窗口句柄 (整数)
+    :raise ``Exception``: 取消置顶窗口失败
+    """
+    if not is_window_handler_exist(hwnd):
+        return
+
+    try:
+        win32gui.SetWindowPos(
+            hwnd, HWND_NOTOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
+        )
+    except Exception as e:
+        raise Exception(f"取消置顶窗口({hwnd})时出错: {e}") from e
