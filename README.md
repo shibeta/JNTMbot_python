@@ -4,6 +4,9 @@
 ![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![Node.js Version](https://img.shields.io/badge/node.js-22+-green.svg)
 
+[![稳定版](https://github.com/shibeta/JNTMbot_python/actions/workflows/stable-release.yml/badge.svg)](https://github.com/shibeta/JNTMbot_python/releases/latest)
+[![测试版](https://github.com/shibeta/JNTMbot_python/actions/workflows/nightly-build.yml/badge.svg)](https://github.com/shibeta/JNTMbot_python/releases/tag/nightly)
+
 本项目是一个基于 Python 和 Node.js 的德瑞 BOT 挂机脚本。
 
 ---
