@@ -162,6 +162,9 @@ jobs:
           files: ${{ steps.package.outputs.zip_path }}
           tag_name: ${{ github.event.inputs.tag_name }}
           name: ${{ github.event.inputs.release_name }}
-          body: ${{ github.event.inputs.body }}
+          body: |
+            ${{ github.event.inputs.body }}
+            ---
+            使用方法: [点此查看](https://github.com/shibeta/JNTMbot_python?tab=readme-ov-file#%E6%96%B9%E5%BC%8F%E4%B8%80%E8%BF%90%E8%A1%8C%E5%8F%91%E8%A1%8C%E7%89%88)
           draft: ${{ github.event.inputs.is_draft }}
           prerelease: false
