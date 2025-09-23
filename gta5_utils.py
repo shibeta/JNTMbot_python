@@ -19,7 +19,7 @@ from process_utils import (
     resume_process_from_suspend,
     suspend_process_for_duration,
     kill_processes,
-    set_top_window,
+    unset_top_window,
 )
 from logger import get_logger
 from gameautomator_exception import *
@@ -60,6 +60,8 @@ class GameAutomator:
 
         # 注册一个退出处理函数，以确保Python程序退出时 GTA V 进程不会被挂起
         atexit.register(self._resume_gta_process)
+        # 注册一个退出处理函数，以确保Python程序退出时 GTA V 窗口不会处于置顶状态
+        atexit.register(self._unset_gta_window_topmost)
 
     def get_gta_hwnd(self) -> int:
         return self.hwnd
@@ -105,8 +107,14 @@ class GameAutomator:
                 # 所有异常都不做处理
                 logger.error(f"恢复 GTA V 进程时，发生异常: {e}")
 
-    def _is_running_state() -> bool:
-        """用于抛出UnexpectedGameState时，expected为"游戏已启动"的"""
+    def _unset_gta_window_topmost(self):
+        """将 GTA V 窗口取消置顶"""
+        if self.hwnd:
+            try:
+                unset_top_window(self.hwnd)
+            except Exception:
+                # 所有异常都不做处理
+                logger.error(f"取消 GTA V 窗口置顶时，发生异常: {e}")
 
     def kill_gta(self):
         """杀死 GTA V 进程，并且清除窗口句柄和 PID 。"""
