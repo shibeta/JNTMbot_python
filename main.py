@@ -96,11 +96,12 @@ def main():
 
     # 初始化 Steam Bot
     try:
+        steam_bot = None
         logger.info("正在初始化 Steam Bot 客户端...")
         steam_bot = SteamBotClient(config)
     except Exception as e:
         logger.error(f"初始化 Steam Bot 客户端失败: {e}")
-        if "steam_bot" in locals() and isinstance(steam_bot, SteamBotClient):
+        if steam_bot:
             steam_bot.shutdown()
         return
     # 等待至多 steamBotLoginTimeout 秒来让 Steam Bot 完成初始化
