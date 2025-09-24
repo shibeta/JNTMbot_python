@@ -46,6 +46,14 @@ jobs:
           echo "VGAMEPAD_VIGEM_PATH=$vigemDataPath" >> $env:GITHUB_ENV
           Write-Host "Set VGAMEPAD_VIGEM_PATH to: $vigemDataPath"
 
+          $vigemDll64Path = Join-Path $vgamepadPkgPath "win\vigem\client\x64\ViGEmClient.dll"
+          echo "VIGEM_DLL64_PATH=$vigemDll64Path" >> $env:GITHUB_ENV
+          Write-Host "Set VIGEM_DLL64_PATH to: $vigemDllPath"
+
+          $vigemDll86Path = Join-Path $vgamepadPkgPath "win\vigem\client\x86\ViGEmClient.dll"
+          echo "VIGEM_DLL86_PATH=$vigemDll86Path" >> $env:GITHUB_ENV
+          Write-Host "Set VIGEM_DLL86_PATH to: $vigemDllPath"
+
           Write-Host "`--- Checking if the source path exists ---"
           if (-not (Test-Path -Path $vigemDataPath -PathType Container)) {
               Write-Host "ERROR: The source directory does not exist! Path: $vigemDataPath"
@@ -76,6 +84,8 @@ jobs:
           --output-dir=dist `
           --include-package-data=rapidocr `
           --include-data-dir="${{ env.VGAMEPAD_VIGEM_PATH }}=vgamepad\win\vigem" `
+          --include-data-file="${{ env.VIGEM_DLL64_PATH }}=vgamepad\win\vigem\client\x64\ViGEmClient.dll" `
+          --include-data-file="${{ env.VIGEM_DLL86_PATH }}=vgamepad\win\vigem\client\x86\ViGEmClient.dll" ^
           --windows-icon-from-ico=./assets/johnny_guns.ico `
           --product-name=德瑞Bot --product-version=1.0 --file-description=德瑞Bot自动开车脚本 main.py
 
