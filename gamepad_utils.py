@@ -1,8 +1,8 @@
+import sys
 import atexit
 import copy
 import time
 from typing import Callable
-import vgamepad as vg
 from collections import defaultdict
 from functools import total_ordering
 import bisect
@@ -10,6 +10,17 @@ import bisect
 from logger import get_logger
 
 logger = get_logger(name="gamepad_utils")
+
+try:
+    import vgamepad as vg
+except Exception as e:
+    if "VIGEM_ERROR_BUS_NOT_FOUND" in str(e):
+        logger.error("没有安装 ViGEmBus 驱动，或驱动未正确运行。")
+        logger.info('请运行程序目录下的 "install_vigembus.bat" 来安装驱动。')
+        input("按 Enter 键退出...")
+        sys.exit(1)
+    else:
+        raise e
 
 
 class Button:
@@ -267,7 +278,10 @@ class GamepadSimulator:
             logger.debug("初始化虚拟手柄完成。")
 
         except Exception as e:
-            logger.error(f"初始化虚拟手柄失败: {e}。请确保已安装 ViGEmBus 驱动。")
+            logger.error(
+                f"初始化虚拟手柄失败: {e}。请确保已安装 ViGEmBus 驱动，并且没有其他程序正在使用 ViGEmBus 模拟手柄。"
+            )
+            logger.info('请运行程序目录下的 "install_vigembus.bat" 来安装驱动。')
             raise e
 
     def _cleanup(self):
