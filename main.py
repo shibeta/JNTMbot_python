@@ -349,7 +349,7 @@ def main():
             else:
                 # 超过报错退出的阈值，退出
                 logger.error(f"超过连续失败阈值，程序将退出...")
-                if config.wechatPush:
+                if config.enableWechatPush:
                     # 启用了微信推送并且运行超过 wechatPushActivationDelay 分钟则推送消息
                     if time.monotonic() - global_start_time > config.wechatPushActivationDelay * 60:
                         wechat_push(config.pushplusToken, f"主循环中发生错误: {e}", traceback.format_exc())

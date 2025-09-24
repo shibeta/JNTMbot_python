@@ -226,10 +226,10 @@
 
     > Bot 状态信息将发送到群组中的该频道。
 
--   `wechatPush` 和 `pushplusToken`
+-   `enableWechatPush` 和 `pushplusToken`
     > 是否启用微信推送警报。启用后，当程序运行一段时间后发生报错退出，或健康状态发生变化时，会向微信推送错误信息。
     >
-    > > -   将 `wechatPush` 设为 `true` 以启用。
+    > > -   将 `enableWechatPush` 设为 `true` 以启用。
     > > -   启用后，必须在 `pushplusToken` 中填入您从 [PushPlus 官网](https://www.pushplus.plus) 获取的 Token。
     > > -   必须将 `enableHealthCheck` 设为 `true`，才会在健康状态发生变化时推送。
 
