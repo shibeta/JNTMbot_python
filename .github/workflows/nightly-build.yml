@@ -57,8 +57,9 @@ jobs:
         shell: pwsh
 
       # Nuitka 打包需要 MSVC 环境
-      - name: Setup MSVC Developer Command Prompt
-        uses: ilammy/msvc-dev-cmd@v1
+      - uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: x64
 
       - name: Package with Nuitka
         run: |
@@ -86,7 +87,7 @@ jobs:
               Write-Host "ERROR: Destination directory was not created: $destinationPath"
           }
 
-        shell: cmd
+        shell: pwsh
       
       - name: Upload Python artifact
         uses: actions/upload-artifact@v4
