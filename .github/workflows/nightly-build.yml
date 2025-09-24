@@ -141,7 +141,8 @@ jobs:
           name: 'Nightly Build ${{ env.TODAY }}'
           draft: false
           body: |
-            This is a nightly release of JNTMbot_python.
-            It's unstable compared to the official releases, **use it with caution**!
+            这是 JNTMbot_python 的 nightly 版本，包含最新的更改和功能。
+            它不稳定，可能包含未完成的功能和新引入的错误，**请小心使用**!
+            推荐使用经过充分测试和验证后发布的 [稳定版](https://github.com/shibeta/JNTMbot_python/releases/latest) 。
           prerelease: true
           files: ${{ steps.package.outputs.zip_path }}

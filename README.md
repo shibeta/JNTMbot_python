@@ -4,6 +4,9 @@
 ![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)
 ![Node.js Version](https://img.shields.io/badge/node.js-22+-green.svg)
 
+[![稳定版](https://github.com/shibeta/JNTMbot_python/actions/workflows/stable-release.yml/badge.svg)](https://github.com/shibeta/JNTMbot_python/releases/latest)
+[![测试版](https://github.com/shibeta/JNTMbot_python/actions/workflows/nightly-build.yml/badge.svg)](https://github.com/shibeta/JNTMbot_python/releases/tag/nightly)
+
 本项目是一个基于 Python 和 Node.js 的德瑞 BOT 挂机脚本。
 
 ---
@@ -230,12 +233,12 @@
     > > -   启用后，必须在 `pushplusToken` 中填入您从 [PushPlus 官网](https://www.pushplus.plus) 获取的 Token。
     > > -   必须将 `enableHealthCheck` 设为 `true`，才会在健康状态发生变化时推送。
 
-### 2. 游戏内设置
+### 2. 游戏设置
 
 为确保 Bot 能正常工作，请在游戏中完成以下设置：
 
 -   ✅ 确保游戏版本为**增强版**，并且游戏内语言设置为**简体中文**。
--   ✅ 确保**没有**连接**任何游戏手柄**到电脑。(会和虚拟手柄冲突)
+-   ✅ 确保**没有**连接**任何游戏手柄**到电脑 (会和虚拟手柄冲突)。
 -   ✅ 在 **手机** 购买 **事务所**。注意不是 **保镖事务所** 也不是 **办公室**。
 -   ✅ 在 **事务所** 购买 **个人空间**。
 -   ✅ 将 **出生点** 设置为 **事务所**。
@@ -244,23 +247,14 @@
 -   ✅ 确保事务所内有 **猎杀约翰尼·贡斯** 的黄色任务光圈。
 -   ✴️ 可选: 降低游戏分辨率和帧率，以节省性能开销。
 
-### 3. 程序操作
+最后，请关闭游戏，或者进入 **在线模式的仅邀请战局** 。
 
--   **首次登录**
+### 3. 控制热键
 
-    > 第一次运行程序时，需要手动输入 Steam 账户信息。后续将自动登录。
+程序启动后，支持使用键盘热键来控制程序：
 
--   **启动时机**
-
-    > 程序可以自动启动 GTA5。但如果您在游戏运行时启动本程序，请确保您当前处于 **在线模式的仅邀请战局** 中。
-
--   **窗口焦点**
-
-    > 程序运行时，**GTA5 游戏窗口必须保持为系统当前活动窗口**（即在前台）。这是因为需要对窗口进行 OCR 识别。
-
--   **热键控制**
-    > -   暂停/恢复 Bot: **`Ctrl + F9`**
-    > -   退出程序: **`Ctrl + F10`**
+-   暂停/恢复 Bot: **`Ctrl + F9`**
+-   退出程序: **`Ctrl + F10`**
 
 ## 🔬 项目架构
 
