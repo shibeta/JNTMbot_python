@@ -473,20 +473,6 @@ class GameAutomator:
 
         """
         logger.info("动作: 正在等待队伍成员并开始差事...")
-        start_wait_time = time.monotonic()  # 记录开启面板的时间
-        last_activity_time = start_wait_time  # 记录最近队伍状态变化的时间，当发生人数变化或玩家由"正在加入"变成"已加入"时，更新该时间
-        last_joining_time = (
-            start_wait_time  # 记录最近加入状态变化的时间，当"正在加入"的人数变化时，更新该时间
-        )
-        last_joining_count = 0  # 记录上一次 OCR 时"正在加入"的人数
-        last_joined_count = 0  # 记录上一次 OCR 时"已加入"的人数
-
-        # 发送差事就绪消息
-        try:
-            self.steam_bot.send_group_message(self.config.msgOpenJobPanel)
-        except requests.RequestException as e:
-            # 发送信息失败，小事罢了，不影响自动化运行
-            pass
 
         # 导航面板以选中"开始差事"选项
         logger.info("动作: 正在设置差事面板...")
@@ -498,6 +484,21 @@ class GameAutomator:
         time.sleep(0.8)
         self.gamepad.click_button(Button.DPAD_UP)
         logger.info("差事面板设置完成")
+
+        # 发送差事就绪消息
+        try:
+            self.steam_bot.send_group_message(self.config.msgOpenJobPanel)
+        except requests.RequestException as e:
+            # 发送信息失败，小事罢了，不影响自动化运行
+            pass
+
+        start_wait_time = time.monotonic()  # 记录开始等待的时间
+        last_activity_time = start_wait_time  # 记录最近队伍状态变化的时间，当发生人数变化或玩家由"正在加入"变成"已加入"时，更新该时间
+        last_joining_time = (
+            start_wait_time  # 记录最近加入状态变化的时间，当"正在加入"的人数变化时，更新该时间
+        )
+        last_joining_count = 0  # 记录上一次 OCR 时"正在加入"的人数
+        last_joined_count = 0  # 记录上一次 OCR 时"已加入"的人数
 
         # 长循环实现等待玩家加入和启动差事
         while True:
