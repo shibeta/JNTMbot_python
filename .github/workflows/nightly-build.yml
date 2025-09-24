@@ -44,7 +44,7 @@ jobs:
 
       - name: Package with Nuitka
         run: |
-          nuitka --msvc=latest --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter --output-dir=dist --include-package-data=rapidocr --windows-icon-from-ico=./assets/johnny_guns.ico --product-name=德瑞Bot --product-version=1.0 --file-description=德瑞Bot自动开车脚本 main.py
+          nuitka --msvc=latest --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter --output-dir=dist --include-package-data=rapidocr --include-package-data=vgamepad --windows-icon-from-ico=./assets/johnny_guns.ico --product-name=德瑞Bot --product-version=1.0 --file-description=德瑞Bot自动开车脚本 main.py
         shell: cmd
       
       - name: Upload Python artifact
