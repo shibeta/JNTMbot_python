@@ -45,14 +45,15 @@ jobs:
           $vigemDataPath = Join-Path $vgamepadPkgPath "win\vigem"
           echo "VGAMEPAD_VIGEM_PATH=$vigemDataPath" >> $env:GITHUB_ENV
           Write-Host "Set VGAMEPAD_VIGEM_PATH to: $vigemDataPath"
+
           Write-Host "`--- Checking if the source path exists ---"
-          if (-not (Test-Path -Path ${{ env.VGAMEPAD_VIGEM_PATH }} -PathType Container)) {
-              Write-Host "ERROR: The source directory does not exist! Path: ${{ env.VGAMEPAD_VIGEM_PATH }}"
+          if (-not (Test-Path -Path $vigemDataPath -PathType Container)) {
+              Write-Host "ERROR: The source directory does not exist! Path: $vigemDataPath"
               exit 1
           }
           Write-Host "Source directory exists."
           Write-Host "`--- Listing Source Directory Contents (Recursive) ---"
-          Get-ChildItem -Path ${{ env.VGAMEPAD_VIGEM_PATH }} -Recurse
+          Get-ChildItem -Path $vigemDataPath -Recurse
         shell: pwsh
 
       # Nuitka 打包需要 MSVC 环境
