@@ -1,4 +1,6 @@
 import win32gui
+import win32ui
+import win32con
 import numpy as np
 from rapidocr import RapidOCR, EngineType, LangDet, LangRec, ModelType, OCRVersion
 import threading
@@ -80,6 +82,58 @@ class OCREngine:
             return left, top, right, bottom
         except Exception as e:
             raise Exception(f"获取物理坐标失败: {e}") from e
+
+    def capture_window_area_GDI(hwnd, grab_left, grab_top, grab_width, grab_height):
+        """
+        使用 GDI 方法截图指定窗口的指定区域。
+        :param hwnd: 窗口句柄
+        :param grab_left: 截图区域左上角 X 坐标（绝对坐标)
+        :param grab_top: 截图区域左上角 Y 坐标（绝对坐标)
+        :param grab_width: 截图区域宽度
+        :param grab_height: 截图区域高度
+        :return: 截图的 BGR 图像，numpy 数组格式
+        """
+        hwindc = 0
+        srcdc = None
+        memdc = None
+        bmp = None
+
+        try:
+            # 获取DC
+            hwindc = win32gui.GetWindowDC(hwnd)
+            if not hwindc:
+                raise Exception("无法获取窗口DC")
+
+            srcdc = win32ui.CreateDCFromHandle(hwindc)
+            # 创建内存DC和位图
+            memdc = srcdc.CreateCompatibleDC()
+            bmp = win32ui.CreateBitmap()
+            bmp.CreateCompatibleBitmap(srcdc, grab_width, grab_height)
+            # 将位图选入内存DC
+            memdc.SelectObject(bmp)
+            # 复制截图区域像素到位图
+            memdc.BitBlt((0, 0), (grab_width, grab_height), srcdc, (grab_left, grab_top), win32con.SRCCOPY)
+            # 从位图初始化numpy数组
+            screenshot_img_np = np.frombuffer(bmp.GetBitmapBits(True), dtype="uint8")
+            # 将 1D 数组重塑为 4通道 图像 (BGRA/BGRX)
+            screenshot_img_np.shape = (grab_height, grab_width, 4)
+            # 丢弃不需要的 alpha/padding 通道，仅保留 BGR
+            # 用 np.ascontiguousarray 确保内存是连续的，避免出现 bug
+            return np.ascontiguousarray(screenshot_img_np[:, :, :3])
+        
+        except Exception as e:
+            raise Exception(f"截图失败: {e}") from e
+
+        finally:
+            if memdc:
+                memdc.DeleteDC()
+            if bmp:
+                # 对于 pywin32 对象，GetHandle() 方法本身是安全的
+                win32gui.DeleteObject(bmp.GetHandle())
+            if srcdc:
+                srcdc.DeleteDC()
+            if hwindc:
+                win32gui.ReleaseDC(hwnd, hwindc)
 
     def _capture_window_area_mss(
         self, hwnd: int, left: float, top: float, width: float, height: float, include_title_bar: bool = False
