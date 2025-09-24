@@ -45,6 +45,14 @@ jobs:
           $vigemDataPath = Join-Path $vgamepadPkgPath "win\vigem"
           echo "VGAMEPAD_VIGEM_PATH=$vigemDataPath" >> $env:GITHUB_ENV
           Write-Host "Set VGAMEPAD_VIGEM_PATH to: $vigemDataPath"
+          Write-Host "`--- Checking if the source path exists ---"
+          if (-not (Test-Path -Path ${{ env.VGAMEPAD_VIGEM_PATH }} -PathType Container)) {
+              Write-Host "ERROR: The source directory does not exist! Path: ${{ env.VGAMEPAD_VIGEM_PATH }}"
+              exit 1
+          }
+          Write-Host "Source directory exists."
+          Write-Host "`--- Listing Source Directory Contents (Recursive) ---"
+          Get-ChildItem -Path ${{ env.VGAMEPAD_VIGEM_PATH }} -Recurse
         shell: pwsh
 
       # Nuitka 打包需要 MSVC 环境
@@ -53,12 +61,30 @@ jobs:
 
       - name: Package with Nuitka
         run: |
+          Write-Host "`--- Checking if the source path exists ---"
+          if (-not (Test-Path -Path ${{ env.VGAMEPAD_VIGEM_PATH }} -PathType Container)) {
+              Write-Host "ERROR: The source directory does not exist! Path: ${{ env.VGAMEPAD_VIGEM_PATH }}"
+              exit 1
+          }
+          Write-Host "Source directory exists."
+          Write-Host "--- Listing Source Directory Contents (Recursive) ---"
+          Get-ChildItem -Path ${{ env.VGAMEPAD_VIGEM_PATH }} -Recurse
+
           nuitka --msvc=latest --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter ^
           --output-dir=dist ^
           --include-package-data=rapidocr ^
           --include-data-dir="${{ env.VGAMEPAD_VIGEM_PATH }}=vgamepad\win\vigem" ^
           --windows-icon-from-ico=./assets/johnny_guns.ico ^
           --product-name=德瑞Bot --product-version=1.0 --file-description=德瑞Bot自动开车脚本 main.py
+
+          Write-Host "--- Listing Destination Directory Contents After Build ---"
+          $destinationPath = "./dist/main.dist/vgamepad"
+          if (Test-Path -Path $destinationPath) {
+              Get-ChildItem -Path $destinationPath -Recurse
+          } else {
+              Write-Host "ERROR: Destination directory was not created: $destinationPath"
+          }
+
         shell: cmd
       
       - name: Upload Python artifact
