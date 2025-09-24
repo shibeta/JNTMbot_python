@@ -38,7 +38,6 @@ def unsafe_exit():
     try:
         # os._exit() 不会触发 atexit，因此需要手动触发
         trigger_atexit()
-        raise SystemExit
     finally:
         os._exit(0)
 
