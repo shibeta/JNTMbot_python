@@ -66,28 +66,48 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      # Nuitka 打包 vgamepad 时，需要指定 vigem 驱动的路径
+      # Nuitka 打包 vgamepad 时，需要指定 vigembus 驱动的路径
       - name: Find and set vgamepad data path
         run: |
           $vgamepadPkgPath = python -c "import vgamepad, os; print(os.path.dirname(vgamepad.__file__))"
+
+          # vigem 文件夹，包括驱动安装文件和 client DLL
           $vigemDataPath = Join-Path $vgamepadPkgPath "win\vigem"
           echo "VGAMEPAD_VIGEM_PATH=$vigemDataPath" >> $env:GITHUB_ENV
           Write-Host "Set VGAMEPAD_VIGEM_PATH to: $vigemDataPath"
+
+          # --include-data-dir 不会打包 DLL，需要单独指定
+          # vigem client DLL 64 位
+          $vigemDll64Path = Join-Path $vgamepadPkgPath "win\vigem\client\x64\ViGEmClient.dll"
+          echo "VIGEM_DLL64_PATH=$vigemDll64Path" >> $env:GITHUB_ENV
+          Write-Host "Set VIGEM_DLL64_PATH to: $vigemDllPath"
+
+          # vigem client DLL 32 位
+          $vigemDll86Path = Join-Path $vgamepadPkgPath "win\vigem\client\x86\ViGEmClient.dll"
+          echo "VIGEM_DLL86_PATH=$vigemDll86Path" >> $env:GITHUB_ENV
+          Write-Host "Set VIGEM_DLL86_PATH to: $vigemDllPath"
+
         shell: pwsh
 
       # Nuitka 打包需要 MSVC 环境
       - name: Setup MSVC Developer Command Prompt
-        uses: ilammy/msvc-dev-cmd@v1
+        uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: x64
 
       - name: Package with Nuitka
         run: |
-          nuitka --msvc=latest --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter ^
-          --output-dir=dist ^
-          --include-package-data=rapidocr ^
-          --include-data-dir="${{ env.VGAMEPAD_VIGEM_PATH }}=vgamepad\win\vigem" ^
-          --windows-icon-from-ico=./assets/johnny_guns.ico ^
+          nuitka --msvc=latest --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter `
+          --output-dir=dist `
+          --include-package-data=rapidocr `
+          --include-data-dir="${{ env.VGAMEPAD_VIGEM_PATH }}=vgamepad\win\vigem" `
+          --include-data-file="${{ env.VIGEM_DLL64_PATH }}=vgamepad\win\vigem\client\x64\ViGEmClient.dll" `
+          --include-data-file="${{ env.VIGEM_DLL86_PATH }}=vgamepad\win\vigem\client\x86\ViGEmClient.dll" `
+          --windows-icon-from-ico=./assets/johnny_guns.ico `
+          --product-name=德瑞Bot --product-version=1.0 --file-description=德瑞Bot自动开车脚本 main.py
           --product-name=德瑞Bot --product-version=${{ env.PRODUCT_VERSION }} --file-description=德瑞Bot自动开车脚本 main.py
-        shell: cmd
+
+        shell: pwsh
 
       - name: Upload Python artifact
         uses: actions/upload-artifact@v4
