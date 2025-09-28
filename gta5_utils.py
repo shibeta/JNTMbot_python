@@ -753,6 +753,8 @@ class GameAutomator:
         self.kill_gta()
         logger.info("20秒后将重启 GTA V...")
         time.sleep(20)  # 等待20秒钟用于 steam 客户端响应 GTA V 退出
+        # 以防万一
+        self.kill_gta()
 
         # 启动游戏
         try:
