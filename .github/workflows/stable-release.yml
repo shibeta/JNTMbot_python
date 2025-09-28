@@ -104,7 +104,6 @@ jobs:
           --include-data-file="${{ env.VIGEM_DLL64_PATH }}=vgamepad\win\vigem\client\x64\ViGEmClient.dll" `
           --include-data-file="${{ env.VIGEM_DLL86_PATH }}=vgamepad\win\vigem\client\x86\ViGEmClient.dll" `
           --windows-icon-from-ico=./assets/johnny_guns.ico `
-          --product-name=德瑞Bot --product-version=1.0 --file-description=德瑞Bot自动开车脚本 main.py
           --product-name=德瑞Bot --product-version=${{ env.PRODUCT_VERSION }} --file-description=德瑞Bot自动开车脚本 main.py
 
         shell: pwsh
@@ -183,6 +182,9 @@ jobs:
           
           # 复制仓库根目录下的配置文件
           Copy-Item -Path "./config.yaml.example" -Destination "$releaseSubDir/config.yaml" -Force
+
+          # 复制仓库根目录下的 install_vigembus.bat
+          Copy-Item -Path "./install_vigembus.bat" -Destination "$releaseSubDir/install_vigembus.bat" -Force
           
           Compress-Archive -Path "$releaseSubDir/*" -DestinationPath $zipPath -Force
           

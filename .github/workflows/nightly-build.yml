@@ -159,6 +159,9 @@ jobs:
 
           # 复制仓库根目录下的配置文件
           Copy-Item -Path "./config.yaml.example" -Destination "$releaseSubDir/config.yaml" -Force
+
+          # 复制仓库根目录下的 install_vigembus.bat
+          Copy-Item -Path "./install_vigembus.bat" -Destination "$releaseSubDir/install_vigembus.bat" -Force
           
           Compress-Archive -Path "$releaseSubDir/*" -DestinationPath $zipPath -Force
           
