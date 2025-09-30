@@ -76,7 +76,7 @@ jobs:
           --include-data-file="${{ env.VIGEM_DLL64_PATH }}=vgamepad\win\vigem\client\x64\ViGEmClient.dll" `
           --include-data-file="${{ env.VIGEM_DLL86_PATH }}=vgamepad\win\vigem\client\x86\ViGEmClient.dll" `
           --windows-icon-from-ico=./assets/johnny_guns.ico `
-          --product-name=德瑞Bot --product-version=1.0 --file-description=德瑞Bot自动开车脚本 main.py
+          --product-name=德瑞Bot --product-version=0.1 --file-description=德瑞Bot自动开车脚本 main.py
 
         shell: pwsh
       
