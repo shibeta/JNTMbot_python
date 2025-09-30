@@ -17,9 +17,6 @@ class OperationTimeoutContext(enum.Enum):
 class GameState(enum.Enum):
     """定义了游戏中所有可被程序识别的高级状态。"""
 
-    # is_running: 游戏正在运行
-    # is_playable: 可以控制角色
-    # is_online: 处于在线模式中
     ON = "游戏运行中的任意状态"  # 仅用于expected
     UNKNOWN = "游戏运行中的无法识别的状态"  # 仅用于actual
     OFF = "游戏未运行"
