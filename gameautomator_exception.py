@@ -95,16 +95,16 @@ class UnexpectedGameState(GameAutomationException):
         self.actual_state = actual
         expected_str = self._format_expected()
 
-        self.message = f'期望状态为 "{expected_str}", 但实际状态为 "{actual.name}"'
+        self.message = f'期望状态为 "{expected_str}", 但实际状态为 "{actual.value}"'
 
         super().__init__(self.message)
 
     def _format_expected(self) -> str:
         """辅助方法，用于生成清晰的期望描述。"""
         if isinstance(self.expected, GameState):
-            return self.expected.name
+            return self.expected.value
         if isinstance(self.expected, set):
-            return " 或 ".join(s.name for s in self.expected)
+            return " 或 ".join(s.value for s in self.expected)
 
         return "未知期望"
 
