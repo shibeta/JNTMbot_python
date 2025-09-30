@@ -93,6 +93,13 @@ def main():
     keyboard.add_hotkey("ctrl+f10", toggle_exit)
     logger.warning("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
 
+    # 初始化 OCR
+    try:
+        GOCREngine = get_ocr_engine()
+    except Exception as e:
+        logger.error(f"初始化 OCR 引擎失败: {e}")
+        return
+    
     # 初始化 Steam Bot
     try:
         steam_bot = None
@@ -128,13 +135,6 @@ def main():
             logger.error("=================================================")
             logger.error(f"请将正确的群组ID填入 {config_file_path} 。")
             return
-
-    # 初始化 OCR
-    try:
-        GOCREngine = get_ocr_engine()
-    except Exception as e:
-        logger.error(f"初始化 OCR 引擎失败: {e}")
-        return
 
     # 初始化游戏控制器
     automator = GameAutomator(config, GOCREngine, steam_bot)
