@@ -87,7 +87,6 @@ class Config:
             "value": 360,
             "comment": '差事层进行"寻找差事黄圈"动作时 每轮向后走的持续时间 (毫秒)',
         },
-        "waitFindJobTimeout": {"value": 15000, "comment": '差事层进行"寻找差事黄圈"动作超时时间 (毫秒)'},
         "msgOpenJobPanel": {
             "value": "德瑞差事已启动，请先看教程，学会卡CEO和卡单再进。如果无法连接请再试一次，bot没加速器网不好",
             "comment": "开好面板时发的消息 (设置为空字符串则不发这条消息)",

@@ -350,8 +350,7 @@ class GameAutomator:
         # 一边搜索任务标记，一边向任务黄圈移动
         logger.info("动作：正在寻找差事触发点...")
 
-        start_time = time.monotonic()
-        while time.monotonic() - start_time < self.config.waitFindJobTimeout / 1000.0:
+        for _ in range(5):
             self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFT, self.config.WalkLeftTimeGoJob)
             time.sleep(0.1)
             if self.is_job_marker_found():
