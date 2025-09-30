@@ -69,7 +69,7 @@ class Config:
             "comment": "卡单延迟时间 (秒)",
         },
         "checkLoopTime": {"value": 1, "comment": "检测间隔时间 (秒)"},
-        "matchPanelTimeout": {"value": 60, "comment": "面板无人加入时重开时间 (秒)"},
+        "matchPanelTimeout": {"value": 180, "comment": "面板无人加入时重开时间 (秒)"},
         "joiningPlayerKick": {"value": 120, "comment": "等待正在加入玩家超时重开时间 (秒)"},
         "startMatchDelay": {"value": 15, "comment": "开始差事等待延迟 (秒)"},
         "startOnAllJoined": {
