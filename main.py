@@ -9,7 +9,8 @@ from atexit import _run_exitfuncs as trigger_atexit
 
 from logger import setup_logging, get_logger
 from config import Config
-from ocr_utils import get_ocr_engine
+# from ocr_utils import get_ocr_engine
+from ocr_utils import OCREngine
 from steambot_utils import SteamBotClient
 from push_utils import wechat_push
 from gta5_utils import GameAutomator
@@ -32,7 +33,7 @@ def interrupt_decorator(func):
     return wrapper
 
 
-# 安全退出程序而不需要调用 return 或 sys.exit
+# 退出程序而不需要调用 return 或 sys.exit
 # 因为有人抱怨这不安全，所以改名为 unsafe_exit()
 def unsafe_exit():
     try:
@@ -95,7 +96,8 @@ def main():
 
     # 初始化 OCR
     try:
-        GOCREngine = get_ocr_engine()
+        ocrArgs = config.ocrArgs
+        GOCREngine = OCREngine(ocrArgs)
     except Exception as e:
         logger.error(f"初始化 OCR 引擎失败: {e}")
         return

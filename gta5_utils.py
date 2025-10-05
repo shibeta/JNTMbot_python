@@ -351,11 +351,11 @@ class GameAutomator:
         logger.info("动作：正在寻找差事触发点...")
 
         for _ in range(5):
-            self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFT, self.config.WalkLeftTimeGoJob)
+            self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFT, self.config.walkLeftTimeGoJob)
             time.sleep(0.1)
             if self.is_job_marker_found():
                 break
-            self.gamepad.hold_left_joystick(JoystickDirection.HALF_DOWN, self.config.WalkDownTimeGoJob)
+            self.gamepad.hold_left_joystick(JoystickDirection.HALF_DOWN, self.config.walkDownTimeGoJob)
             time.sleep(0.1)
             if self.is_job_marker_found():
                 break
@@ -511,7 +511,9 @@ class GameAutomator:
                 logger.error("等待玩家时意外离开了任务面板。")
                 raise UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)
 
-            logger.info(f"队伍状态: {joined_count} 人已加入, {joining_count} 人正在加入, {standby_count} 人待命。")
+            logger.info(
+                f"队伍状态: {joined_count} 人已加入, {joining_count} 人正在加入, {standby_count} 人待命。"
+            )
 
             # 有待命状态玩家说明bot匹配关慢了
             if standby_count > 0:
@@ -947,29 +949,40 @@ class GameAutomator:
         # 等待进入在线模式
         logger.info("正在等待进入在线模式...")
         online_mode_load_start_time = time.monotonic()
+
+        is_on_onlinemode = False
         while time.monotonic() - online_mode_load_start_time < 300:  # 5分钟加载超时
-            self.gamepad.click_button(Button.DPAD_DOWN)
-            time.sleep(0.6)
-            # TODO: R星有时候会更新用户协议，需要确认新的用户协议，但暂时不清楚如何判断在用户协议页面和如何用手柄确认
-            if self.is_on_onlinemode_info_panel():
-                break
-            elif self._find_text(["目前无法", "此时无法"], 0, 0, 1, 1):
+            # 处理各种意外情况
+            if self._find_text(["目前无法", "此时无法"], 0, 0, 1, 1):
                 # 由于 pc_setting.bin 问题无法进线上
                 # 增强版识别元素是"目前无法从Rockstar云服务器下载您保存的数据"，确认后会返回主菜单
                 # 传承版识别元素是"此时无法从Rockstar云服务器载入您保存的数据"，确认后会返回故事模式
                 raise UnexpectedGameState(GameState.IN_ONLINE_LOBBY, GameState.BAD_PCSETTING_BIN)
+
             elif self.is_on_warning_page():
-                # 有些时候会弹出错误窗口，比如网络不好，R星发钱等情况
+                # 弹出错误窗口，比如网络不好，R星发钱等情况
                 time.sleep(2)
                 self.gamepad.click_button(Button.A)
+
             elif self.is_on_mainmenu_online_page():
                 # 增强版由于网络不好或者被BE踢了，会被回退到主菜单
                 # logger.error("进入在线模式失败：进入在线模式时被回退到主菜单，请检查网络。")
                 raise UnexpectedGameState(GameState.IN_ONLINE_LOBBY, GameState.MAIN_MENU)
-            # 不支持，因为没有很好的办法检测当前是否在故事模式
-            # elif self.is_in_story_mode():
-            #     # 传承版由于网络不好或者被BE踢了，会被回退到故事模式
-            #     raise UnexpectedGameState(GameState.IN_ONLINE_LOBBY, GameState.IN_STORY_MODE)
+
+            # TODO: 补充传承版被回退到故事模式的处理方法，目前难以检测是否在故事模式
+            # TODO: R星有时候会更新用户协议，需要确认新的用户协议，但暂时不清楚如何判断在用户协议页面和如何用手柄确认
+
+            # 检查是否进入了在线模式
+            for _ in range(3):  # 尝试3次
+                self.gamepad.click_button(Button.DPAD_DOWN)
+                time.sleep(1)
+                if self.is_on_onlinemode_info_panel():
+                    # 进入了在线模式
+                    is_on_onlinemode = True
+                    break
+            if is_on_onlinemode:
+                break
+            
             time.sleep(10)
         else:
             logger.error("进入在线模式失败：等待进入在线模式超时。")

@@ -79,13 +79,17 @@ class Config:
         "exitMatchTimeout": {"value": 120, "comment": "等待差事启动落地超时时间 (秒)(防止卡在启动战局中)"},
         "goOutStairsTime": {"value": 1000, "comment": '差事层楼梯口进行"走出门"动作持续时间 (毫秒)'},
         "crossAisleTime": {"value": 3700, "comment": '差事层进行"穿过走廊"动作持续时间 (毫秒)'},
-        "WalkLeftTimeGoJob": {
+        "walkLeftTimeGoJob": {
             "value": 400,
             "comment": '差事层进行"寻找差事黄圈"动作时 每轮向左走的持续时间 (毫秒)',
         },
-        "WalkDownTimeGoJob": {
+        "walkDownTimeGoJob": {
             "value": 360,
             "comment": '差事层进行"寻找差事黄圈"动作时 每轮向后走的持续时间 (毫秒)',
+        },
+        "ocrArgs": {
+            "value": '--models=".\models" --det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx --keys=dict_chinese.txt --padding=70 --maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 --mostAngle=0 --numThread=1',
+            "comment": "RapidOCR的启动参数",
         },
         "msgOpenJobPanel": {
             "value": "德瑞差事已启动，请先看教程，学会卡CEO和卡单再进。如果无法连接请再试一次，bot没加速器网不好",

@@ -262,16 +262,17 @@
 -   `config.py`: 读取和初始化 `config.yaml` 中的配置。
 -   `gta5_utils.py`: 封装了所有 GTA5 游戏内的自动化操作脚本。
 -   `steambot_utils.py`: 用于管理 `steam_bot` 后端并调用其 API 发送消息。
--   `ocr_utils.py`: 对 RapidOCR 的封装，用于游戏画面识别。
+-   `RapidOCR_api.py`: 调用`RapidOCR-json.exe`进行 OCR 的类。
+-   `ocr_utils.py`: 对 RapidOCR_api 的封装，用于游戏画面识别。
 -   `process_utils.py`: 提供了获取进程信息、暂停进程（用于卡单人战局）等功能。
 -   `keyboard_utils.py`: 模拟键盘输入。
 -   `gamepad_utils.py`: 模拟手柄输入。支持宏定义和执行。
 -   `push_utils.py`: 消息平台推送，目前实现了基于 PushPlus 的微信推送。
 -   `health_check.py`: 监控 Bot 是否正常工作。
 -   `logger.py`: 简单的日志格式化工具。
+-   `gameautomator_exception.py`: 定义了自动化操作抛出的异常。
 -   `steam_bot/server.js`: 基于 `node-steam-user` 的 Node.js 后端，将 Steam 功能封装为 HTTP API。
 -   `steam_bot/SteamChatBot.js`: 对 `node-steam-user` 库的核心封装。
--   `gameautomator_exception.py`: 定义了自动化操作抛出的异常。
 -   `steam_bot/demo.js`: 未使用的测试文件。
 
 ## 🤝 贡献指南
@@ -295,6 +296,7 @@
 -   **[JiNiTaiMeiBot](https://github.com/davidLi17/JiNiTaiMeiBot)**: 本项目的原型。本项目使用 Python 重新实现了 JiNiTaiMeiBot 的大部分功能。
 -   **[QuellGTA](https://github.com/mageangela/QuellGTA)**: 本项目使用的差传 Bot 来源; 清理 pc_setting.bin 算法的实现。
 -   **[RapidOCR](https://github.com/RapidAI/RapidOCR)**: 强大而快速的 OCR 识别框架。
+-   **[RapidOCR-json](https://github.com/hiroi-sora/RapidOCR-json)**: RapidOCR 的一个 C++ 实现，比打包后的 Python 程序快。
 -   **[node-steam-user](https://github.com/DoctorMcKay/node-steam-user)**: Steam 客户端功能的 Node.js 实现。
 
 ## 📄 许可证
