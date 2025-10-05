@@ -292,7 +292,7 @@
 
 ## 🙏 致谢
 
--   **[傲弗拉](https://space.bilibili.com/26604157)**: 提供了德瑞 Bot 的算法实现。
+-   **[傲弗拉](https://space.bilibili.com/26604157)**: 提供了德瑞 Bot 的原理。
 -   **[JiNiTaiMeiBot](https://github.com/davidLi17/JiNiTaiMeiBot)**: 本项目的原型。本项目使用 Python 重新实现了 JiNiTaiMeiBot 的大部分功能。
 -   **[QuellGTA](https://github.com/mageangela/QuellGTA)**: 本项目使用的差传 Bot 来源; 清理 pc_setting.bin 算法的实现。
 -   **[RapidOCR](https://github.com/RapidAI/RapidOCR)**: 强大而快速的 OCR 识别框架。
