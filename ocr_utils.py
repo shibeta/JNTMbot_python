@@ -5,16 +5,21 @@ import mss
 from mss import tools
 import win32gui
 
-# 确保 RapidOCR_api.py 在可导入的路径中
 from RapidOCR_api import OcrAPI
 from process_utils import is_window_handler_exist, set_top_window, unset_top_window
 from logger import get_logger
 
-logger = get_logger("new_ocr_engine")
+logger = get_logger("ocr_engine")
 
 # 设置 RapidOCR-json.exe 的绝对或相对路径
 # 例如: r"C:\path\to\RapidOCR-json.exe"
 OCR_EXECUTABLE_PATH = os.path.join(os.getcwd(), "RapidOCR-json.exe")
+
+# python-mss 截图锁，防止多线程时出现问题
+mss_lock = threading.Lock()
+
+# RapidOCR 进程锁，防止多线程时出现问题
+rapidocr_lock = threading.Lock()
 
 
 class OCREngine:
@@ -27,9 +32,6 @@ class OCREngine:
         初始化 OcrAPI，它会启动并管理一个 RapidOCR-json.exe 子进程。
         """
         logger.info("正在初始化 OCR API 引擎...")
-        self.api = None
-        self.sct = None
-
         # 检查 OCR_EXECUTABLE_PATH 是否存在
         if not os.path.exists(OCR_EXECUTABLE_PATH):
             logger.error(f"OCR 引擎可执行文件不存在，请检查路径配置: {OCR_EXECUTABLE_PATH}")
@@ -39,10 +41,17 @@ class OCREngine:
             logger.warning("未提供启动参数，不使用参数启动 OCR 引擎。")
         else:
             logger.debug(f"使用以下参数启动 OCR 引擎: {args}")
+        
+        # 初始化 mss 截图器
+        with mss_lock:
+            self.sct = None
+            self.sct = mss.mss()
 
-        # OcrAPI 会启动并管理 C++ 子进程
-        self.api = OcrAPI(OCR_EXECUTABLE_PATH, argsStr=args)
-        self.sct = mss.mss()
+        # 初始化 RapidOCR
+        with rapidocr_lock:
+            self.api = None
+            self.api = OcrAPI(OCR_EXECUTABLE_PATH, argsStr=args)
+        
         logger.warning("OCR API 引擎初始化完成。")
 
     def __del__(self):
@@ -51,7 +60,8 @@ class OCREngine:
         """
         logger.info("正在关闭 OCR API 引擎...")
         if self.api:
-            self.api.stop()
+            with rapidocr_lock:
+                self.api.stop()
 
     def _get_physical_rect(self, hwnd: int, include_title_bar: bool) -> tuple[int, int, int, int]:
         """
@@ -113,7 +123,9 @@ class OCREngine:
                 return None
 
             grab_area = {"top": grab_top, "left": grab_left, "width": grab_width, "height": grab_height}
-            sct_img = self.sct.grab(grab_area)
+
+            with mss_lock:
+                sct_img = self.sct.grab(grab_area)
 
             # debug: 保存截图以便排查问题
             # tools.to_png(sct_img.rgb, sct_img.size, output="debug_screenshot.png")
@@ -162,7 +174,8 @@ class OCREngine:
 
             # 调用 OcrAPI 的 runBytes 方法进行识别
             logger.debug("将截图字节流发送到 C++ 引擎进行 OCR。")
-            result = self.api.runBytes(screenshot_png)
+            with rapidocr_lock:
+                result = self.api.runBytes(screenshot_png)
             logger.debug("从 C++ 引擎收到 OCR 结果。")
 
             # 解析返回的 JSON 结果
