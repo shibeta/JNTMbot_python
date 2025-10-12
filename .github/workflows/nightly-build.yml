@@ -71,7 +71,6 @@ jobs:
         run: |
           nuitka --msvc=latest --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter `
           --output-dir=dist `
-          --include-package-data=rapidocr `
           --include-data-dir="${{ env.VGAMEPAD_VIGEM_PATH }}=vgamepad\win\vigem" `
           --include-data-file="${{ env.VIGEM_DLL64_PATH }}=vgamepad\win\vigem\client\x64\ViGEmClient.dll" `
           --include-data-file="${{ env.VIGEM_DLL86_PATH }}=vgamepad\win\vigem\client\x86\ViGEmClient.dll" `
@@ -162,7 +161,12 @@ jobs:
 
           # 复制仓库根目录下的 install_vigembus.bat
           Copy-Item -Path "./install_vigembus.bat" -Destination "$releaseSubDir/install_vigembus.bat" -Force
+
+          # 复制 RapidOCR 的可执行文件和模型文件
+          Copy-Item -Path "./RapidOCR-json.exe" -Destination "$releaseSubDir/RapidOCR-json.exe" -Force
+          Copy-Item -Path "./models" -Destination "$releaseSubDir/models" -Recurse -Force
           
+          # 打包为 zip
           Compress-Archive -Path "$releaseSubDir/*" -DestinationPath $zipPath -Force
           
           echo "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
