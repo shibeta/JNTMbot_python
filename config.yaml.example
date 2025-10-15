@@ -33,7 +33,7 @@ mainLoopConsecutiveErrorThreshold: 10
 # 初始化GTA时重启GTA失败的阈值，连续重启失败超过该次数将抛出异常。设置为<=1则重启失败立即抛出异常
 restartGTAConsecutiveFailThreshold: 5
 # 卡单持续时间 (秒)
-suspendGTATime: 15
+suspendGTATime: 13
 # 卡单延迟时间 (秒)
 delaySuspendTime: 5
 # 检测间隔时间 (秒)
