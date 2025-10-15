@@ -31,7 +31,7 @@ class OCREngine:
         """
         初始化 OcrAPI，它会启动并管理一个 RapidOCR-json.exe 子进程。
         """
-        logger.info("正在初始化 OCR API 引擎...")
+        logger.info("正在初始化 OCR 引擎...")
         # 检查 OCR_EXECUTABLE_PATH 是否存在
         if not os.path.exists(OCR_EXECUTABLE_PATH):
             logger.error(f"OCR 引擎可执行文件不存在，请检查路径配置: {OCR_EXECUTABLE_PATH}")
@@ -52,13 +52,13 @@ class OCREngine:
             self.api = None
             self.api = OcrAPI(OCR_EXECUTABLE_PATH, argsStr=args)
         
-        logger.warning("OCR API 引擎初始化完成。")
+        logger.warning("OCR 引擎初始化完成。")
 
     def __del__(self):
         """
         在对象销毁时，确保子进程被关闭。
         """
-        logger.info("正在关闭 OCR API 引擎...")
+        logger.info("正在关闭 OCR 引擎...")
         if self.api:
             with rapidocr_lock:
                 self.api.stop()
@@ -70,7 +70,7 @@ class OCREngine:
         :param hwnd: 目标窗口的句柄。
         :param include_title_bar: 是否将标题栏和边框计算在内。(True: 基于完整窗口计算 False: 基于客户区计算 (排除标题栏和边框))
         :return: 一个有4个元素的元组，对应窗口或客户区左上右下的物理像素坐标。
-        :raise ``Exception``: 获取物理坐标失败
+        :raises ``Exception``: 获取物理坐标失败
         """
         try:
             if include_title_bar:
@@ -99,7 +99,7 @@ class OCREngine:
         :param height: 截图区域的相对高度 (0.0 to 1.0)。
         :param include_title_bar: 是否将标题栏和边框计算在内。(True: 基于完整窗口截图 False: 基于客户区截图 (排除标题栏和边框))
         :return: 返回截图的 PNG 字节流。
-        :raise ``Exception``: 截图失败
+        :raises ``Exception``: 截图失败
         """
         try:
             set_top_window(hwnd)

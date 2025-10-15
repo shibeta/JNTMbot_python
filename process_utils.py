@@ -131,7 +131,7 @@ def get_process_pid_by_window_handler(handler: int) -> int:
     根据窗口句柄获取进程pid
 
     :param handler: 目标窗口的句柄
-    :raise ``Exception``: 获取进程pid失败
+    :raises ``Exception``: 获取进程pid失败
     """
     try:
         _, pid = win32process.GetWindowThreadProcessId(handler)
@@ -148,8 +148,8 @@ def suspend_process_for_duration(pid: int, duration_seconds: int):
 
     :param pid: 要挂起的进程的 PID
     :param duration_seconds: 要挂起的时间(秒)
-    :raise ``ValueError``: 提供的 PID 无效或不存在
-    :raise ``Exception``: 挂起或恢复进程时失败
+    :raises ``ValueError``: 提供的 PID 无效或不存在
+    :raises ``Exception``: 挂起或恢复进程时失败
     """
     try:
         proc = psutil.Process(pid)
@@ -174,8 +174,8 @@ def resume_process_from_suspend(pid: int):
     将一个挂起的进程恢复。如果进程未被挂起，将不做任何事。
 
     :param pid: 要恢复的进程的 PID
-    :raise ``ValueError``: 提供的 PID 无效或不存在
-    :raise ``Exception``: 恢复进程失败
+    :raises ``ValueError``: 提供的 PID 无效或不存在
+    :raises ``Exception``: 恢复进程失败
     """
     if not is_process_exist(pid):
         raise ValueError(f"无法从挂起恢复：无效的PID ({pid})。")
@@ -212,7 +212,7 @@ def set_active_window(hwnd: int):
     将传入的窗口句柄从最小化还原并激活。传入的句柄无效则不做任何事。
 
     :param hwnd: 窗口句柄 (整数)
-    :raise ``Exception``: 激活窗口失败
+    :raises ``Exception``: 激活窗口失败
     """
     if not is_window_handler_exist(hwnd):
         return
@@ -234,7 +234,7 @@ def set_top_window(hwnd: int):
     将传入的窗口句柄从最小化还原并置顶。传入的句柄无效则不做任何事。
 
     :param hwnd: 窗口句柄 (整数)
-    :raise ``Exception``: 置顶窗口失败
+    :raises ``Exception``: 置顶窗口失败
     """
     if not is_window_handler_exist(hwnd):
         return
@@ -257,7 +257,7 @@ def unset_top_window(hwnd: int):
     将传入的窗口句柄设置为非置顶状态。传入的句柄无效则不做任何事。
 
     :param hwnd: 窗口句柄 (整数)
-    :raise ``Exception``: 取消置顶窗口失败
+    :raises ``Exception``: 取消置顶窗口失败
     """
     if not is_window_handler_exist(hwnd):
         return
