@@ -20,7 +20,14 @@ def wechat_push(token: str, title: str, msg: str):
         r = requests.post(url=url, json=data)
         r.raise_for_status()
         logger.info(f"pushplus: {r.json()['msg']}")
-    except requests.HTTPError:
-        logger.error(f"pushplus: {r.json()['msg']} ({r.json()['data']})")
+    except requests.HTTPError as e:
+        resp = getattr(e, "response", None)
+        if resp is not None:
+            try:
+                logger.error(f"pushplus: {resp.json()['msg']} ({resp.json()['data']})")
+            except ValueError:
+                logger.error(f"pushplus: ({resp.status_code}) {resp.text}")
+        else:
+            logger.error(f"pushplus 请求失败且无响应")
     except requests.RequestException as e:
         logger.error(f"调用 pushplus API 时发生致命错误: {e}")
