@@ -20,6 +20,7 @@ class GameState(enum.Enum):
     ON = "游戏运行中的任意状态"  # 仅用于expected
     UNKNOWN = "游戏运行中的无法识别的状态"  # 仅用于actual
     OFF = "游戏未运行"
+    OFFLINE = "离线模式"
     MAIN_MENU = "主菜单"
     IN_STORY_MODE = "故事模式"
     IN_ONLINE_LOBBY = "在线战局自由模式"
