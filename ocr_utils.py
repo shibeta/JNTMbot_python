@@ -1,6 +1,7 @@
 import os
 import threading
 import time
+from typing import Optional
 import mss
 from mss import tools
 import win32gui
@@ -27,7 +28,7 @@ class OCREngine:
     使用 RapidOCR_api.py 与 C++ 可执行程序通信，以实现高性能OCR功能。
     """
 
-    def __init__(self, args: str = None):
+    def __init__(self, args: Optional[str] = None):
         """
         初始化 OcrAPI，它会启动并管理一个 RapidOCR-json.exe 子进程。
         """
@@ -44,13 +45,11 @@ class OCREngine:
         
         # 初始化 mss 截图器
         with mss_lock:
-            self.sct = None
             self.sct = mss.mss()
 
         # 初始化 RapidOCR
         with rapidocr_lock:
-            self.api = None
-            self.api = OcrAPI(OCR_EXECUTABLE_PATH, argsStr=args)
+            self.api = OcrAPI(OCR_EXECUTABLE_PATH, argsStr=args if args else "")
         
         logger.warning("OCR 引擎初始化完成。")
 
@@ -88,7 +87,7 @@ class OCREngine:
 
     def _capture_window_area_mss(
         self, hwnd: int, left: float, top: float, width: float, height: float, include_title_bar: bool = False
-    ) -> bytes:
+    ) -> Optional[bytes]:
         """
         使用 python-mss 截取指定窗口的特定区域。
 
