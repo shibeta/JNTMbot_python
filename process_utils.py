@@ -142,7 +142,7 @@ def get_process_pid_by_window_handler(handler: int) -> int:
         raise Exception(f"获取句柄{handler}的进程ID时发生异常: {e}") from e
 
 
-def suspend_process_for_duration(pid: int, duration_seconds: int):
+def suspend_process_for_duration(pid: int, duration_seconds: float):
     """
     将一个进程挂起指定的时长，然后恢复它。
 
@@ -157,7 +157,7 @@ def suspend_process_for_duration(pid: int, duration_seconds: int):
         proc.suspend()
         time.sleep(duration_seconds)
     except psutil.NoSuchProcess:
-        raise ValueError(f"挂起失败：未找到 PID 为 {pid} 的进程。")
+        raise ValueError(f"无法挂起：未找到 PID 为 {pid} 的进程。")
     except Exception as e:
         raise Exception(f"挂起进程({pid})时发生异常: {e}") from e
     finally:
@@ -177,17 +177,18 @@ def resume_process_from_suspend(pid: int):
     :raises ``ValueError``: 提供的 PID 无效或不存在
     :raises ``Exception``: 恢复进程失败
     """
-    if not is_process_exist(pid):
-        raise ValueError(f"无法从挂起恢复：无效的PID ({pid})。")
     try:
         proc = psutil.Process(pid)
-        if proc.status() == psutil.STATUS_STOPPED:
-            proc.resume()
-            logger.info(f"已恢复进程 {pid}。")
-        else:
-            pass
+        try:
+            if proc.status() == psutil.STATUS_STOPPED:
+                proc.resume()
+                logger.info(f"已恢复进程 {pid}。")
+            else:
+                pass  # 进程未被挂起，不需要恢复
+        except psutil.NoSuchProcess:
+            pass  # 进程可能在操作期间关闭了
     except psutil.NoSuchProcess:
-        pass  # 进程可能在操作期间关闭了
+        raise ValueError(f"无法从挂起恢复：未找到 PID 为 {pid} 的进程。")
     except Exception as e:
         raise Exception(f"恢复进程 {pid} 时出错: {e}") from e
 
