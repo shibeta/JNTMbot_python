@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict
+from typing import Any, Dict, TYPE_CHECKING
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
 
@@ -70,7 +70,7 @@ class Config:
         },
         "checkLoopTime": {"value": 1, "comment": "检测间隔时间 (秒)"},
         "matchPanelTimeout": {"value": 180, "comment": "面板无人加入时重开时间 (秒)"},
-        "joiningPlayerKick": {"value": 120, "comment": "等待正在加入玩家超时重开时间 (秒)"},
+        "playerJoiningTimeout": {"value": 120, "comment": "等待正在加入玩家超时重开时间 (秒)"},
         "startMatchDelay": {"value": 15, "comment": "开始差事等待延迟 (秒)"},
         "startOnAllJoined": {
             "value": True,
@@ -88,18 +88,18 @@ class Config:
             "comment": '差事层进行"寻找差事黄圈"动作时 每轮向后走的持续时间 (毫秒)',
         },
         "ocrArgs": {
-            "value": '--models=".\models" --det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx --keys=dict_chinese.txt --padding=70 --maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 --mostAngle=0 --numThread=1',
+            "value": r'--models=".\models" --det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx --keys=dict_chinese.txt --padding=70 --maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 --mostAngle=0 --numThread=1',
             "comment": "RapidOCR的启动参数",
         },
         "msgOpenJobPanel": {
             "value": "德瑞差事已启动，请先看教程，学会卡CEO和卡单再进。如果无法连接请再试一次，bot没加速器网不好",
             "comment": "开好面板时发的消息 (设置为空字符串则不发这条消息)",
         },
-        "msgWaitPlayerTimeout": {
+        "msgMatchPanelTimeout": {
             "value": "一直没有玩家加入，重新启动中",
             "comment": "没人加入超时重开时发的消息 (设置为空字符串则不发这条消息)",
         },
-        "msgJoiningPlayerKick": {
+        "msgPlayerJoiningTimeout": {
             "value": "任务中含有卡B，重新启动中",
             "comment": "有人卡在正在加入超时重开时发的消息 (设置为空字符串则不发这条消息)",
         },
@@ -124,6 +124,49 @@ class Config:
             "comment": "差传bot的序号，-1: 不指定, 按顺序加入直到成功, 0: 第一个差传(一般为辅助瞄准), 1: 第二个差传(一般为自由瞄准); ",
         },
     }
+
+    if TYPE_CHECKING:
+        # 这个块里的代码只对静态类型检查器可见，在运行时会被忽略
+        # 在这里声明所有的配置项和它们的类型
+        # 类型检查器现在知道了Config实例会有这些属性
+        debug: bool
+        steamBotHost: str
+        steamBotPort: int
+        steamBotToken: str
+        steamBotProxy: str
+        steamGroupId: str
+        steamChannelName: str
+        steamBotLoginTimeout: int
+        enableHealthCheck: bool
+        healthCheckInterval: int
+        healthCheckSteamChatTimeoutThreshold: int
+        enableExitOnUnhealthy: bool
+        enableWechatPush: bool
+        pushplusToken: str
+        wechatPushActivationDelay: int
+        mainLoopConsecutiveErrorThreshold: int
+        restartGTAConsecutiveFailThreshold: int
+        suspendGTATime: int
+        delaySuspendTime: int
+        checkLoopTime: int
+        matchPanelTimeout: int
+        playerJoiningTimeout: int
+        startMatchDelay: int
+        startOnAllJoined: bool
+        exitMatchTimeout: int
+        goOutStairsTime: int
+        crossAisleTime: int
+        walkLeftTimeGoJob: int
+        walkDownTimeGoJob: int
+        ocrArgs: str
+        msgOpenJobPanel: str
+        msgMatchPanelTimeout: str
+        msgPlayerJoiningTimeout: str
+        msgTeamFull: str
+        msgJobStarting: str
+        msgJobStartFail: str
+        msgDetectedSB: str
+        jobTpBotIndex: int
 
     def __init__(self, config_filename: str = "config.yaml"):
         """

@@ -41,7 +41,7 @@ checkLoopTime: 1
 # 面板无人加入时重开时间 (秒)
 matchPanelTimeout: 180
 # 等待正在加入玩家超时重开时间 (秒)
-joiningPlayerKick: 120
+playerJoiningTimeout: 120
 # 开始差事等待延迟 (秒)
 startMatchDelay: 15
 # 全部玩家已加入时立即开始差事而不等待 (绕过 "startMatchDelay" 时间)
@@ -61,9 +61,9 @@ ocrArgs: '--models=".\models" --det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mo
 # 开好面板时发的消息 (设置为空字符串则不发这条消息)
 msgOpenJobPanel: 德瑞差事已启动，请先看教程，学会卡CEO和卡单再进。如果无法连接请再试一次，bot没加速器网不好
 # 没人加入超时重开时发的消息 (设置为空字符串则不发这条消息)
-msgWaitPlayerTimeout: 一直没有玩家加入，重新启动中
+msgMatchPanelTimeout: 一直没有玩家加入，重新启动中
 # 有人卡在正在加入超时重开时发的消息 (设置为空字符串则不发这条消息)
-msgJoiningPlayerKick: 任务中含有卡B，重新启动中
+msgPlayerJoiningTimeout: 任务中含有卡B，重新启动中
 # 满人时发的消息 (设置为空字符串则不发这条消息)
 msgTeamFull: 满了，请等下一班车
 # 差事启动时发的消息 (设置为空字符串则不发这条消息)
