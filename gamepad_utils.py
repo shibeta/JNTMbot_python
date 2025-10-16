@@ -1,8 +1,9 @@
+import enum
 import sys
 import atexit
 import copy
 import time
-from typing import Callable
+from typing import Callable, Optional
 from collections import defaultdict
 from functools import total_ordering
 import bisect
@@ -23,7 +24,7 @@ except Exception as e:
         raise e
 
 
-class Button:
+class Button(enum.Enum):
     """手柄按键映射"""
 
     A = vg.XUSB_BUTTON.XUSB_GAMEPAD_A
@@ -39,16 +40,16 @@ class Button:
     CROSS_KEY_LEFT = vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_LEFT
     CROSS_KEY_RIGHT = vg.XUSB_BUTTON.XUSB_GAMEPAD_DPAD_RIGHT
     START = vg.XUSB_BUTTON.XUSB_GAMEPAD_START  # 靠右的小按钮
-    MENU = vg.XUSB_BUTTON.XUSB_GAMEPAD_START  # 一种 START 的别名
+    MENU = vg.XUSB_BUTTON.XUSB_GAMEPAD_START  # START 的别名
     BACK = vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK  # 靠左的小按钮
-    SELECT = vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK  # 一种 BACK 的别名
+    SELECT = vg.XUSB_BUTTON.XUSB_GAMEPAD_BACK  # BACK 的别名
     LEFT_STICK = vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_THUMB
     RIGHT_STICK = vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_THUMB
     LEFT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER
     RIGHT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER
 
 
-class JoystickDirection:
+class JoystickDirection(tuple[float, float]):
     """常用摇杆方向映射"""
 
     CENTER = (0.0, 0.0)
@@ -115,7 +116,7 @@ class Macro:
     事件在添加时会自动排序，使其始终保持可播放状态。
     """
 
-    def __init__(self, events: list[MacroEvent] = None):
+    def __init__(self, events: Optional[list[MacroEvent]] = None):
         self._events: list[MacroEvent] = []
         if events:
             # 允许从一个已有的、排序好的事件列表初始化
@@ -263,11 +264,8 @@ class GamepadSimulator:
     """
 
     def __init__(self):
-        self.pad = None
-        self.connected = False
         try:
             self.pad = vg.VX360Gamepad()
-            self.connected = True
             logger.debug("虚拟手柄设备已创建。")
 
             # 注册清理函数
@@ -286,7 +284,7 @@ class GamepadSimulator:
 
     def _cleanup(self):
         """程序退出时调用的清理函数。"""
-        if self.connected and self.pad:
+        if self.pad:
             try:
                 logger.info("程序退出，正在重置虚拟手柄状态...")
                 self.pad.reset()
@@ -295,8 +293,8 @@ class GamepadSimulator:
             except Exception as e:
                 logger.error(f"重置虚拟手柄时出错: {e}")
 
-    def _check_connected(self):
-        if not self.connected or self.pad is None:
+    def _check_connected(self) -> bool:
+        if self.pad is None:
             logger.error("没有安装虚拟手柄驱动，或没有初始化")
             return False
         return True
@@ -541,7 +539,7 @@ if __name__ == "__main__":
     from random import random, uniform
 
     gamepad = GamepadSimulator()
-    if not gamepad.connected:
+    if not gamepad.pad:
         print("Gamepad not connected.  Exiting test.")
         exit()
 
