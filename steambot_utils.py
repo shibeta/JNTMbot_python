@@ -89,7 +89,9 @@ class _SupervisorThread(threading.Thread):
             try:
                 response = requests.get(f"{self.client.base_url}/health", headers=self.headers, timeout=5)
                 if response.status_code == 200:
-                    logger.debug(f"Steam Bot 后端已确认健康 (PID: {self.client.process.pid})。")
+                    logger.debug(
+                        f"Steam Bot 后端已确认健康 (PID: {self.client.process.pid if self.client.process else '未知'})。"
+                    )
                     return True
             except requests.ConnectionError:
                 # 这是预料之中的，因为服务器可能还没开始监听
@@ -363,12 +365,6 @@ class SteamBotClient:
         except requests.RequestException as e:
             logger.error(f"调用 /send-message API 失败: {e}")
             raise e
-
-    def get_last_send_monotonic_time(self) -> float:
-        return self.last_send_monotonic_time
-
-    def get_last_send_system_time(self) -> float:
-        return self.last_send_system_time
 
     def reset_send_timer(self):
         self.last_send_monotonic_time = time.monotonic()
