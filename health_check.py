@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import threading
 import time
-from typing import Callable
+from typing import Callable, Optional
 
 from config import Config
 from logger import get_logger
@@ -69,7 +69,7 @@ class HealthMonitor(threading.Thread):
 
     def _perform_check(self):
         """执行单次健康检查的核心逻辑。"""
-        last_send_monotonic_time = self.steam_bot.get_last_send_monotonic_time()
+        last_send_monotonic_time = self.steam_bot.last_send_monotonic_time
         elapsed_time = time.monotonic() - last_send_monotonic_time
         logger.debug(f"健康检查：距离上次发送消息已过去 {timedelta(seconds=elapsed_time)}。")
 
@@ -85,7 +85,7 @@ class HealthMonitor(threading.Thread):
             logger.warning(
                 f"Bot 状态变为不健康。原因: 超过 {self.steam_chat_timeout_threshold} 分钟未通过 Steam 发送消息。"
             )
-            self._on_become_unhealthy(unhealthy_reason, last_send_monotonic_time)
+            self._on_become_unhealthy(unhealthy_reason)
 
         elif not self._is_healthy_on_last_check and is_healthy_now:
             logger.info("Bot 状态已恢复健康。")
@@ -98,7 +98,7 @@ class HealthMonitor(threading.Thread):
         # 更新状态以备下次检查
         self._is_healthy_on_last_check = is_healthy_now
 
-    def _on_become_unhealthy(self, reason: str):
+    def _on_become_unhealthy(self, reason: Optional[str] = None):
         """从健康变为不健康时触发。"""
         if not self.enable_wechat_push:
             return
@@ -107,7 +107,7 @@ class HealthMonitor(threading.Thread):
         title = f"Bot: {bot_name} 状态变为不健康"
 
         if reason == "SteamChatTimeout":
-            last_send_system_time = datetime.fromtimestamp(self.steam_bot.get_last_send_system_time())
+            last_send_system_time = datetime.fromtimestamp(self.steam_bot.last_send_system_time)
             formatted_time = last_send_system_time.strftime("%Y-%m-%d %H:%M:%S")
             msg = f"Bot 超过 {self.steam_chat_timeout_threshold} 分钟未向 Steam 发送消息。上一次发送时间为 {formatted_time}。"
         else:
