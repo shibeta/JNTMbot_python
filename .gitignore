@@ -7,6 +7,12 @@ steam登录缓存请勿分享此文件
 ### 配置文件 ###
 config.yaml
 
+### 日志 ###
+logs/
+
+### DEBUG文件 ###
+debug_screenshot.png
+
 ### Node.JS ###
 steam_bot/node_modules/
 steam_bot/steam_bot.exe
