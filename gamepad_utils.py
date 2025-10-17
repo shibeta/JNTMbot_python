@@ -1,9 +1,10 @@
+from __future__ import annotations
 import enum
 import sys
 import atexit
 import copy
 import time
-from typing import Callable, Optional
+from typing import Callable, Optional, Union
 from collections import defaultdict
 from functools import total_ordering
 import bisect
@@ -24,7 +25,7 @@ except Exception as e:
         raise e
 
 
-class Button(enum.Enum):
+class Button(enum.IntFlag):
     """手柄按键映射"""
 
     A = vg.XUSB_BUTTON.XUSB_GAMEPAD_A
@@ -48,6 +49,7 @@ class Button(enum.Enum):
     LEFT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER
     RIGHT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER
 
+type AnyButton = Union[vg.XUSB_BUTTON, Button]
 
 class JoystickDirection(tuple[float, float]):
     """常用摇杆方向映射"""
@@ -74,6 +76,8 @@ class JoystickDirection(tuple[float, float]):
     FULL_LEFTDOWN = (-1.0, -1.0)
     FULL_RIGHTDOWN = (1.0, -1.0)
 
+type AnyJoystickDirection = tuple[float, float]
+
 
 class TriggerPressure:
     """常用扳机压力值映射"""
@@ -82,15 +86,17 @@ class TriggerPressure:
     light = 0.4  # 轻压 (适用于需要精确控制的场景，如半按加速)
     full = 1.0  # 完全按下 (适用于射击等场景)
 
+type AnyTriggerPressure = float
+
 
 @total_ordering
 class MacroEvent:
     """宏中的一个独立事件，即在特定时间点执行的特定动作。"""
 
     def __init__(self, time_ms: int, action_name: str, params: list):
-        self.time_ms = time_ms
-        self.action_name = action_name
-        self.params = params
+        self.time_ms = time_ms  # 动作的时间戳
+        self.action_name = action_name  # 动作的名称
+        self.params = params  # 动作的参数，如按键名，按键时间等
 
     def __repr__(self):
         """提供一个清晰的、可读的字符串表示形式，方便调试。"""
@@ -152,20 +158,25 @@ class Macro:
         # 使用 copy.deepcopy 确保事件对象也是新的，虽然在这里不是必须，但是个好习惯
         return Macro(copy.deepcopy(self._events))
 
-    def time_shift(self, offset_ms: int):
+    def time_shift(self, offset_ms: Optional[int] = None):
         """
         返回一个所有事件时间戳都平移了指定毫秒数的新宏。
 
-        :param offset_ms: 平移的毫秒数，可以是正数（延迟）或负数（提前）。
+        未提供毫秒数时，平移以清除第一个动作前的空余时间。
+
+        :param offset_ms: 平移的毫秒数，可以是正数（延迟）或负数（提前）。默认为第一个动作的时间戳。
         """
         new_events = []
+        if not offset_ms:
+            offset_ms = - self._events[0].time_ms
         for event in self._events:
             new_time = event.time_ms + offset_ms
             if new_time >= 0:
                 new_events.append(MacroEvent(new_time, event.action_name, event.params))
         return Macro(new_events)
 
-    def append(self, other_macro, delay_ms: int = 0):
+
+    def append(self, other_macro: Macro, delay_ms: int = 0):
         """
         将另一个宏追加到当前宏的末尾，返回合并后的新宏。
 
@@ -199,11 +210,11 @@ class Macro:
     # --- 基础动作 (Primitive Actions) ---
     # 这些方法提供最精细的控制，只在时间轴上创建一个事件。
 
-    def press_button(self, time_ms: int, button: Button):
+    def press_button(self, time_ms: int, button: AnyButton):
         """在指定时间点按下一个按钮。"""
         return self.add_action(time_ms, "press_button", [button])
 
-    def release_button(self, time_ms: int, button: Button):
+    def release_button(self, time_ms: int, button: AnyButton):
         """在指定时间点释放一个按钮。"""
         return self.add_action(time_ms, "release_button", [button])
 
@@ -226,7 +237,7 @@ class Macro:
     # --- 方便使用的复合动作 (Compound/Convenience Actions) ---
     # 这些方法会自动创建开始和结束事件。
 
-    def click_button(self, start_time_ms: int, button, duration_ms: int):
+    def click_button(self, start_time_ms: int, button: AnyButton, duration_ms: int):
         """在指定时间点开始，按住并释放一个按钮。"""
         self.press_button(start_time_ms, button)
         self.release_button(start_time_ms + duration_ms, button)
@@ -299,7 +310,7 @@ class GamepadSimulator:
             return False
         return True
 
-    def press_button(self, button: Button):
+    def press_button(self, button: AnyButton):
         """
         按下一个按钮。
 
@@ -313,7 +324,7 @@ class GamepadSimulator:
         except Exception as e:
             logger.error(f"按下按钮 {button} 时出错: {e}")
 
-    def release_button(self, button: Button):
+    def release_button(self, button: AnyButton):
         """
         松开一个按钮。
 
@@ -327,7 +338,7 @@ class GamepadSimulator:
         except Exception as e:
             logger.error(f"松开按钮 {button} 时出错: {e}")
 
-    def click_button(self, button: Button, duration_milliseconds: int = 90):
+    def click_button(self, button: AnyButton, duration_milliseconds: int = 90):
         """
         按住一个按钮，一段时间后松开。
 
@@ -537,6 +548,7 @@ if __name__ == "__main__":
     from time import sleep, monotonic
     from pprint import pprint
     from random import random, uniform
+    from vgamepad import XUSB_BUTTON
 
     gamepad = GamepadSimulator()
     if not gamepad.pad:
@@ -545,7 +557,7 @@ if __name__ == "__main__":
 
     print("--- 手柄测试 ---")
     print("按下 A 键...")
-    gamepad.click_button(Button.A, 500)
+    gamepad.click_button(XUSB_BUTTON.XUSB_GAMEPAD_A, 500)
     sleep(1)
     print("按下 START 键...")
     gamepad.click_button(Button.START, 500)
@@ -560,7 +572,9 @@ if __name__ == "__main__":
     gamepad.move_left_joystick(JoystickDirection.CENTER)
     sleep(1)
     print("右摇杆向后50%...")
-    gamepad.hold_right_joystick(JoystickDirection.HALF_DOWN, 1)
+    gamepad.hold_right_joystick(JoystickDirection.HALF_DOWN, 1000)
+    print("左扳机下压60%...")
+    gamepad.hold_left_trigger(0.6, 1000)
     print("测试完成.")
 
     print("\n--- 宏测试 ---")
@@ -578,6 +592,7 @@ if __name__ == "__main__":
         pprint(event)
 
     # 播放宏对象
+    print("Hadouken!")
     gamepad.play_macro(hadouken_combo)
 
     print("\n宏播放完成。")
@@ -587,7 +602,7 @@ if __name__ == "__main__":
         Macro()
         .move_left_joystick(0, JoystickDirection.FULL_LEFT)
         .move_left_joystick(10, JoystickDirection.FULL_RIGHT)
-        .click_button(10, Button.X, 10)
+        .click_button(12, Button.X, 10)
         .move_left_joystick(20, JoystickDirection.FULL_LEFTDOWN)
     )
 
@@ -598,11 +613,10 @@ if __name__ == "__main__":
     print("通过fitter创建一个小舒婷")
     # 将按X键后移20ms，来打出小舒婷
     fist_and_back_macro = (
-        Macro().click_button(10, Button.X, 10).move_left_joystick(20, JoystickDirection.FULL_LEFTDOWN)
+        shooting_macro.filter(lambda event: event.time_ms > 10)
     )
     bad_shooting_macro = (
-        shooting_macro.filter(lambda event: event.params[0] != Button.X)
-        .filter(lambda event: event.time_ms != 20)
+        shooting_macro.filter(lambda event: event.time_ms <= 10)
         .append(fist_and_back_macro, 20)
     )
 
