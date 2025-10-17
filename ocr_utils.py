@@ -7,7 +7,7 @@ from mss import tools
 import win32gui
 
 from RapidOCR_api import OcrAPI
-from process_utils import is_window_handler_exist, set_top_window, unset_top_window
+from windows_utils import is_window_handler_exist, set_top_window, unset_top_window
 from logger import get_logger
 
 logger = get_logger("ocr_engine")
