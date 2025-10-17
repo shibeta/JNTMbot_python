@@ -4,18 +4,17 @@ import keyboard
 import os
 import traceback
 from functools import wraps
-import requests
 from atexit import _run_exitfuncs as trigger_atexit
 
 from logger import setup_logging, get_logger
 from config import Config
-# from ocr_utils import get_ocr_engine
+
 from ocr_utils import OCREngine
 from steambot_utils import SteamBotClient
 from push_utils import wechat_push
-from gta5_utils import GameAutomator
+from gta_automator import GTAAutomator
 from health_check import HealthMonitor
-from gameautomator_exception import *
+from gta_automator.exception import *
 
 logger = get_logger(name="main")
 
@@ -67,33 +66,6 @@ def main():
     else:
         setup_logging(log_level="INFO")
 
-    # 初始化热键
-    pause_event = threading.Event()
-    pause_event.set()  # 初始状态为“已恢复”
-
-    # 暂停/恢复热键
-    def toggle_pause():
-        if pause_event.is_set():
-            pause_event.clear()  # 清除标志，进入暂停状态
-            logger.warning("暂停/恢复热键被按下，Bot 将在本循环结束后暂停。按 F10 恢复。")
-        else:
-            pause_event.set()  # 设置标志，恢复运行
-            try:
-                steam_bot.reset_send_timer()
-            except:
-                pass  # 没有什么需要做的
-            logger.warning("暂停/恢复热键被按下，Bot 已恢复。")
-
-    keyboard.add_hotkey("ctrl+f9", toggle_pause)
-
-    # 退出热键
-    def toggle_exit():
-        logger.warning("退出热键被按下，退出程序。。。")
-        unsafe_exit()
-
-    keyboard.add_hotkey("ctrl+f10", toggle_exit)
-    logger.warning("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
-
     # 初始化 OCR
     try:
         ocrArgs = config.ocrArgs
@@ -101,10 +73,10 @@ def main():
     except Exception as e:
         logger.error(f"初始化 OCR 引擎失败: {e}")
         return
-    
+
     # 初始化 Steam Bot
+    steam_bot = None
     try:
-        steam_bot = None
         logger.info("正在初始化 Steam Bot 客户端...")
         steam_bot = SteamBotClient(config)
     except Exception as e:
@@ -138,8 +110,35 @@ def main():
             logger.error(f"请将正确的群组ID填入 {config_file_path} 。")
             return
 
+    # 初始化热键
+    pause_event = threading.Event()
+    pause_event.set()  # 初始状态为“已恢复”
+
+    # 暂停/恢复热键
+    def toggle_pause():
+        if pause_event.is_set():
+            pause_event.clear()  # 清除标志，进入暂停状态
+            logger.warning("暂停/恢复热键被按下，Bot 将在本循环结束后暂停。按 F10 恢复。")
+        else:
+            pause_event.set()  # 设置标志，恢复运行
+            try:
+                steam_bot.reset_send_timer()
+            except:
+                pass  # 没有什么需要做的
+            logger.warning("暂停/恢复热键被按下，Bot 已恢复。")
+
+    keyboard.add_hotkey("ctrl+f9", toggle_pause)
+
+    # 退出热键
+    def toggle_exit():
+        logger.warning("退出热键被按下，退出程序。。。")
+        unsafe_exit()
+
+    keyboard.add_hotkey("ctrl+f10", toggle_exit)
+    logger.warning("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
+
     # 初始化游戏控制器
-    automator = GameAutomator(config, GOCREngine, steam_bot)
+    automator = GTAAutomator(config, GOCREngine, steam_bot)
 
     # 初始化健康检查
     if config.enableHealthCheck:
@@ -174,222 +173,37 @@ def main():
         try:
             # 响应暂停信号
             pause_event.wait()
-            time.sleep(1)
 
-            logger.info("动作: 正在开始新一轮循环...")
-            # 确保游戏启动
-            try:
-                automator.setup_gta()
-            except UnexpectedGameState as e:
-                # 启动 GTA V 多次失败
-                logger.error(f"初始化 GTA V 窗口时，启动游戏失败次数过多。")
-                raise Exception(f"初始化 GTA V 窗口时，发生异常: {e}") from e
+            # 执行一轮完整的业务逻辑
+            automator.run_dre_bot()
 
-            # 开始新战局
-            try:
-                automator.start_new_match()
-            except UnexpectedGameState as e:
-                if e.actual_state == GameState.UNKNOWN:
-                    # 开始新战局多次失败
-                    logger.error("开始新战局失败次数过多。杀死 GTA V 进程。")
-                    automator.kill_gta()
-                elif e.actual_state == GameState.OFF:
-                    # 游戏被意外关闭
-                    logger.error("开始新战局时游戏被意外关闭。")
-                else:
-                    logger.error(f"开始新战局时发生预期外的异常: {e}")
-
-                raise Exception(f"开始新战局时，发生异常: {e}") from e
-
-            # 等待复活
-            logger.info("等待在事务所床上复活...")
-            try:
-                start_time = time.monotonic()
-                while time.monotonic() - start_time < 60:
-                    if automator.is_respawned_in_agency():
-                        break
-                    time.sleep(0.3)
-                else:
-                    logger.error("等待复活超时。")
-                    raise OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)
-                logger.info("在事务所床上复活成功。")
-            except UnexpectedGameState as e:
-                # 游戏被意外关闭
-                logger.error(f"等待复活时游戏被意外关闭。")
-                raise Exception(f"等待复活时，发生异常: {e}") from e
-
-            # 导航并寻找差事
-            try:
-                automator.go_job_point_from_bed()
-                automator.find_job_point()
-            except UIElementNotFound as e:
-                # 没找到差事黄圈
-                logger.error(f"未能找到任务触发点。")
-                raise Exception(f"寻找差事触发点时，发生异常: {e}") from e
-            except UnexpectedGameState as e:
-                # 游戏被意外关闭
-                logger.error(f"寻找差事触发点时游戏被意外关闭。")
-                raise Exception(f"寻找差事触发点时，发生异常: {e}") from e
-
-            # 进入差事
-            automator.enter_job_setup()
-
-            # 等待差事面板
-            logger.info("等待差事面板打开...")
-            try:
-                start_time = time.monotonic()
-                while time.monotonic() - start_time < 60:
-                    if automator.is_on_job_panel():
-                        break
-                    time.sleep(1)
-                else:
-                    logger.error("等待差事面板打开超时。")
-                    logger.info("正在确保离开面板回到自由模式。")
-                    automator.exit_job_panel()
-                    raise OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)
-            except UnexpectedGameState as e:
-                # 游戏被意外关闭
-                logger.error(f"打开差事面板时游戏被意外关闭。")
-                raise Exception(f"打开差事面板时，发生异常: {e}") from e
-
-            # 等待队伍并开始差事
-            try:
-                automator.setup_wait_start_job()
-            except UIElementNotFound as e:
-                # 不知为何离开了面板
-                logger.error(f"等待队伍并开始差事时，意外离开了任务准备面板。")
-                raise Exception(f"等待队伍并开始差事时，发生异常: {e}") from e
-            except OperationTimeout as e:
-                # 超时是因为其他玩家造成的，无须 Bot 处理，直接开始下一轮
-                logger.warning(f"等待队伍并开始差事时，{e}")
-                logger.info("正在确保离开面板回到自由模式。")
-                automator.exit_job_panel()
-                continue
-            except UnexpectedGameState as e:
-                if e.actual_state == GameState.OFF:
-                    # 游戏被意外关闭
-                    logger.error(f"等待队伍并开始差事时游戏被意外关闭。")
-                    raise Exception(f"等待队伍并开始差事时，发生异常: {e}") from e
-                elif e.actual_state == GameState.BAD_JOB_PANEL_STANDBY_PLAYER:
-                    # 有玩家待命，可以直接重开差事，但还是选择开启下一轮比较稳妥
-                    logger.warning(f"等待队伍并开始差事时，{e}")
-                    logger.info("正在确保离开面板回到自由模式。")
-                    automator.exit_job_panel()
-                    continue
-
-            # 等待面板消失
-            logger.info("差事启动成功！等待面板消失。")
-            try:
-                match_start_time = time.monotonic()
-                while time.monotonic() - match_start_time < config.exitMatchTimeout:
-                    if not automator.is_on_job_panel():
-                        break
-                    time.sleep(1)
-                else:
-                    # 差事加载超时不影响 Bot 工作，直接开始下一轮
-                    logger.warning("等待差事加载超时。卡单并重启循环。")
-                    time.sleep(config.delaySuspendTime)
-                    automator.glitch_single_player_session()
-                    continue
-            except UnexpectedGameState as e:
-                # 游戏被意外关闭
-                logger.error(f"等待差事面板消失时游戏被意外关闭。")
-                raise Exception(f"等待差事面板消失时，发生异常: {e}") from e
-
-            # 面板消失后卡单，否则会卡在启动战局
-            logger.info(f"面板已消失。{config.delaySuspendTime} 秒后将卡单。")
-            time.sleep(config.delaySuspendTime)
-            automator.glitch_single_player_session()
-
-            # 差事落地后卡单，避免加恶意值
-            logger.info("差事加载完成！等待人物落地。")
-            try:
-                landing_start_time = time.monotonic()
-                while time.monotonic() - landing_start_time < config.exitMatchTimeout:
-                    if automator.is_job_started():
-                        break
-                    time.sleep(1)
-                else:
-                    logger.warning("等待人物落地超时。卡单并重启循环。")
-                    time.sleep(config.delaySuspendTime)
-                    automator.glitch_single_player_session()
-                    continue
-            except UnexpectedGameState as e:
-                # 游戏被意外关闭
-                logger.error(f"等待人物落地时游戏被意外关闭。")
-                raise Exception(f"等待人物落地时，发生异常: {e}") from e
-
-            logger.info(f"人物已落地。{config.delaySuspendTime} 秒后将卡单。")
-            time.sleep(config.delaySuspendTime)
-            automator.glitch_single_player_session()
-
-            # 如果战局中有其他 CEO，卡单后任务会失败并进入计分板
-            # 检查当前任务状态来处理卡单后可能遇到的各种情况
-            logger.info("动作: 正在检查当前差事状态...")
-            try:
-                # 等待5秒以响应玩家离开
-                time.sleep(5)
-                mission_status_check_start_time = time.monotonic()
-                while time.monotonic() - mission_status_check_start_time < 5:
-                    if automator.is_job_started():
-                        # 如果战局里只有自己一人，则无事发生
-                        logger.info("当前在差事中。")
-                        break
-                    time.sleep(1)
-                else:
-                    # 如果战局中有其他 CEO，任务会失败并进入计分板
-                    possible_mission_fail_time = time.monotonic()
-                    while time.monotonic() - possible_mission_fail_time < 15:
-                        if automator.is_on_scoreboard():
-                            # 由于 CEO 退出的计分板只能通过等待来退出
-                            logger.info("当前在任务失败计分板。")
-                            logger.info("有神人不卡单导致任务失败，等待20秒以离开计分板。")
-                            try:
-                                steam_bot.send_group_message(config.msgDetectedSB)
-                            except requests.RequestException as e:
-                                # 发送信息失败，小事罢了，不影响自动化运行
-                                pass
-                            time.sleep(20)  # 需要多等一会，确保返回自由模式后落地
-                            break
-                        time.sleep(1)
-                    else:
-                        # 既检测不到在任务中，也检测不到任务失败
-                        # 反正已经卡过单了，就这样吧
-                        logger.warning("无法确定当前差事状态，但还是尝试继续执行。")
-            except UnexpectedGameState as e:
-                # 游戏被意外关闭
-                logger.error(f"检查当前差事状态时游戏被意外关闭。")
-                raise Exception(f"检查当前差事状态时，发生异常: {e}") from e
-
-            logger.info("本轮循环完成。")
-            # 清空连续出错次数
+            # 如果成功完成，重置连续错误计数器
+            logger.info("本轮循环成功，重置连续错误计数。")
             main_loop_consecutive_error_count = 0
 
         except Exception as e:
             # 捕获到异常则累加连续出错次数
-            # 只有捕获到异常才认为是出错，找不到差事和各种超时等不认为是出错
-            main_loop_consecutive_error_count = main_loop_consecutive_error_count + 1
-            # 最大可以等 120 秒
-            wait_before_restart_loop = min(main_loop_consecutive_error_count * 10, 120)
+            main_loop_consecutive_error_count += 1
+            # 出错后等待的时间, 随连续出错次数增大而指数增长, 最多等待 120 秒
+            wait_before_restart_loop = min(2**main_loop_consecutive_error_count * 5, 120)
+
             logger.error(f"主循环中发生错误: {e}")
             logger.error(traceback.format_exc())
 
-            # 重启循环还是退出?
+            # 根据配置文件决定是重试还是退出
             logger.info(
-                f"当前连续失败次数 {main_loop_consecutive_error_count}，最大失败次数阈值 {config.mainLoopConsecutiveErrorThreshold}。"
+                f"当前连续失败次数 {main_loop_consecutive_error_count}，阈值 {config.mainLoopConsecutiveErrorThreshold}。"
             )
             if main_loop_consecutive_error_count <= config.mainLoopConsecutiveErrorThreshold:
-                # 未超过报错退出的阈值，重启
-                logger.info(f"未超过连续失败阈值，将在{wait_before_restart_loop}秒后重启循环...")
+                logger.info(f"未超过连续失败阈值，将在 {wait_before_restart_loop} 秒后重启循环...")
                 time.sleep(wait_before_restart_loop)
             else:
-                # 超过报错退出的阈值，退出
-                logger.error(f"超过连续失败阈值，程序将退出...")
+                logger.error("超过连续失败阈值，程序将退出...")
+                # 启用了微信推送并且运行超过 wechatPushActivationDelay 分钟则推送消息
                 if config.enableWechatPush:
-                    # 启用了微信推送并且运行超过 wechatPushActivationDelay 分钟则推送消息
                     if time.monotonic() - global_start_time > config.wechatPushActivationDelay * 60:
                         wechat_push(config.pushplusToken, f"主循环中发生错误: {e}", traceback.format_exc())
-                return
+                return  # 退出程序
 
 
 if __name__ == "__main__":

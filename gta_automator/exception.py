@@ -60,13 +60,13 @@ class NetworkErrorContext(enum.Enum):
     JOIN_WARPBOT_SESSION = "加入差传Bot战局"
 
 
-class GameAutomationException(Exception):
+class GameAutomatorException(Exception):
     """所有游戏自动化相关错误的基类。"""
 
     pass
 
 
-class OperationTimeout(GameAutomationException):
+class OperationTimeout(GameAutomatorException):
     """操作在规定时间内未完成的错误。"""
 
     def __init__(self, context: OperationTimeoutContext):
@@ -75,7 +75,7 @@ class OperationTimeout(GameAutomationException):
         super().__init__(self.message)
 
 
-class UnexpectedGameState(GameAutomationException):
+class UnexpectedGameState(GameAutomatorException):
     """
     游戏处于意外状态的错误。
 
@@ -107,7 +107,7 @@ class UnexpectedGameState(GameAutomationException):
         return "未知期望"
 
 
-class NavigationFailed(GameAutomationException):
+class NavigationFailed(GameAutomatorException):
     """角色移动失败的错误。"""
 
     def __init__(self, context: NavigationFailedContext):
@@ -116,7 +116,7 @@ class NavigationFailed(GameAutomationException):
         super().__init__(self.message)
 
 
-class UIElementNotFound(GameAutomationException):
+class UIElementNotFound(GameAutomatorException):
     """在屏幕上找不到预期的UI元素的错误。"""
 
     def __init__(self, context: UIElementNotFoundContext):
@@ -125,7 +125,7 @@ class UIElementNotFound(GameAutomationException):
         super().__init__(self.message)
 
 
-class NetworkError(GameAutomationException):
+class NetworkError(GameAutomatorException):
     """在线会话相关的错误。"""
 
     def __init__(self, context: NetworkErrorContext):
