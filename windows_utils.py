@@ -15,7 +15,7 @@ from typing import Tuple, Optional
 
 from logger import get_logger
 
-logger = get_logger("process_utils")
+logger = get_logger("windows_utils")
 
 
 def is_process_exist(pid: int):

@@ -264,7 +264,7 @@
 -   `steambot_utils.py`: 用于管理 `steam_bot` 后端并调用其 API 发送消息。
 -   `RapidOCR_api.py`: 调用`RapidOCR-json.exe`进行 OCR 的类。
 -   `ocr_utils.py`: 对 RapidOCR_api 的封装，用于游戏画面识别。
--   `process_utils.py`: 提供了获取进程信息、暂停进程（用于卡单人战局）等功能。
+-   `windows_utils.py`: 封装了 Windows 中对进程和窗口的一些操作。
 -   `keyboard_utils.py`: 模拟键盘输入。
 -   `gamepad_utils.py`: 模拟手柄输入。支持宏定义和执行。
 -   `push_utils.py`: 消息平台推送，目前实现了基于 PushPlus 的微信推送。
