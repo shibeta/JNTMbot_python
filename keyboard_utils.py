@@ -31,7 +31,7 @@ class KeyboardSimulator:
         self._lock: threading.Lock = threading.Lock()
 
         # 注册程序退出时的清理函数
-        atexit.register(self._release_all_on_exit)
+        atexit.register(self.release_all)
 
     def press(self, key: KeyType) -> None:
         """
@@ -118,12 +118,6 @@ class KeyboardSimulator:
 
             # 清空集合
             self._pressed_keys.clear()
-
-    def _release_all_on_exit(self) -> None:
-        """
-        供 atexit 调用的内部方法，用于在程序退出时释放所有按键。
-        """
-        self.release_all()
 
     @property
     def pressed_keys(self) -> Set[KeyType]:
