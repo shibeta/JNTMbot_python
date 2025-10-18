@@ -49,7 +49,7 @@ class Button(enum.IntFlag):
     LEFT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER
     RIGHT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER
 
-type AnyButton = Union[vg.XUSB_BUTTON, Button]
+AnyButton = Union[vg.XUSB_BUTTON, Button]
 
 class JoystickDirection(tuple[float, float]):
     """常用摇杆方向映射"""
@@ -76,7 +76,7 @@ class JoystickDirection(tuple[float, float]):
     FULL_LEFTDOWN = (-1.0, -1.0)
     FULL_RIGHTDOWN = (1.0, -1.0)
 
-type AnyJoystickDirection = tuple[float, float]
+AnyJoystickDirection = tuple[float, float]
 
 
 class TriggerPressure:
@@ -86,7 +86,7 @@ class TriggerPressure:
     light = 0.4  # 轻压 (适用于需要精确控制的场景，如半按加速)
     full = 1.0  # 完全按下 (适用于射击等场景)
 
-type AnyTriggerPressure = float
+AnyTriggerPressure = float
 
 
 @total_ordering
