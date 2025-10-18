@@ -169,7 +169,7 @@ class SteamBotClient:
         logger.info(f"正在启动 Steam Bot 后端: {' '.join(command)}")
         try:
             self.process = subprocess.Popen(command, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
-            logger.warning(f"Steam Bot 后端已启动，新进程ID: {self.process.pid}")
+            logger.warning(f"Steam Bot 后端已启动，进程ID: {self.process.pid}")
         except FileNotFoundError:
             logger.error('启动失败: 未找到 "node" 可执行文件。')
             self.process = None
