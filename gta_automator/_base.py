@@ -320,9 +320,9 @@ class _BaseManager:
             if self.check_if_in_onlinemode():
                 return
 
-            if not has_triggered_single_session and time.monotonic() - start_time > 60:
-                # 进入在线模式等待超过1分钟后，进行卡单以缓解卡云
-                logger.info("等待进入在线模式超过1分钟，尝试卡单人战局以缓解卡云...")
+            if not has_triggered_single_session and time.monotonic() - start_time > 120:
+                # 进入在线模式等待超过2分钟后，进行卡单以缓解卡云
+                logger.info("等待进入在线模式超过2分钟，尝试卡单人战局以缓解卡云...")
                 self.glitch_single_player_session()
                 has_triggered_single_session = True
         else:
