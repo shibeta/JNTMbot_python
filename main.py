@@ -32,9 +32,11 @@ def interrupt_decorator(func):
     return wrapper
 
 
-# 退出程序而不需要调用 return 或 sys.exit
-# 因为有人抱怨这不安全，所以改名为 unsafe_exit()
 def unsafe_exit():
+    """
+    退出程序而不需要调用 return 或 sys.exit
+    因为有人抱怨这不安全，所以改名为 unsafe_exit()
+    """
     try:
         # os._exit() 不会触发 atexit，因此需要手动触发
         trigger_atexit()
