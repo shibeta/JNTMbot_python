@@ -137,7 +137,7 @@ class Action:
         self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHT, 5500)
         # 走出个人空间的门
         start_time = time.monotonic()
-        while time.monotonic() - start_time < 2:
+        while time.monotonic() - start_time < 1.6:
             self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTDOWN, 250)
             self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTUP, 250)
         # 走到楼梯间门口
@@ -157,9 +157,7 @@ class Action:
         # 穿过走廊
         logger.info("动作：正在穿过差事层走廊...")
         start_time = time.monotonic()
-        # self.gamepad.hold_left_joystick((-0.95, -1.0), self.config.crossAisleTime)
         self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFTDOWN, self.config.crossAisleTime)
-        self.gamepad.hold_left_joystick(JoystickDirection.FULL_UP, 300)
 
     def enter_job_setup(self):
         """在差事点上进入差事准备面板，目前只需要按一下十字键右键。"""
