@@ -126,6 +126,43 @@ class JobWorkflow(_BaseManager):
 
         logger.info("成功找到差事触发点。")
 
+    def _find_job_point_sprial(self):
+        """
+        检查是否到达任务触发点。如果没有，会螺旋形遍历周围空间。
+
+        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)``: 未找到任务触发点
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        """
+        logger.info("动作：正在寻找差事触发点...")
+
+        # 检查是否已经站在触发点上
+        if self.screen.is_job_marker_found():
+            logger.info("成功找到差事触发点。")
+            return
+        
+        # 定义螺旋搜索模式，先上，再左，再下，再右，不断扩大
+        search_pattern = [
+            (self.action.walk_forward, 1),
+            (self.action.walk_left, 1),
+            (self.action.walk_backward, 2),
+            (self.action.walk_right, 2),
+            (self.action.walk_forward, 3),
+            (self.action.walk_left, 3),
+        ]
+
+        # 执行搜索
+        for action, repetitions in search_pattern:
+            for _ in range(repetitions):
+                # 每走一步都检查一次
+                action(self.config.walkTimeFindJob)
+                if self.screen.is_job_marker_found():
+                    logger.info("成功找到差事触发点。")
+                    return
+                
+        # 如果遍历完所有搜索模式仍未找到
+        logger.error("执行完所有搜索步骤后仍未找到差事触发点。")
+        raise UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)
+
     def navigate_from_bed_to_job_point(self):
         """
         执行从床边导航到任务点并确认找到的完整流程。
@@ -134,7 +171,7 @@ class JobWorkflow(_BaseManager):
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         self.action.go_job_point_from_bed()
-        self._find_job_point()
+        self._find_job_point_sprial()
 
     def enter_and_wait_for_job_panel(self):
         """

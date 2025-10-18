@@ -87,6 +87,10 @@ class Config:
             "value": 360,
             "comment": '差事层进行"寻找差事黄圈"动作时 每轮向后走的持续时间 (毫秒)',
         },
+        "walkTimeFindJob": {
+            "value": 400,
+            "comment": '差事层进行"寻找差事黄圈"动作时 每次移动的持续时间 (毫秒)',
+        },
         "ocrArgs": {
             "value": r'--models=".\models" --det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx --keys=dict_chinese.txt --padding=70 --maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 --mostAngle=0 --numThread=1',
             "comment": "RapidOCR的启动参数",
@@ -158,6 +162,7 @@ class Config:
         crossAisleTime: int
         walkLeftTimeGoJob: int
         walkDownTimeGoJob: int
+        walkTimeFindJob: int
         ocrArgs: str
         msgOpenJobPanel: str
         msgMatchPanelTimeout: str

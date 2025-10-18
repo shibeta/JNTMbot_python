@@ -51,11 +51,13 @@ exitMatchTimeout: 120
 # 差事层楼梯口进行"走出门"动作持续时间 (毫秒)
 goOutStairsTime: 1000
 # 差事层进行"穿过走廊"动作持续时间 (毫秒)
-crossAisleTime: 3700
+crossAisleTime: 5000
 # 差事层进行"寻找差事黄圈"动作时 每轮向左走的持续时间 (毫秒)
 walkLeftTimeGoJob: 400
 # 差事层进行"寻找差事黄圈"动作时 每轮向后走的持续时间 (毫秒)
 walkDownTimeGoJob: 360
+# 差事层进行"寻找差事黄圈"动作时 每次移动的持续时间 (毫秒)
+walkTimeFindJob: 400
 # RapidOCR的启动参数
 ocrArgs: '--models=".\models" --det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx --keys=dict_chinese.txt --padding=70 --maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 --mostAngle=0 --numThread=1'
 # 开好面板时发的消息 (设置为空字符串则不发这条消息)
