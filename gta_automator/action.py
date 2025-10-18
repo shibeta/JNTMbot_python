@@ -30,6 +30,22 @@ class Action:
         """向后走"""
         self.gamepad.hold_left_joystick(JoystickDirection.HALF_DOWN, duration_milliseconds)
 
+    def run_left(self, duration_milliseconds: int):
+        """向左跑"""
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFT, duration_milliseconds)
+
+    def run_right(self, duration_milliseconds: int):
+        """向右跑"""
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHT, duration_milliseconds)
+
+    def run_forward(self, duration_milliseconds: int):
+        """向前跑"""
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_UP, duration_milliseconds)
+
+    def run_backward(self, duration_milliseconds: int):
+        """向后跑"""
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_DOWN, duration_milliseconds)
+
     def confirm(self):
         """确认当前选择"""
         self.gamepad.click_button(Button.A)
@@ -141,7 +157,9 @@ class Action:
         # 穿过走廊
         logger.info("动作：正在穿过差事层走廊...")
         start_time = time.monotonic()
-        self.gamepad.hold_left_joystick((-0.95, -1.0), self.config.crossAisleTime)
+        # self.gamepad.hold_left_joystick((-0.95, -1.0), self.config.crossAisleTime)
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFTDOWN, self.config.crossAisleTime)
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_UP, 300)
 
     def enter_job_setup(self):
         """在差事点上进入差事准备面板，目前只需要按一下十字键右键。"""
