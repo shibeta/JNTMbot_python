@@ -41,7 +41,7 @@ class OCREngine:
         if args is None:
             logger.warning("未提供启动参数，不使用参数启动 OCR 引擎。")
         else:
-            logger.debug(f"使用以下参数启动 OCR 引擎: {args}")
+            logger.info(f"使用以下参数启动 OCR 引擎: {args}")
         
         # 初始化 mss 截图器
         with mss_lock:
