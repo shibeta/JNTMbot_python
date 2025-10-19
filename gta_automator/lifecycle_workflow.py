@@ -18,7 +18,7 @@ class LifecycleWorkflow(_BaseWorkflow):
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 启动 GTA V 失败
         """
-        logger.info("动作: 正在初始化 GTA V 。。。")
+        logger.info("动作: 正在初始化 GTA V ...")
 
         if not self.process.is_game_started():
             # 没启动就先启动

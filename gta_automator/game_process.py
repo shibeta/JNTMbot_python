@@ -78,7 +78,7 @@ class GameProcess:
 
     def kill_gta(self):
         """杀死 GTA V 进程，并且清除窗口句柄和 PID 。"""
-        logger.info("动作: 正在杀死 GTA V 相关进程。。。")
+        logger.info("动作: 正在杀死 GTA V 相关进程...")
         kill_processes(self.GTA_PROCESS_NAMES)
         self.hwnd, self.pid = None, None
         logger.info("杀死 GTA V 相关进程完成。")

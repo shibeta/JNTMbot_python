@@ -133,7 +133,7 @@ def main():
 
     # 退出热键
     def toggle_exit():
-        logger.warning("退出热键被按下，退出程序。。。")
+        logger.warning("退出热键被按下，退出程序...")
         unsafe_exit()
 
     keyboard.add_hotkey("ctrl+f10", toggle_exit)

@@ -74,7 +74,7 @@ class _BaseWorkflow:
 
     def glitch_single_player_session(self):
         """通过暂停进程卡单人战局"""
-        logger.info("动作: 正在卡单人战局。。。")
+        logger.info("动作: 正在卡单人战局...")
         self.process.suspend_gta_process(self.config.suspendGTATime)
         logger.info("卡单人战局完成。")
 
