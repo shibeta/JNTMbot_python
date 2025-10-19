@@ -300,7 +300,7 @@ class JobWorkflow(_BaseWorkflow):
                     break
 
             # 8. 等待下一轮检查
-            time.sleep(self.config.checkLoopTime)
+            time.sleep(self.config.lobbyCheckLoopTime)
 
         logger.info(f"成功发车，本班车载有 {lobby_tracker.last_joined_player} 人。")
 

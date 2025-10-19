@@ -63,12 +63,12 @@ class Config:
             "value": 5,
             "comment": "初始化GTA时重启GTA失败的阈值，连续重启失败超过该次数将抛出异常。设置为<=1则重启失败立即抛出异常",
         },
-        "suspendGTATime": {"value": 15, "comment": "卡单持续时间 (秒)"},
+        "suspendGTATime": {"value": 13, "comment": "卡单持续时间 (秒)"},
         "delaySuspendTime": {
             "value": 5,
             "comment": "卡单延迟时间 (秒)",
         },
-        "checkLoopTime": {"value": 1, "comment": "检测间隔时间 (秒)"},
+        "lobbyCheckLoopTime": {"value": 1, "comment": "差事面板玩家加入状态检测间隔时间 (秒)"},
         "matchPanelTimeout": {"value": 180, "comment": "面板无人加入时重开时间 (秒)"},
         "playerJoiningTimeout": {"value": 120, "comment": "等待正在加入玩家超时重开时间 (秒)"},
         "startMatchDelay": {"value": 15, "comment": "开始差事等待延迟 (秒)"},
@@ -77,10 +77,9 @@ class Config:
             "comment": '全部玩家已加入时立即开始差事而不等待 (绕过 "startMatchDelay" 时间)',
         },
         "exitMatchTimeout": {"value": 120, "comment": "等待差事启动落地超时时间 (秒)(防止卡在启动战局中)"},
-        "goOutStairsTime": {"value": 1000, "comment": '差事层楼梯口进行"走出门"动作持续时间 (毫秒)'},
-        "crossAisleTime": {"value": 3700, "comment": '差事层进行"穿过走廊"动作持续时间 (毫秒)'},
+        "crossAisleTime": {"value": 4500, "comment": '差事层进行"穿过走廊"动作持续时间 (毫秒)'},
         "walkTimeFindJob": {
-            "value": 400,
+            "value": 350,
             "comment": '差事层进行"寻找差事黄圈"动作时 每次移动的持续时间 (毫秒)',
         },
         "ocrArgs": {
@@ -144,13 +143,12 @@ class Config:
         restartGTAConsecutiveFailThreshold: int
         suspendGTATime: int
         delaySuspendTime: int
-        checkLoopTime: int
+        lobbyCheckLoopTime: int
         matchPanelTimeout: int
         playerJoiningTimeout: int
         startMatchDelay: int
         startOnAllJoined: bool
         exitMatchTimeout: int
-        goOutStairsTime: int
         crossAisleTime: int
         walkLeftTimeGoJob: int
         walkDownTimeGoJob: int

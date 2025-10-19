@@ -5,11 +5,11 @@ steamBotHost: 127.0.0.1
 # Steam Bot后端的监听端口
 steamBotPort: 13091
 # 访问Steam Bot后端的认证Token
-steamBotToken: '0x4445414442454546'
+steamBotToken: "0x4445414442454546"
 # Steam Bot使用的HTTP代理，格式为"http://127.0.0.1:8080"，"system"表示使用系统代理，留空则不使用代理
 steamBotProxy: system
 # 要发送消息的Steam群组ID，程序启动时可以读取到
-steamGroupId: '37660928'
+steamGroupId: "37660928"
 # 要发送消息的Steam群组频道名称
 steamChannelName: BOT候车室
 # 初始化Steam Bot时，等待后端完成登录的最大等待时间 (秒)
@@ -25,7 +25,7 @@ enableExitOnUnhealthy: false
 # 是否启用微信推送bot状态信息。启用后，当程序运行一段时间后发生报错退出，或健康状态发生变化时，会向微信推送错误信息
 enableWechatPush: false
 # pushplus的API token，用于微信通知
-pushplusToken: ''
+pushplusToken: ""
 # 微信推送报错退出的启用延迟。为节省API用量，只有程序运行时长超过该时间后，报错退出时才会向微信推送 (分钟)
 wechatPushActivationDelay: 5
 # 主循环连续报错的阈值，连续报错超过该次数将报错退出。设置为<=1则报错一次即退出
@@ -36,8 +36,8 @@ restartGTAConsecutiveFailThreshold: 5
 suspendGTATime: 13
 # 卡单延迟时间 (秒)
 delaySuspendTime: 5
-# 检测间隔时间 (秒)
-checkLoopTime: 1
+# 差事面板玩家加入状态检测间隔时间 (秒)
+lobbyCheckLoopTime: 1
 # 面板无人加入时重开时间 (秒)
 matchPanelTimeout: 180
 # 等待正在加入玩家超时重开时间 (秒)
@@ -48,14 +48,15 @@ startMatchDelay: 15
 startOnAllJoined: true
 # 等待差事启动落地超时时间 (秒)(防止卡在启动战局中)
 exitMatchTimeout: 120
-# 差事层楼梯口进行"走出门"动作持续时间 (毫秒)
-goOutStairsTime: 1000
 # 差事层进行"穿过走廊"动作持续时间 (毫秒)
-crossAisleTime: 5000
+crossAisleTime: 4500
 # 差事层进行"寻找差事黄圈"动作时 每次移动的持续时间 (毫秒)
-walkTimeFindJob: 400
+walkTimeFindJob: 350
 # RapidOCR的启动参数
-ocrArgs: '--models=".\models" --det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx --keys=dict_chinese.txt --padding=70 --maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 --mostAngle=0 --numThread=1'
+ocrArgs: --models=".\models" --det=ch_PP-OCRv4_det_infer.onnx
+    --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx
+    --keys=dict_chinese.txt --padding=70 --maxSideLen=1024 --boxScoreThresh=0.5
+    --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 --mostAngle=0 --numThread=1
 # 开好面板时发的消息 (设置为空字符串则不发这条消息)
 msgOpenJobPanel: 德瑞差事已启动，请先看教程，学会卡CEO和卡单再进。如果无法连接请再试一次，bot没加速器网不好
 # 没人加入超时重开时发的消息 (设置为空字符串则不发这条消息)
@@ -70,5 +71,5 @@ msgJobStarting: 即将发车，请在听到“咚”的一声后卡单
 msgJobStartFail: 启动差事失败，请等下一班车
 # 发现有人没卡单时发的消息 (设置为空字符串则不发这条消息)
 msgDetectedSB: 有人没有卡单，请先阅读教程，了解Bot的使用方法后再使用本bot
-# 差传bot的序号，-1: 不指定, 按顺序加入直到成功, 1: 第一个差传(一般为辅助瞄准), 2: 第二个差传(一般为自由瞄准); 
+# 差传bot的序号，-1: 不指定, 按顺序加入直到成功, 1: 第一个差传(一般为辅助瞄准), 2: 第二个差传(一般为自由瞄准);
 jobTpBotIndex: -1
