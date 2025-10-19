@@ -137,7 +137,7 @@ class GameAction:
         self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHT, 5500)
         # 走出个人空间的门
         start_time = time.monotonic()
-        while time.monotonic() - start_time < 1.6:
+        for _ in range(6):
             self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTDOWN, 250)
             self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTUP, 250)
         # 走到楼梯间门口
