@@ -61,6 +61,7 @@ class OCREngine:
         if self.api:
             with rapidocr_lock:
                 self.api.stop()
+        logger.info("成功关闭 OCR 引擎。")
 
     def _get_physical_rect(self, hwnd: int, include_title_bar: bool) -> tuple[int, int, int, int]:
         """
