@@ -12,7 +12,7 @@ class OperationTimeoutContext(enum.Enum):
     PLAYER_JOIN = "玩家完成加入"
     RESPAWN_IN_AGENCY = "在事务所复活"
     JOB_SETUP_PANEL_OPEN = "差事面板打开"
-    JOB_START = "差事启动"
+    JOB_SETUP_PANEL_DISAPPEAR = "差事面板消失"
     CHARACTER_LAND = "人物落地"
 
 

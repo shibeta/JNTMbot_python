@@ -146,6 +146,7 @@ class JobWorkflow(_BaseWorkflow):
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         self.action.go_job_point_from_bed()
+        time.sleep(0.5)  # 等待移动结束
         self._find_job_point()
 
     def enter_and_wait_for_job_panel(self):
@@ -223,10 +224,8 @@ class JobWorkflow(_BaseWorkflow):
     ) -> bool:
         """
         如果条件满足，则尝试启动差事。
-        :return:
-        - True: 差事成功启动
-        - False: 未到启动时机，或启动失败，仍在差事准备面板中
-        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)``: 意外离开了任务面板
+
+        :return: True: 差事成功启动。False: 未到启动时机，或启动失败
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         if not lobby_tracker.should_start_job(
@@ -244,17 +243,9 @@ class JobWorkflow(_BaseWorkflow):
         time.sleep(0.5)
 
         if self.screen.is_job_starting():
-            logger.info("启动差事成功。")
             return True  # 成功启动
         else:
-            # 处理启动失败的情况
-            logger.warning("启动差事失败，正在尝试恢复...")
-            self.handle_warning_page()  # 处理可能出现的警告弹窗
-            if not self.screen.is_on_job_panel():
-                logger.error("启动失败且已离开差事面板，无法恢复。")
-                raise UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)
-            logger.info("仍在差事面板中，将继续等待。")
-            return False  # 启动失败，但可恢复
+            return False  # 启动失败
 
     def setup_wait_start_job(self):
         """
@@ -297,6 +288,14 @@ class JobWorkflow(_BaseWorkflow):
             # 6. 尝试启动差事，如果成功则退出循环
             if self._try_to_start_job(lobby_tracker, joining, joined):
                 break
+            else:
+                # 处理启动失败的情况
+                logger.warning("启动差事失败，正在尝试恢复...")
+                self.handle_warning_page()  # 处理可能出现的警告弹窗
+                if not self.screen.is_on_job_panel():
+                    logger.error("启动失败且已离开差事面板，无法恢复。")
+                    raise UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)
+                logger.info("仍在差事面板中，将继续等待。")
 
             # 7. 等待下一轮检查
             time.sleep(self.config.checkLoopTime)
@@ -326,14 +325,15 @@ class JobWorkflow(_BaseWorkflow):
         """
         处理差事启动后的一系列操作：等待加载、卡单、等待落地、再次卡单。
 
+        :raises ``OperationTimeout(OperationTimeoutContext.JOB_START)``: 启动差事时，等待差事面板消失超时
+        :raises ``OperationTimeout(OperationTimeoutContext.CHARACTER_LAND)``: 启动差事后，等待人物落地超时
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         # 等待面板消失
         logger.info("差事启动成功！等待面板消失...")
         if not self.wait_for_state(lambda: not self.screen.is_on_job_panel(), self.config.exitMatchTimeout):
-            logger.warning("等待差事加载超时。卡单并重启循环。")
-            self.glitch_single_player_session()
-            return  # 非致命错误，直接返回以结束当前循环
+            # 超时后直接抛出异常，因为目前完全不知道为什么会遇到这种情况
+            raise OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR)
 
         # 首次卡单
         logger.info(f"面板已消失。{self.config.delaySuspendTime} 秒后将卡单。")
@@ -343,9 +343,11 @@ class JobWorkflow(_BaseWorkflow):
         # 等待人物落地
         logger.info("差事加载完成！等待人物落地...")
         if not self.wait_for_state(self.screen.is_job_started, self.config.exitMatchTimeout):
-            logger.warning("等待人物落地超时。卡单并重启循环。")
+            # 超时后再卡一次单并等 30 秒作为保底，这有时会有效
             self.glitch_single_player_session()
-            return  # 非致命错误，直接返回以结束当前循环
+            if not self.wait_for_state(self.screen.is_job_started, 30):
+                # 还是不行就只能抛出异常
+                raise OperationTimeout(OperationTimeoutContext.CHARACTER_LAND)
 
         # 再次卡单
         logger.info(f"人物已落地。{self.config.delaySuspendTime} 秒后将卡单。")

@@ -1,4 +1,5 @@
 import atexit
+import time
 from typing import Optional
 
 from config import Config
@@ -36,7 +37,7 @@ class GTAAutomator:
         player_input = GameAction(gamepad if gamepad else GamepadSimulator(), config)
 
         # 初始化管理器，注入依赖
-        self.lifecycle_maganer = LifecycleWorkflow(screen, player_input, process, config)
+        self.lifecycle_manager = LifecycleWorkflow(screen, player_input, process, config)
         self.session_manager = SessionWorkflow(screen, player_input, process, config)
         self.workflow_manager = JobWorkflow(screen, player_input, process, config, steam_bot)
 
@@ -60,7 +61,7 @@ class GTAAutomator:
         logger.info("动作: 正在开始新一轮循环...")
 
         # 步骤1: 确保游戏就绪并进入新战局
-        self.lifecycle_maganer.setup_gta()
+        self.lifecycle_manager.setup_gta()
         try:
             self.session_manager.start_new_match()
         except UnexpectedGameState as e:
@@ -70,7 +71,7 @@ class GTAAutomator:
             ):
                 # 开始新战局时，用尽全部恢复策略后仍无法切换战局
                 logger.error("开始新战局失败次数过多。杀死 GTA V 进程。")
-                self.lifecycle_maganer.force_shutdown_gta()
+                self.lifecycle_manager.force_shutdown_gta()
             raise e
 
         # 步骤2: 等待复活
@@ -87,7 +88,7 @@ class GTAAutomator:
             self.workflow_manager.setup_wait_start_job()
         except OperationTimeout as e:
             # 玩家超时是正常现象，不是Bot的错。记录日志并安全退出当前循环。
-            logger.warning(f"等待队伍时发生超时: {e}。将开始下一轮。")
+            logger.warning(f"{e.message}。将开始下一轮。")
             self.workflow_manager.exit_job_panel()
             return
         except UnexpectedGameState as e:
@@ -99,7 +100,15 @@ class GTAAutomator:
                 raise  # 其他UnexpectedGameState是致命的，向上抛出
 
         # 步骤6: 处理差事启动后阶段
-        self.workflow_manager.handle_post_job_start()
+        try:
+            self.workflow_manager.handle_post_job_start()
+        except OperationTimeout as e:
+            if e.context == OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR or OperationTimeoutContext.CHARACTER_LAND:
+                logger.warning(f"{e.message}。卡单后将杀死 GTA V 进程。")
+                self.session_manager.glitch_single_player_session()
+                time.sleep(5)  # 等待游戏状态稳定
+                self.lifecycle_manager.force_shutdown_gta()
+            raise e
 
         # 步骤7: 检查最终状态
         self.workflow_manager.verify_mission_status_after_glitch()
