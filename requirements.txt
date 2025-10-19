@@ -1,6 +1,4 @@
 colorlog
-Pillow
-numpy
 psutil
 requests
 keyboard
