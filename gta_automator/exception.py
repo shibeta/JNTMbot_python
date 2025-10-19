@@ -4,14 +4,16 @@ import enum
 class OperationTimeoutContext(enum.Enum):
     """抛出 OperationTimeout 异常时，可能处于的上下文"""
 
-    GAME_WINDOW_STARTUP = "等待游戏窗口启动"
-    MAIN_MENU_LOAD = "等待主菜单加载"
-    STORY_MODE_LOAD = "等待故事模式加载"
-    JOIN_ONLINE_SESSION = "等待加入在线战局"
-    WAIT_TEAMMATE = "等待队友"
-    PLAYER_JOIN = "等待玩家完成加入"
-    RESPAWN_IN_AGENCY = "等待在事务所复活"
-    JOB_SETUP_PANEL_OPEN = "等待差事面板打开"
+    GAME_WINDOW_STARTUP = "游戏窗口启动"
+    MAIN_MENU_LOAD = "主菜单加载"
+    STORY_MODE_LOAD = "故事模式加载"
+    JOIN_ONLINE_SESSION = "加入在线战局"
+    WAIT_TEAMMATE = "队友"
+    PLAYER_JOIN = "玩家完成加入"
+    RESPAWN_IN_AGENCY = "在事务所复活"
+    JOB_SETUP_PANEL_OPEN = "差事面板打开"
+    JOB_START = "差事启动"
+    CHARACTER_LAND = "人物落地"
 
 
 class GameState(enum.Enum):
@@ -71,7 +73,7 @@ class OperationTimeout(GameAutomatorException):
 
     def __init__(self, context: OperationTimeoutContext):
         self.context = context
-        self.message = f"{self.context.value}超时"
+        self.message = f"等待{self.context.value}超时"
         super().__init__(self.message)
 
 
