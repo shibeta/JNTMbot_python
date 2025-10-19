@@ -89,6 +89,7 @@ class _BaseWorkflow:
         if self.screen.is_on_warning_page(ocr_text):
             logger.info("动作: 发现警告页面，正在按 A 键确认...")
             self.action.confirm()
+            time.sleep(0.2)  # 等待游戏响应弹窗关闭
             logger.info("已确认警告页面。")
             return True
         else:
@@ -244,7 +245,7 @@ class _BaseWorkflow:
 
     def wait_for_storymode_load(self):
         """
-        等待故事模式加载完成。
+        等待故事模式加载完成。该方法被多个管理器共用，因此放在基类中。
 
         :raises ``OperationTimeout(OperationTimeoutContext.STORY_MODE_LOAD)``: 等待故事模式加载超时
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
