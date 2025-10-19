@@ -221,20 +221,14 @@ class JobWorkflow(_BaseWorkflow):
                 pass
             raise OperationTimeout(OperationTimeoutContext.PLAYER_JOIN)
 
-    def _try_to_start_job(
-        self, lobby_tracker: LobbyStateTracker, joining_count: int, joined_count: int
-    ) -> bool:
+    def _try_to_start_job(self) -> bool:
         """
-        如果条件满足，则尝试启动差事。
+        尝试启动差事。启动失败时会尝试回到差事面板，无法回到面板会抛出异常。
 
-        :return: True: 差事成功启动。False: 未到启动时机，或启动失败
+        :return: True: 差事成功启动。False: 启动失败
+        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)``: 启动差事时意外离开了任务面板
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        if not lobby_tracker.should_start_job(
-            joining_count, joined_count, self.config.startOnAllJoined, self.config.startMatchDelay
-        ):
-            return False  # 未满足启动条件
-
         logger.info("动作: 正在启动差事...")
         try:
             self.steam_bot.send_group_message(self.config.msgJobStarting)
@@ -242,11 +236,19 @@ class JobWorkflow(_BaseWorkflow):
             pass
 
         self.action.confirm()  # 按A键启动
-        time.sleep(0.5)
+        time.sleep(0.5)  # 多等一会，让游戏响应差事启动
 
         if self.screen.is_job_starting():
+            logger.info("启动差事成功。")
             return True  # 成功启动
         else:
+            # 处理启动失败的情况
+            logger.warning("启动差事失败，正在尝试恢复...")
+            self.handle_warning_page()  # 处理可能出现的警告弹窗
+            if not self.screen.is_on_job_panel():
+                logger.error("启动失败且已离开差事面板，无法恢复。")
+                raise UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)
+            logger.info("仍在差事面板中，将继续等待。")
             return False  # 启动失败
 
     def setup_wait_start_job(self):
@@ -287,22 +289,20 @@ class JobWorkflow(_BaseWorkflow):
             # 5. 更新状态追踪器
             lobby_tracker.update(joining, joined)
 
-            # 6. 尝试启动差事，如果成功则退出循环
-            if self._try_to_start_job(lobby_tracker, joining, joined):
-                break
-            else:
-                # 处理启动失败的情况
-                logger.warning("启动差事失败，正在尝试恢复...")
-                self.handle_warning_page()  # 处理可能出现的警告弹窗
-                if not self.screen.is_on_job_panel():
-                    logger.error("启动失败且已离开差事面板，无法恢复。")
-                    raise UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)
-                logger.info("仍在差事面板中，将继续等待。")
+            # 6. 检测是否该启动差事
+            should_start_job = lobby_tracker.should_start_job(
+                joining, joined, self.config.startOnAllJoined, self.config.startMatchDelay
+            )
 
-            # 7. 等待下一轮检查
+            # 7. 尝试启动差事，如果成功则退出循环
+            if should_start_job:
+                if self._try_to_start_job():
+                    break
+
+            # 8. 等待下一轮检查
             time.sleep(self.config.checkLoopTime)
 
-        logger.info("启动差事成功。")
+        logger.info(f"成功发车，本班车载有 {lobby_tracker.last_joined_player} 人。")
 
     def exit_job_panel(self):
         """
