@@ -145,7 +145,7 @@ app.post("/send-message", async (req, res) => {
             message
         );
         console.debug(
-            `🧑‍💻 后端已完成发送消息操作。`
+            `💻 后端已完成发送消息操作。`
         );
         res.status(200).json({
             success: true,
