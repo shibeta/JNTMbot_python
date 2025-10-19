@@ -140,7 +140,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         """
         logger.info("正在等待 GTA V 窗口出现...")
 
-        if not self.wait_for_state(self.process.is_game_started, 300, 5, False):
+        if not self.wait_for_state(self.process.is_game_started, 300, 10, False):
             raise OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)
 
     def wait_for_mainmenu_load(self):
