@@ -110,7 +110,7 @@ class GameScreen:
         else:
             return self._search_text_in_area(query_text, left, top, width, height)
 
-    _PATTERN_IS_ON_JOB_PANEL = re.compile("|".join(re.escape(text) for text in ["浑球", "办事", "角色"]))
+    _PATTERN_IS_ON_JOB_PANEL_RIGHT_SCREEN = re.compile("|".join(re.escape(text) for text in ["浑球", "办事", "角色"]))
 
     def get_job_setup_status(self) -> tuple[bool, int, int, int]:
         """
@@ -123,7 +123,7 @@ class GameScreen:
         ocr_result = self.ocr_game_window(0.5, 0, 0.5, 1)
 
         # 使用正则表达式搜索是否在面板中
-        if re.search(self._PATTERN_IS_ON_JOB_PANEL, ocr_result) is not None:
+        if self._search_in_text(ocr_result, self._PATTERN_IS_ON_JOB_PANEL_RIGHT_SCREEN):
             # 在面板中则识别加入玩家数
             # "离开"是加入失败，可以认为这也是一种"正在加入"状态
             joining_count = ocr_result.count("正在") + ocr_result.count("离开")
@@ -191,7 +191,7 @@ class GameScreen:
         """
         return self._check_state("床", ocr_text, 0, 0, 0.5, 0.5)
 
-    _PATTERN_IS_ON_JOB_PANEL = re.compile("|".join(re.escape(text) for text in ["别惹", "德瑞", "搭档"]))
+    _PATTERN_IS_ON_JOB_PANEL_LEFT_SCREEN = re.compile("|".join(re.escape(text) for text in ["别惹", "德瑞", "搭档"]))
 
     def is_on_job_panel(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -199,7 +199,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(self._PATTERN_IS_ON_JOB_PANEL, ocr_text, 0, 0, 0.5, 0.5)
+        return self._check_state(self._PATTERN_IS_ON_JOB_PANEL_LEFT_SCREEN, ocr_text, 0, 0, 0.5, 0.5)
 
     _PATTERN_IS_ON_FIRST_JOB_SETUP_PAGE = re.compile(
         "|".join(re.escape(text) for text in ["设置", "镜头", "武器"])
