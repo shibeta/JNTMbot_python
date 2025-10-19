@@ -3,6 +3,8 @@ from typing import Optional
 from logger import get_logger
 from windows_utils import (
     find_window,
+    get_process_name,
+    get_window_title,
     kill_processes,
     resume_process_from_suspend,
     suspend_process_for_duration,
@@ -86,10 +88,10 @@ class GameProcess:
     # --- 状态检查方法 ---
     def is_game_started(self) -> bool:
         """检查游戏是否启动。"""
-        window_info = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
-        if window_info:
-            logger.debug(f"GTA V 已启动。窗口句柄: {window_info[0]}, 进程ID: {window_info[1]}")
-            return True
-        else:
-            logger.debug("未找到 GTA V 窗口。GTA V 未启动。")
-            return False
+        if self.hwnd and self.pid:
+            if "Grand Theft Auto V" == get_window_title(
+                self.hwnd
+            ) and "GTA5_Enhanced.exe" == get_process_name(self.pid):
+                return True
+
+        return False

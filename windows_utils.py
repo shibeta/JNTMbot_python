@@ -25,7 +25,6 @@ def is_process_exist(pid: int):
     检查进程ID是否有效。
 
     :param pid: 进程ID (整数)
-
     :return: True表示进程存在，False表示不存在
     """
     try:
@@ -43,7 +42,6 @@ def is_window_handler_exist(hwnd: int) -> bool:
     检查窗口句柄是否有效
 
     :param hwnd: 窗口句柄 (整数)
-
     :return: True表示窗口存在，False表示不存在
     """
     try:
@@ -56,12 +54,37 @@ def is_window_handler_exist(hwnd: int) -> bool:
         return False
 
 
+def get_window_title(hwnd: int) -> Optional[str]:
+    """
+    获取一个窗口句柄的标题
+
+    :param hwnd: 窗口句柄 (整数)
+    :return: 标题字符串。如果未找到窗口，会返回 None
+    """
+    try:
+        return win32gui.GetWindowText(hwnd)
+    except:
+        return None
+
+
+def get_process_name(pid: int) -> Optional[str]:
+    """
+    获取一个进程的进程名
+
+    :param pid: 进程 PID (整数)
+    :return: 进程名字符串。如果未找到进程，返回 None
+    """
+    try:
+        return psutil.Process(pid).name()
+    except:
+        return None
+
+
 def get_window_info(window_name: str) -> Optional[Tuple[int, int]]:
     """
     根据窗口名称查找窗口，并返回其句柄(hwnd)和进程ID(pid)。
 
     :param window_name: 目标窗口的标题。
-
     :return: 一个包含 (hwnd, pid) 的元组，如果未找到窗口则返回 None。
     """
     hwnd = win32gui.FindWindow(None, window_name)
@@ -83,7 +106,6 @@ def find_window(window_title: str, process_name: str) -> Optional[Tuple[int, int
 
     :param window_title: 目标窗口的标题。
     :param process_name: 目标窗口的进程名称。
-
     :return: 一个包含 (hwnd, pid) 的元组，如果未找到窗口则返回 None。
     """
     # 找到所有的窗口
@@ -128,7 +150,7 @@ def find_window(window_title: str, process_name: str) -> Optional[Tuple[int, int
     return None
 
 
-def get_process_pid_by_window_handler(handler: int) -> int:
+def get_process_pid_by_window_handler(hwnd: int) -> int:
     """
     根据窗口句柄获取进程pid
 
@@ -136,12 +158,12 @@ def get_process_pid_by_window_handler(handler: int) -> int:
     :raises ``Exception``: 获取进程pid失败
     """
     try:
-        _, pid = win32process.GetWindowThreadProcessId(handler)
+        _, pid = win32process.GetWindowThreadProcessId(hwnd)
         if not pid:
-            raise Exception(f"找不到句柄{handler}对应的进程")
+            raise Exception(f"找不到句柄{hwnd}对应的进程")
         return pid
     except Exception as e:
-        raise Exception(f"获取句柄{handler}的进程ID时发生异常: {e}") from e
+        raise Exception(f"获取句柄{hwnd}的进程ID时发生异常: {e}") from e
 
 
 def suspend_process_for_duration(pid: int, duration_seconds: float):
@@ -272,9 +294,12 @@ def unset_top_window(hwnd: int):
     except Exception as e:
         raise Exception(f"取消置顶窗口({hwnd})时出错: {e}") from e
 
+
 def get_document_fold_path() -> Path:
     """
-    获取"我的文档"文件夹位置
+    获取"我的文档"文件夹位置。
+
+    :return: "我的文档"文件夹的 Path 对象
     """
     try:
         CSIDL_PERSONAL = 5  # My Documents
@@ -283,7 +308,7 @@ def get_document_fold_path() -> Path:
         ctypes.windll.shell32.SHGetFolderPathW(None, CSIDL_PERSONAL, None, SHGFP_TYPE_CURRENT, buf)
         documents_path = Path(buf.value)
     except Exception as e:
-        logger.error(f'调用 Windows API 获取"我的文档"文件夹位置失败 ({e})，将使用默认路径。')
+        logger.error(f'调用 Windows API 获取"我的文档"文件夹位置失败 ({e})，将返回默认路径。')
         documents_path = Path.home() / "Documents"
 
     return documents_path
