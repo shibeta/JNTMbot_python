@@ -21,30 +21,32 @@ class LobbyStateTracker:
         self.start_wait_time = time.monotonic()
         self.team_status_last_changed_time = self.start_wait_time
         self.last_zero_joining_player_time = self.start_wait_time
-        self.last_player_counts = (0, 0)  # (joining, joined)
+        self.last_joining_player = 0
+        self.last_joined_player = 0
         self.team_full_notified = False
 
     def get_last_counts(self) -> tuple[int, int]:
         """返回上一轮的玩家数量 (joining, joined)。"""
-        return self.last_player_counts
+        return self.last_joining_player, self.last_joined_player
 
     def update(self, joining_count: int, joined_count: int):
         """用最新的玩家数量更新内部状态和计时器。"""
         current_time = time.monotonic()
-        last_joining_count, last_joined_count = self.last_player_counts
 
         # 如果总人数或加入/正在加入的人数结构发生变化，更新队伍状态变化计时器
-        if joining_count != last_joining_count or joined_count != last_joined_count:
+        if joining_count != self.last_joining_player or joined_count != self.last_joined_player:
             self.team_status_last_changed_time = current_time
             # 如果没有正在加入的玩家，更新无加入状态玩家计时器
             if joining_count == 0:
                 self.last_zero_joining_player_time = current_time
 
-            self.last_player_counts = (joining_count, joined_count)
+            # 更新大厅人数计数器
+            self.last_joining_player = joining_count
+            self.last_joined_player = joined_count
 
     def has_wait_timeout(self, timeout: int) -> bool:
         """检查是否长时间没有任何玩家加入。"""
-        is_empty = self.last_player_counts == (0, 0)
+        is_empty = ( self.last_joined_player == 0 and self.last_joining_player == 0 )
         time_elapsed = time.monotonic() - self.start_wait_time
         return is_empty and time_elapsed > timeout
 
