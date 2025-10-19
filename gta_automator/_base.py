@@ -99,19 +99,19 @@ class _BaseWorkflow:
         self, check_function, timeout: int, check_interval: float = 1.0, game_has_started: bool = True
     ) -> bool:
         """
-        通用等待函数，在超时前反复检查某个状态。如果游戏没有运行，会停止检查并抛出异常。
+        通用等待函数，在超时前反复检查某个状态。如果游戏窗口不存在，会停止检查并抛出异常。
 
         :param check_function: 一个无参数并返回布尔值的函数 (e.g., self.screen.is_on_job_panel)
         :param timeout: 超时秒数
         :param check_interval: 检查间隔秒数
-        :param game_started: 游戏是否已经启动。传入 False 时，会跳过游戏运行检查
+        :param game_started: 游戏是否已经启动。传入 False 时，会跳过游戏窗口检查
         :return: 如果在超时前状态达成则返回 True，否则返回 False
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         start_time = time.monotonic()
         while time.monotonic() - start_time < timeout:
-            # 确保游戏还在运行
-            if game_has_started and not self.process.is_game_started():
+            # 确保游戏窗口句柄有效
+            if game_has_started and not self.process.is_hwnd_valid():
                 raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
 
             if check_function():
@@ -301,5 +301,3 @@ class _BaseWorkflow:
         else:
             # 循环结束仍未加载成功
             raise OperationTimeout(OperationTimeoutContext.JOIN_ONLINE_SESSION)
-
-    

@@ -48,7 +48,7 @@ class LifecycleWorkflow(_BaseWorkflow):
     def force_shutdown_gta(self):
         """强制退出游戏，通过杀死进程实现"""
         self.process.kill_gta_process()
-    
+
     def kill_and_restart_gta(self):
         """
         杀死并重启 GTA V 游戏，并进入在线模式仅邀请战局。
