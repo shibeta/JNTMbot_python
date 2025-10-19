@@ -70,7 +70,7 @@ class GTAAutomator:
             ):
                 # 开始新战局时，用尽全部恢复策略后仍无法切换战局
                 logger.error("开始新战局失败次数过多。杀死 GTA V 进程。")
-                self.lifecycle_maganer.process.kill_gta()
+                self.lifecycle_maganer.force_shutdown_gta()
             raise e
 
         # 步骤2: 等待复活

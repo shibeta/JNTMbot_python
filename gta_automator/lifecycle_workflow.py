@@ -45,6 +45,10 @@ class LifecycleWorkflow(_BaseWorkflow):
 
         logger.info("初始化 GTA V 完成。")
 
+    def force_shutdown_gta(self):
+        """强制退出游戏，通过杀死进程实现"""
+        self.process.kill_gta_process()
+    
     def kill_and_restart_gta(self):
         """
         杀死并重启 GTA V 游戏，并进入在线模式仅邀请战局。
@@ -53,18 +57,18 @@ class LifecycleWorkflow(_BaseWorkflow):
         """
         logger.info(f"动作: 正在杀死并重启 GTA V...")
 
-        self.process.kill_gta()
+        self.force_shutdown_gta()
         logger.info("20秒后将重启 GTA V...")
         time.sleep(20)  # 等待20秒钟用于 steam 客户端响应 GTA V 退出
         # 以防万一再杀一次
-        self.process.kill_gta()
+        self.force_shutdown_gta()
 
         # 启动游戏
         try:
             self.start_gta_steam()
         except GameAutomatorException as e:
             logger.error(f"启动 GTA V 时，发生异常: {e}")
-            self.process.kill_gta()
+            self.force_shutdown_gta()
             return
 
         # 进入故事模式
@@ -73,7 +77,7 @@ class LifecycleWorkflow(_BaseWorkflow):
             self.enter_storymode_from_mainmenu()
         except GameAutomatorException as e:
             logger.error(f"进入故事模式时，发生异常: {e}")
-            self.process.kill_gta()
+            self.force_shutdown_gta()
             return
 
         # 进入在线模式
@@ -83,14 +87,14 @@ class LifecycleWorkflow(_BaseWorkflow):
         except UnexpectedGameState as e:
             logger.error(f"进入在线模式时，发生异常: {e}")
             if e.actual_state == GameState.BAD_PCSETTING_BIN:
-                self.process.kill_gta()
+                self.force_shutdown_gta()
                 self.fix_bad_pcsetting()
             else:
-                self.process.kill_gta()
+                self.force_shutdown_gta()
             return
         except GameAutomatorException as e:
             logger.error(f"进入在线模式时，发生异常: {e}")
-            self.process.kill_gta()
+            self.force_shutdown_gta()
             return
 
         logger.info("重启 GTA V 成功。")
