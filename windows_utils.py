@@ -1,3 +1,5 @@
+from pathlib import Path
+import ctypes.wintypes
 import time
 import psutil
 import win32gui
@@ -269,3 +271,19 @@ def unset_top_window(hwnd: int):
         )
     except Exception as e:
         raise Exception(f"取消置顶窗口({hwnd})时出错: {e}") from e
+
+def get_document_fold_path() -> Path:
+    """
+    获取"我的文档"文件夹位置
+    """
+    try:
+        CSIDL_PERSONAL = 5  # My Documents
+        SHGFP_TYPE_CURRENT = 0  # Get current, not default value
+        buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
+        ctypes.windll.shell32.SHGetFolderPathW(None, CSIDL_PERSONAL, None, SHGFP_TYPE_CURRENT, buf)
+        documents_path = Path(buf.value)
+    except Exception as e:
+        logger.error(f'调用 Windows API 获取"我的文档"文件夹位置失败 ({e})，将使用默认路径。')
+        documents_path = Path.home() / "Documents"
+
+    return documents_path
