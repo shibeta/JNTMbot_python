@@ -141,7 +141,7 @@ class OCREngine:
             except Exception:
                 pass
 
-    def ocr(
+    def ocr_window(
         self,
         hwnd: int,
         left: float = 0,
@@ -219,7 +219,7 @@ if __name__ == "__main__":
         time.sleep(3)
 
         # 对记事本窗口的左上角一半区域进行 OCR
-        text = ocr_engine.ocr(hwnd, left=0, top=0, width=0.5, height=0.5)
+        text = ocr_engine.ocr_window(hwnd, left=0, top=0, width=0.5, height=0.5)
 
         print("-" * 20)
         print(f"识别结果: {text}")
