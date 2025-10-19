@@ -8,7 +8,7 @@ from windows_utils import (
     suspend_process_for_duration,
 )
 
-logger = get_logger(name="automator_process")
+logger = get_logger(name="game_process")
 
 
 class GameProcess:
@@ -82,3 +82,14 @@ class GameProcess:
         kill_processes(self.GTA_PROCESS_NAMES)
         self.hwnd, self.pid = None, None
         logger.info("杀死 GTA V 相关进程完成。")
+
+    # --- 状态检查方法 ---
+    def is_game_started(self) -> bool:
+        """检查游戏是否启动。"""
+        window_info = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
+        if window_info:
+            logger.debug(f"GTA V 已启动。窗口句柄: {window_info[0]}, 进程ID: {window_info[1]}")
+            return True
+        else:
+            logger.debug("未找到 GTA V 窗口。GTA V 未启动。")
+            return False

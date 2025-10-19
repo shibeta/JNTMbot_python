@@ -1,4 +1,5 @@
 import atexit
+from typing import Optional
 
 from config import Config
 from gamepad_utils import GamepadSimulator
@@ -7,14 +8,14 @@ from ocr_utils import OCREngine
 from steambot_utils import SteamBotClient
 
 from .exception import *
-from .process import GameProcess
-from .screen import GameScreen
-from .action import Action
-from .lifecycle import Lifecycle
-from .session import Session
-from .workflow import JobWorkflow
+from .game_process import GameProcess
+from .game_screen import GameScreen
+from .game_action import GameAction
+from .lifecycle_workflow import LifecycleWorkflow
+from .session_workflow import SessionWorkflow
+from .job_workflow import JobWorkflow
 
-logger = get_logger("automator_facade")
+logger = get_logger("gta_automator")
 
 
 class GTAAutomator:
@@ -22,16 +23,22 @@ class GTAAutomator:
     用于自动化操作 GTA V 的类。
     """
 
-    def __init__(self, config: Config, ocr_engine: OCREngine, steam_bot: SteamBotClient):
+    def __init__(
+        self,
+        config: Config,
+        ocr_engine: OCREngine,
+        steam_bot: SteamBotClient,
+        gamepad: Optional[GamepadSimulator] = None,
+    ):
         # 初始化底层模块
         process = GameProcess()
         screen = GameScreen(ocr_engine, process)
-        player_input = Action(GamepadSimulator(), config)
+        player_input = GameAction(gamepad if gamepad else GamepadSimulator(), config)
 
         # 初始化管理器，注入依赖
-        self.lifecycle = Lifecycle(screen, player_input, process, config)
-        self.session = Session(screen, player_input, process, config)
-        self.workflow = JobWorkflow(screen, player_input, process, config, steam_bot)
+        self.lifecycle_maganer = LifecycleWorkflow(screen, player_input, process, config)
+        self.session_manager = SessionWorkflow(screen, player_input, process, config)
+        self.workflow_manager = JobWorkflow(screen, player_input, process, config, steam_bot)
 
         # 注册退出处理函数，以确保Python程序退出时 GTA V 进程不会被挂起
         atexit.register(process.resume_gta_process)
@@ -53,48 +60,48 @@ class GTAAutomator:
         logger.info("动作: 正在开始新一轮循环...")
 
         # 步骤1: 确保游戏就绪并进入新战局
-        self.lifecycle.setup_gta()
+        self.lifecycle_maganer.setup_gta()
         try:
-            self.session.start_new_match()
+            self.session_manager.start_new_match()
         except UnexpectedGameState as e:
             if (
-                e.expected == {GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}
+                e.expected == {GameState.ONLINE_FREEMODE, GameState.IN_MISSION}
                 and e.actual_state == GameState.UNKNOWN
             ):
                 # 开始新战局时，用尽全部恢复策略后仍无法切换战局
                 logger.error("开始新战局失败次数过多。杀死 GTA V 进程。")
-                self.lifecycle.process.kill_gta()
+                self.lifecycle_maganer.process.kill_gta()
             raise e
 
         # 步骤2: 等待复活
-        self.workflow.wait_for_respawn()
+        self.workflow_manager.wait_for_respawn()
 
         # 步骤3: 导航至任务点
-        self.workflow.navigate_from_bed_to_job_point()
+        self.workflow_manager.navigate_from_bed_to_job_point()
 
         # 步骤4: 进入差事并等待面板
-        self.workflow.enter_and_wait_for_job_panel()
+        self.workflow_manager.enter_and_wait_for_job_panel()
 
         # 步骤5: 管理大厅并启动差事
         try:
-            self.workflow.setup_wait_start_job()
+            self.workflow_manager.setup_wait_start_job()
         except OperationTimeout as e:
             # 玩家超时是正常现象，不是Bot的错。记录日志并安全退出当前循环。
             logger.warning(f"等待队伍时发生超时: {e}。将开始下一轮。")
-            self.workflow.exit_job_panel()
+            self.workflow_manager.exit_job_panel()
             return
         except UnexpectedGameState as e:
             if e.actual_state == GameState.BAD_JOB_PANEL_STANDBY_PLAYER:
                 logger.warning(f"发现待命玩家: {e}。将开始下一轮。")
-                self.workflow.exit_job_panel()
+                self.workflow_manager.exit_job_panel()
                 return
             else:
                 raise  # 其他UnexpectedGameState是致命的，向上抛出
 
         # 步骤6: 处理差事启动后阶段
-        self.workflow.handle_post_job_start()
+        self.workflow_manager.handle_post_job_start()
 
         # 步骤7: 检查最终状态
-        self.workflow.verify_mission_status_after_glitch()
+        self.workflow_manager.verify_mission_status_after_glitch()
 
         logger.info("本轮循环成功完成。")

@@ -1,4 +1,3 @@
-import ctypes.wintypes
 import struct
 from pathlib import Path
 import time
@@ -8,21 +7,22 @@ import requests
 from config import Config
 from gta_automator.exception import *
 from logger import get_logger
+from windows_utils import get_document_fold_path
 
-from .screen import GameScreen
-from .action import Action
-from .process import GameProcess
+from .game_screen import GameScreen
+from .game_action import GameAction
+from .game_process import GameProcess
 
-logger = get_logger("automator_common")
+logger = get_logger("base_workflow")
 
 
-class _BaseManager:
+class _BaseWorkflow:
     """
-    为所有管理器提供共享的底层模块和通用子流程。
+    为所有工作流提供共享的底层模块和通用子流程。
     这不是一个应该被直接实例化的类。
     """
 
-    def __init__(self, screen: GameScreen, action: Action, process: GameProcess, config: Config):
+    def __init__(self, screen: GameScreen, action: GameAction, process: GameProcess, config: Config):
         # 所有管理器都需要这些底层依赖
         self.screen = screen
         self.action = action
@@ -41,7 +41,7 @@ class _BaseManager:
 
     def check_if_in_onlinemode(self, max_retries: int = 3) -> bool:
         """
-        检查当前是否在在线模式中。
+        通过打开信息面板，检查当前是否在在线模式中。只应在打开信息面板操作不会导致副作用的场景下执行
 
         :param max_retries: 最大尝试次数，默认值为 3
         :return: 如果在在线模式中则返回 True，否则返回 False
@@ -57,7 +57,7 @@ class _BaseManager:
 
     def check_if_in_storymode(self, max_retries: int = 3) -> bool:
         """
-        检查当前是否在故事模式中。
+        通过打开暂停菜单，检查当前是否在故事模式中。只应在打开暂停菜单操作不会导致副作用的场景下执行
 
         :param max_retries: 最大尝试次数，默认值为 3
         :return: 如果在在线模式中则返回 True，否则返回 False
@@ -78,7 +78,7 @@ class _BaseManager:
         self.process.suspend_gta_process(self.config.suspendGTATime)
         logger.info("卡单人战局完成。")
 
-    def confirm_warning_page(self, ocr_text: Optional[str] = None) -> bool:
+    def handle_warning_page(self, ocr_text: Optional[str] = None) -> bool:
         """
         如果当前在警告页面，则按 A 键确认。
 
@@ -94,7 +94,9 @@ class _BaseManager:
         else:
             return False
 
-    def wait_for_state(self, check_function, timeout: int, check_interval: float = 1.0, game_started: bool = True) -> bool:
+    def wait_for_state(
+        self, check_function, timeout: int, check_interval: float = 1.0, game_started: bool = True
+    ) -> bool:
         """
         通用等待函数，在超时前反复检查某个状态。如果游戏没有运行，会停止检查并抛出异常。
 
@@ -108,7 +110,7 @@ class _BaseManager:
         start_time = time.monotonic()
         while time.monotonic() - start_time < timeout:
             # 确保游戏还在运行
-            if game_started and not self.screen.is_game_started():
+            if game_started and not self.process.is_game_started():
                 raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
 
             if check_function():
@@ -116,26 +118,60 @@ class _BaseManager:
             time.sleep(check_interval)
         return False
 
-    def clean_pcsetting(self):
+    def clean_pcsetting_bin(self, pcsetting_bin_path: Path):
         """
-        尝试保留设置并清洗 pc_setting.bin。
+        清理 pc_setting.bin 中的数据，并且保留游戏设置。
+
+        清理后，使用对应该 pc_setting.bin 的用户文件启动游戏，主菜单会多出一个"最新"页面，并且只能从故事模式进入在线模式
+
+        :param pcsetting_bin_path: pc_setting.bin的路径
+        :raises ``FileNotFoundError(f"文件 {pcsetting_bin_path} 不存在")``: 传入的路径不存在或是一个文件夹
+        :raises ``IOError``: 处理文件时发生 I/O 错误
+        :raises ``Exception``: 处理文件时发生其他错误
+        """
+        # 检查 pc_setting.bin 是否存在
+        if not pcsetting_bin_path.is_file():
+            raise FileNotFoundError(f"文件 {pcsetting_bin_path} 不存在")
+
+        # 清理 pc_setting.bin
+        with open(pcsetting_bin_path, "rb") as f:
+            p_byte_set = f.read()
+
+        # 创建一个bytearray用于存储需要保留的数据
+        o_byte_set = bytearray()
+        chunk_size = 8
+
+        # 以8字节为单位循环处理文件内容
+        for i in range(0, len(p_byte_set), chunk_size):
+            chunk = p_byte_set[i : i + chunk_size]
+
+            # 低于8字节不做处理
+            if len(chunk) < chunk_size:
+                continue
+
+            # 将前2个字节按小端序解析为无符号短整数
+            header_bytes = chunk[:2]
+            value = struct.unpack("<H", header_bytes)[0]
+
+            # 如果整数值小于850，则保留这个8字节块
+            if value < 850:
+                o_byte_set.extend(chunk)
+
+        # 将处理后的数据写回原文件
+        with open(pcsetting_bin_path, "wb") as f:
+            f.write(o_byte_set)
+
+    def fix_bad_pcsetting(self):
+        """
+        修复 pc_setting.bin 导致的无法进入线上模式。
         应当在 GTA V 未启动的情况下运行。否则无法生效。
         """
-        logger.info("动作: 正在清理 pc_setting.bin...")
+        logger.info("动作: 正在修复 pc_setting.bin 无法进线上...")
 
         # 获取"我的文档"文件夹位置
-        try:
-            CSIDL_PERSONAL = 5  # My Documents
-            SHGFP_TYPE_CURRENT = 0  # Get current, not default value
-            buf = ctypes.create_unicode_buffer(ctypes.wintypes.MAX_PATH)
-            ctypes.windll.shell32.SHGetFolderPathW(None, CSIDL_PERSONAL, None, SHGFP_TYPE_CURRENT, buf)
-            documents_path = Path(buf.value)
-        except Exception as e:
-            logger.error(f'调用 Windows API 获取"我的文档"文件夹位置失败 ({e})，将使用默认路径。')
-            documents_path = Path.home() / "Documents"
+        documents_path = get_document_fold_path()
 
-        # 游戏目录名，目前程序仅支持 GTA V 增强版
-        # TODO: 增加对传承版的兼容。目前主要问题在于不确定传承版的 pc_settings.bin 格式是否相同
+        # 游戏目录名，不打算支持传承版
         game_directory_name = "GTAV Enhanced"
 
         # 用户资料文件路径
@@ -155,47 +191,21 @@ class _BaseManager:
                 continue
 
             logger.info(f"正在清理: {settings_file}")
-
-            # 检查每 8 字节数据块的前 2 个字节，将其作为一个小端整数进行解析。
-            # 如果这个整数值小于 850，则保留这个 8 字节的数据块
-            # 来源: https://github.com/mageangela/QuellGTA/
             try:
-                # 以二进制打开文件
-                with open(settings_file, "rb") as f:
-                    p_byte_set = f.read()
-
-                # 创建一个bytearray用于存储需要保留的数据
-                o_byte_set = bytearray()
-                chunk_size = 8
-
-                # 以8字节为单位循环处理文件内容
-                for i in range(0, len(p_byte_set), chunk_size):
-                    chunk = p_byte_set[i : i + chunk_size]
-
-                    # 低于8字节不做处理
-                    if len(chunk) < chunk_size:
-                        continue
-
-                    # 将前2个字节按小端序解析为无符号短整数
-                    header_bytes = chunk[:2]
-                    value = struct.unpack("<H", header_bytes)[0]
-
-                    # 如果整数值小于850，则保留这个8字节块
-                    if value < 850:
-                        o_byte_set.extend(chunk)
-
-                # 将处理后的数据写回原文件
-                with open(settings_file, "wb") as f:
-                    f.write(o_byte_set)
-
-                logger.info(f"清理完成: {settings_file}")
-
+                self.clean_pcsetting_bin(settings_file)
+            except FileNotFoundError:
+                logger.error(f"清理 {settings_file} 失败: 文件不存在。")
+                continue
             except IOError as e:
-                logger.error(f"处理文件 {settings_file} 时发生IO错误: {e}")
+                logger.error(f"清理 {settings_file} 失败: IO错误: {e}")
+                continue
             except Exception as e:
-                logger.error(f"处理文件 {settings_file} 时发生未知错误: {e}")
+                logger.error(f"清理 {settings_file} 失败: 未知错误: {e}")
+                continue
 
-        logger.info("清理 pc_setting.bin 完成。")
+            logger.info(f"清理完成: {settings_file}")
+
+        logger.info("修复 pc_setting.bin 无法进线上完成。")
 
     def get_mageangela_jobwarp_bot_steamjvp(self) -> list[str]:
         """
@@ -232,43 +242,6 @@ class _BaseManager:
 
         return list_bot_steamjvp
 
-    def wait_for_mainmenu_load(self):
-        """
-        等待主菜单加载完成。
-
-        :raises ``OperationTimeout(OperationTimeoutContext.MAIN_MENU_LOAD)``: 等待主菜单加载超时
-        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
-
-        """
-        logger.info("动作: 正在等待主菜单加载...")
-        start_time = time.monotonic()
-        while time.monotonic() - start_time < 180:  # 3分钟加载超时
-            # 两次检查需要分开进行 OCR , 因为 OCR 区域不一样
-            # 检查是否在主菜单
-            if self.screen.is_on_mainmenu_online_page():
-                # 进入了主菜单
-                return
-            # 有时候主菜单会展示一个显示 GTA+ 广告的窗口
-            elif self.screen.is_on_mainmenu_gtaplus_advertisement_page():
-                time.sleep(2)  # 等待广告页面加载完成
-                self.action.confirm()
-                # 确认掉广告页面后，也会进入主菜单
-                return
-            time.sleep(5)
-        else:
-            # 循环结束仍未加载成功
-            raise OperationTimeout(OperationTimeoutContext.MAIN_MENU_LOAD)
-
-    def wait_for_gta_window_showup(self):
-        """
-        等待 GTA V 窗口出现。
-        :raises ``OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)``: 等待 GTA V 窗口出现超时
-        """
-        logger.info("正在等待 GTA V 窗口出现...")
-
-        if not self.wait_for_state(self.screen.is_game_started, 300, 5, False):
-            raise OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)
-
     def wait_for_storymode_load(self):
         """
         等待故事模式加载完成。
@@ -288,7 +261,7 @@ class _BaseManager:
 
         :raises ``OperationTimeout(OperationTimeoutContext.JOIN_ONLINE_SESSION)``: 等待进入在线模式超时
         :raises ``UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.BAD_PCSETTING_BIN)``: 由于 pc_setting.bin 问题无法进入在线模式
-        :raises ``UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.MAIN_MENU)``: 由于网络问题等原因被回退到主菜单
+        :raises ``UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.MAIN_MENU)``: 由于网络问题等原因被回退到主菜单 (仅限增强版)
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         logger.info("正在等待进入在线模式...")
@@ -305,15 +278,14 @@ class _BaseManager:
             # 检查各种错误/意外状态
             if self.screen.is_on_bad_pcsetting_warning_page(ocr_text):
                 # 由于 pc_setting.bin 问题无法进线上
-                raise UnexpectedGameState(GameState.IN_ONLINE_LOBBY, GameState.BAD_PCSETTING_BIN)
-            elif self.confirm_warning_page(ocr_text):
+                raise UnexpectedGameState(GameState.ONLINE_FREEMODE, GameState.BAD_PCSETTING_BIN)
+            elif self.handle_warning_page(ocr_text):
                 # 弹出错误窗口，比如网络不好，R星发钱等情况
                 continue
             elif self.screen.is_on_mainmenu_online_page(ocr_text):
-                # 增强版由于网络不好或者被BE踢了，进入了主菜单
-                raise UnexpectedGameState(GameState.IN_ONLINE_LOBBY, GameState.MAIN_MENU)
+                # 由于网络不好或者被BE踢了，进入了主菜单
+                raise UnexpectedGameState(GameState.ONLINE_FREEMODE, GameState.MAIN_MENU)
 
-            # TODO: 补充传承版被回退到故事模式的处理方法，目前问题在于难以检测是否在故事模式中
             # TODO: R星有时候会更新用户协议，需要补充确认新的用户协议的检查和动作。目前问题在于不清楚如何判断在用户协议页面和如何用手柄确认
 
             # 检查是否进入了在线模式
@@ -328,3 +300,5 @@ class _BaseManager:
         else:
             # 循环结束仍未加载成功
             raise OperationTimeout(OperationTimeoutContext.JOIN_ONLINE_SESSION)
+
+    

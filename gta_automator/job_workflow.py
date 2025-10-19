@@ -5,13 +5,13 @@ from logger import get_logger
 from config import Config
 from steambot_utils import SteamBotClient
 
-from ._base import _BaseManager
-from .process import GameProcess
-from .screen import GameScreen
+from ._base import _BaseWorkflow
+from .game_process import GameProcess
+from .game_screen import GameScreen
 from .exception import *
-from .action import Action
+from .game_action import GameAction
 
-logger = get_logger("automator_workflow")
+logger = get_logger("job_workflow")
 
 
 class LobbyStateTracker:
@@ -74,13 +74,13 @@ class LobbyStateTracker:
         return False
 
 
-class JobWorkflow(_BaseManager):
+class JobWorkflow(_BaseWorkflow):
     """用于在游戏中进行差事的相关操作的封装"""
 
     def __init__(
         self,
         screen: GameScreen,
-        input: Action,
+        input: GameAction,
         process: GameProcess,
         config: Config,
         steam_bot: SteamBotClient,
@@ -103,31 +103,6 @@ class JobWorkflow(_BaseManager):
 
     def _find_job_point(self):
         """
-        检查是否到达任务触发点。如果没有，会尝试向任务触发点移动。
-
-        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)``: 未找到任务触发点
-        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
-        """
-        logger.info("动作：正在寻找差事触发点...")
-
-        for _ in range(5):
-            # 向左走
-            self.action.walk_left(self.config.walkLeftTimeGoJob)
-            time.sleep(0.1)
-            if self.screen.is_job_marker_found():
-                break
-            # 向后走
-            self.action.walk_backward(self.config.walkDownTimeGoJob)
-            time.sleep(0.1)
-            if self.screen.is_job_marker_found():
-                break
-        else:
-            raise UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)
-
-        logger.info("成功找到差事触发点。")
-
-    def _find_job_point_sprial(self):
-        """
         检查是否到达任务触发点。如果没有，会螺旋形遍历周围空间。
 
         :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)``: 未找到任务触发点
@@ -139,7 +114,7 @@ class JobWorkflow(_BaseManager):
         if self.screen.is_job_marker_found():
             logger.info("成功找到差事触发点。")
             return
-        
+
         # 定义螺旋搜索模式，先上，再左，再下，再右，不断扩大
         search_pattern = [
             (self.action.walk_forward, 1),
@@ -158,7 +133,7 @@ class JobWorkflow(_BaseManager):
                 if self.screen.is_job_marker_found():
                     logger.info("成功找到差事触发点。")
                     return
-                
+
         # 如果遍历完所有搜索模式仍未找到
         logger.error("执行完所有搜索步骤后仍未找到差事触发点。")
         raise UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)
@@ -171,7 +146,7 @@ class JobWorkflow(_BaseManager):
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         self.action.go_job_point_from_bed()
-        self._find_job_point_sprial()
+        self._find_job_point()
 
     def enter_and_wait_for_job_panel(self):
         """
@@ -274,7 +249,7 @@ class JobWorkflow(_BaseManager):
         else:
             # 处理启动失败的情况
             logger.warning("启动差事失败，正在尝试恢复...")
-            self.confirm_warning_page()  # 处理可能出现的警告弹窗
+            self.handle_warning_page()  # 处理可能出现的警告弹窗
             if not self.screen.is_on_job_panel():
                 logger.error("启动失败且已离开差事面板，无法恢复。")
                 raise UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)
@@ -333,7 +308,7 @@ class JobWorkflow(_BaseManager):
         """
         logger.info("动作: 正在退出差事面板...")
         # 处理警告屏幕
-        self.confirm_warning_page()
+        self.handle_warning_page()
 
         # 从差事准备面板退出
         ocr_result = self.screen.ocr_game_window(0, 0, 1, 1)

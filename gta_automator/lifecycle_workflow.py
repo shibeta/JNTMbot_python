@@ -4,12 +4,12 @@ import time
 from logger import get_logger
 
 from .exception import *
-from ._base import _BaseManager
+from ._base import _BaseWorkflow
 
-logger = get_logger("automator_lifecycle")
+logger = get_logger("lifecycle_workflow")
 
 
-class Lifecycle(_BaseManager):
+class LifecycleWorkflow(_BaseWorkflow):
     """处理游戏启动与关闭，以及如何进入在线模式等过程"""
 
     def setup_gta(self):
@@ -20,13 +20,13 @@ class Lifecycle(_BaseManager):
         """
         logger.info("动作: 正在初始化 GTA V 。。。")
 
-        if not self.screen.is_game_started():
+        if not self.process.is_game_started():
             # 没启动就先启动
             logger.warning("GTA V 未启动。正在启动游戏...")
             # 尝试启动 restartGTAConsecutiveFailThreshold 次，至少一次
             for retry_times in range(max(self.config.restartGTAConsecutiveFailThreshold, 1)):
                 self.kill_and_restart_gta()
-                if self.screen.is_game_started():
+                if self.process.is_game_started():
                     # 启动过程中会自己设置 PID 和窗口句柄, 不需要做任何事
                     return
                 else:
@@ -84,7 +84,7 @@ class Lifecycle(_BaseManager):
             logger.error(f"进入在线模式时，发生异常: {e}")
             if e.actual_state == GameState.BAD_PCSETTING_BIN:
                 self.process.kill_gta()
-                self.clean_pcsetting()
+                self.fix_bad_pcsetting()
             else:
                 self.process.kill_gta()
             return
@@ -106,7 +106,7 @@ class Lifecycle(_BaseManager):
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         # 游戏启动则仅更新 pid 和 hwnd
-        if self.screen.is_game_started():
+        if self.process.is_game_started():
             self.process.update_gta_window_info()
             logger.warning(
                 "在游戏运行时，调用启动游戏方法将仅更新 GTA V 窗口信息。如果需要重启，请调用重启方法。"
@@ -128,6 +128,43 @@ class Lifecycle(_BaseManager):
         self.wait_for_mainmenu_load()
 
         logger.info("已启动 GTA V。")
+
+    def wait_for_gta_window_showup(self):
+        """
+        等待 GTA V 窗口出现。
+        :raises ``OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)``: 等待 GTA V 窗口出现超时
+        """
+        logger.info("正在等待 GTA V 窗口出现...")
+
+        if not self.wait_for_state(self.process.is_game_started, 300, 5, False):
+            raise OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)
+
+    def wait_for_mainmenu_load(self):
+        """
+        等待主菜单加载完成。
+
+        :raises ``OperationTimeout(OperationTimeoutContext.MAIN_MENU_LOAD)``: 等待主菜单加载超时
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+
+        """
+        logger.info("动作: 正在等待主菜单加载...")
+        start_time = time.monotonic()
+        while time.monotonic() - start_time < 180:  # 3分钟加载超时
+            # 两次检查需要分开进行 OCR , 因为 OCR 区域不一样
+            # 检查是否在主菜单
+            if self.screen.is_on_mainmenu_online_page():
+                # 进入了主菜单
+                return
+            # 有时候主菜单会展示一个显示 GTA+ 广告的窗口
+            elif self.screen.is_on_mainmenu_gtaplus_advertisement_page():
+                time.sleep(2)  # 等待广告页面加载完成
+                self.action.confirm()
+                # 确认掉广告页面后，也会进入主菜单
+                return
+            time.sleep(5)
+        else:
+            # 循环结束仍未加载成功
+            raise OperationTimeout(OperationTimeoutContext.MAIN_MENU_LOAD)
 
     def enter_storymode_from_mainmenu(self):
         """

@@ -4,10 +4,10 @@ from config import Config
 from gamepad_utils import Button, GamepadSimulator, JoystickDirection
 from logger import get_logger
 
-logger = get_logger(name="automator_action")
+logger = get_logger(name="game_action")
 
 
-class Action:
+class GameAction:
     """封装游戏内各种动作的具体实现"""
 
     def __init__(self, gamepad: GamepadSimulator, config: Config):

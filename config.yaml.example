@@ -52,10 +52,6 @@ exitMatchTimeout: 120
 goOutStairsTime: 1000
 # 差事层进行"穿过走廊"动作持续时间 (毫秒)
 crossAisleTime: 5000
-# 差事层进行"寻找差事黄圈"动作时 每轮向左走的持续时间 (毫秒)
-walkLeftTimeGoJob: 400
-# 差事层进行"寻找差事黄圈"动作时 每轮向后走的持续时间 (毫秒)
-walkDownTimeGoJob: 360
 # 差事层进行"寻找差事黄圈"动作时 每次移动的持续时间 (毫秒)
 walkTimeFindJob: 400
 # RapidOCR的启动参数

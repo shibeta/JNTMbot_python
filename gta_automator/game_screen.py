@@ -3,17 +3,17 @@ import time
 from typing import List, Optional, Tuple, Union
 
 from ocr_utils import OCREngine
-from windows_utils import find_window, unset_top_window
+from windows_utils import unset_top_window
 from logger import get_logger
 
 from .exception import *
-from .process import GameProcess
+from .game_process import GameProcess
 
-logger = get_logger(name="automator_screen")
+logger = get_logger(name="game_screen")
 
 
 class GameScreen:
-    """封装与屏幕和 OCR 相关的各种方法"""
+    """封装与游戏画面相关的各种方法"""
 
     def __init__(self, OCREngine: OCREngine, process: GameProcess):
         self.ocr = OCREngine
@@ -37,7 +37,7 @@ class GameScreen:
         if not self.process.hwnd:
             raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
 
-        return self.ocr.ocr(self.process.hwnd, left, top, width, height)
+        return self.ocr.ocr_window(self.process.hwnd, left, top, width, height)
 
     def _search_in_text(
         self,
@@ -136,16 +136,6 @@ class GameScreen:
             return False, -1, -1, -1
 
     # --- 状态检查方法 ---
-    def is_game_started(self) -> bool:
-        """检查游戏是否启动。"""
-        window_info = find_window("Grand Theft Auto V", "GTA5_Enhanced.exe")
-        if window_info:
-            logger.debug(f"GTA V 已启动。窗口句柄: {window_info[0]}, 进程ID: {window_info[1]}")
-            return True
-        else:
-            logger.debug("未找到 GTA V 窗口。GTA V 未启动。")
-            return False
-
     _PATTERN_IS_ON_MAINMENU_GTAPLUS_ADVERTISEMENT_PAGE = re.compile(
         "|".join(re.escape(text) for text in ["导览", "跳过"])
     )

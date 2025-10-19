@@ -3,13 +3,13 @@ import time
 
 from logger import get_logger
 
-from ._base import _BaseManager
+from ._base import _BaseWorkflow
 from .exception import *
 
-logger = get_logger("automator_session")
+logger = get_logger("session_workflow")
 
 
-class Session(_BaseManager):
+class SessionWorkflow(_BaseWorkflow):
     """在线战局相关的逻辑"""
 
     def _try_to_switch_session(self) -> bool:
@@ -24,11 +24,11 @@ class Session(_BaseManager):
         logger.info("动作: 正在打开暂停菜单...")
 
         # 检查游戏状态
-        if not self.screen.is_game_started():
+        if not self.process.is_game_started():
             raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
 
         # 处理警告屏幕
-        self.confirm_warning_page()
+        self.handle_warning_page()
 
         # 打开暂停菜单
         self.ensure_pause_menu_is_open()
@@ -114,7 +114,7 @@ class Session(_BaseManager):
 
         # 如果所有策略用尽，抛出异常
         logger.error("切换新战局失败次数过多，认为游戏正处于未知状态。")
-        raise UnexpectedGameState({GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, GameState.UNKNOWN)
+        raise UnexpectedGameState({GameState.ONLINE_FREEMODE, GameState.IN_MISSION}, GameState.UNKNOWN)
 
     def deprecated_try_to_join_jobwarp_bot(self):
         """
@@ -138,7 +138,7 @@ class Session(_BaseManager):
 
         logger.info("动作: 正在加入差传 Bot 战局...")
 
-        if not self.screen.is_game_started():
+        if not self.process.is_game_started():
             raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
 
         list_bot_jvp = self.get_mageangela_jobwarp_bot_steamjvp()
@@ -184,7 +184,7 @@ class Session(_BaseManager):
         """
         logger.info(f"动作: 正在加入战局: {steam_jvp}")
 
-        if not self.screen.is_game_started():
+        if not self.process.is_game_started():
             raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
 
         steam_url = f"steam://rungame/3240220/76561199074735990/-steamjvp={steam_jvp}"

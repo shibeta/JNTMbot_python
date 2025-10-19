@@ -22,8 +22,8 @@ class GameState(enum.Enum):
     OFF = "游戏未运行"
     OFFLINE = "离线模式"
     MAIN_MENU = "主菜单"
-    IN_STORY_MODE = "故事模式"
-    IN_ONLINE_LOBBY = "在线战局自由模式"
+    STORY_MODE = "故事模式"
+    ONLINE_FREEMODE = "在线战局自由模式"
     DEAD_ONLINE = "在线模式死亡"
     LOADING_SCREEN = "加载界面"
     IN_MISSION = "任务中"
@@ -149,7 +149,7 @@ if __name__ == "__main__":
     # 2a. 期望是单个状态
     try:
         print("\n测试: UnexpectedGameState (期望单个状态)")
-        raise UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.LOADING_SCREEN)
+        raise UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.LOADING_SCREEN)
     except UnexpectedGameState as e:
         print(f"成功捕获异常: {e}")
         assert e.message == '期望状态为 "IN_ONLINE_LOBBY", 但实际状态为 "LOADING_SCREEN"'
@@ -157,7 +157,7 @@ if __name__ == "__main__":
     # 2b. 期望是一组状态
     try:
         print("\n测试: UnexpectedGameState (期望一组状态)")
-        expected_states = {GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}
+        expected_states = {GameState.ONLINE_FREEMODE, GameState.IN_MISSION}
         raise UnexpectedGameState(expected=expected_states, actual=GameState.ONLINE_PAUSED)
     except UnexpectedGameState as e:
         print(f"成功捕获异常: {e}")
