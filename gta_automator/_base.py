@@ -96,7 +96,7 @@ class _BaseWorkflow:
             return False
 
     def wait_for_state(
-        self, check_function, timeout: int, check_interval: float = 1.0, game_started: bool = True
+        self, check_function, timeout: int, check_interval: float = 1.0, game_has_started: bool = True
     ) -> bool:
         """
         通用等待函数，在超时前反复检查某个状态。如果游戏没有运行，会停止检查并抛出异常。
@@ -111,7 +111,7 @@ class _BaseWorkflow:
         start_time = time.monotonic()
         while time.monotonic() - start_time < timeout:
             # 确保游戏还在运行
-            if game_started and not self.process.is_game_started():
+            if game_has_started and not self.process.is_game_started():
                 raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
 
             if check_function():
