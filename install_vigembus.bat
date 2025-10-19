@@ -51,7 +51,7 @@ echo 已找到安装程序: %MSI_PATH%
 echo.
 
 :: 执行安装
-echo 正在安装驱动，可能会弹出UAC用户账户控制窗口，请选择“是”。
+echo 开始手动安装驱动，可能会弹出UAC用户账户控制窗口，请选择“是”。
 msiexec /package "%MSI_PATH%"
 
 :: 检查安装是否成功 (msiexec的错误码0和3010都表示成功)
