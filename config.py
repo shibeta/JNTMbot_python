@@ -77,7 +77,7 @@ class Config:
             "comment": '全部玩家已加入时立即开始差事而不等待 (绕过 "startMatchDelay" 时间)',
         },
         "exitMatchTimeout": {"value": 120, "comment": "等待差事启动落地超时时间 (秒)(防止卡在启动战局中)"},
-        "crossAisleTime": {"value": 4500, "comment": '差事层进行"穿过走廊"动作持续时间 (毫秒)'},
+        "crossAisleTime": {"value": 4200, "comment": '差事层进行"穿过走廊"动作持续时间 (毫秒)'},
         "walkTimeFindJob": {
             "value": 350,
             "comment": '差事层进行"寻找差事黄圈"动作时 每次移动的持续时间 (毫秒)',

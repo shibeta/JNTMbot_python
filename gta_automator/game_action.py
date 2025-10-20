@@ -136,12 +136,10 @@ class GameAction:
         # 走到个人空间门口
         self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHT, 5500)
         # 走出个人空间的门
-        for _ in range(4):
-            self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTDOWN, 250)
-            self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTUP, 250)
-        # 继续拉右
-        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHT, 1100)
+        self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTDOWN, 1500)
+        self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTUP, 1000)
         # 走进楼梯门
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHT, 700)
         self.gamepad.hold_left_joystick(JoystickDirection.FULL_UP, 2300)
         # 走下楼梯
         logger.info("动作：正在下楼...")
@@ -149,9 +147,7 @@ class GameAction:
         self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHTUP, 1500)
         self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFT, 4500)
         # 走出楼梯间
-        for _ in range(3):
-            self.gamepad.hold_left_joystick(JoystickDirection.HALF_DOWN, 250)
-            self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFT, 250)
+        self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFTDOWN, 1000)
         # 穿过走廊
         logger.info("动作：正在穿过差事层走廊...")
         self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFTDOWN, self.config.crossAisleTime)

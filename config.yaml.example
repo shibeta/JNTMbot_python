@@ -49,7 +49,7 @@ startOnAllJoined: true
 # 等待差事启动落地超时时间 (秒)(防止卡在启动战局中)
 exitMatchTimeout: 120
 # 差事层进行"穿过走廊"动作持续时间 (毫秒)
-crossAisleTime: 4500
+crossAisleTime: 4200
 # 差事层进行"寻找差事黄圈"动作时 每次移动的持续时间 (毫秒)
 walkTimeFindJob: 350
 # RapidOCR的启动参数
