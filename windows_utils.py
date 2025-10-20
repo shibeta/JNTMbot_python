@@ -179,12 +179,7 @@ def suspend_process_for_duration(pid: int, duration_seconds: float):
         proc = psutil.Process(pid)
         logger.info(f"正在挂起进程 {pid}，持续 {duration_seconds} 秒。")
         proc.suspend()
-        end_time = time.monotonic() + duration_seconds
-        while time.monotonic() < end_time - 1:
-            time.sleep(0.5)
-        left_sleep_time = end_time - time.monotonic()
-        if left_sleep_time > 0:
-            time.sleep(left_sleep_time)
+        time.sleep(duration_seconds)
     except psutil.NoSuchProcess:
         raise ValueError(f"无法挂起：未找到 PID 为 {pid} 的进程。")
     except Exception as e:
