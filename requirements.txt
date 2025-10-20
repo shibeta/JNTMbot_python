@@ -1,7 +1,6 @@
 colorlog
 psutil
 requests
-keyboard
 vgamepad
 pynput
 pywin32
