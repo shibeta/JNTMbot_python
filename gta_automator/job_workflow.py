@@ -132,6 +132,7 @@ class JobWorkflow(_BaseWorkflow):
             for _ in range(repetitions):
                 # 每走一步都检查一次
                 action(self.config.walkTimeFindJob)
+                time.sleep(0.2)  # 等待左上角显示差事触发提示
                 if self.screen.is_job_marker_found():
                     logger.info("成功找到差事触发点。")
                     return
