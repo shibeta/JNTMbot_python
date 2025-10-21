@@ -162,7 +162,6 @@ class JobWorkflow(_BaseWorkflow):
         logger.info("等待差事面板打开...")
         if not self.wait_for_state(self.screen.is_on_job_panel, timeout=60):
             logger.error("等待差事面板打开超时。")
-            self.exit_job_panel()  # 尝试恢复到自由模式
             raise OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)
 
     def _initialize_job_lobby(self):
