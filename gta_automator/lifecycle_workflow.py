@@ -140,7 +140,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         """
         logger.info("正在等待 GTA V 窗口出现...")
 
-        if not self.wait_for_state(self.process.is_game_started, 300, 10, False):
+        if not self.wait_for_state(self.process.is_game_started, 300, 10, False):  # 5分钟超时，因为rockstar启动器非常慢
             raise OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)
 
     def wait_for_mainmenu_load(self):
@@ -153,7 +153,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         """
         logger.info("动作: 正在等待主菜单加载...")
         start_time = time.monotonic()
-        while time.monotonic() - start_time < 180:  # 3分钟加载超时
+        while time.monotonic() - start_time < 180:  # 3分钟加载超时，有时需要等待预编译管线
             # 两次检查需要分开进行 OCR , 因为 OCR 区域不一样
             # 检查是否在主菜单
             if self.screen.is_on_mainmenu():

@@ -98,8 +98,7 @@ class GameAction:
 
     def navigate_to_storymode_tab_in_mainmenu(self):
         """在主菜单中，导航到'故事模式'选项卡"""
-        # 选中在线选择卡
-        for _ in range(3):
+        for _ in range(3):  # 目前主菜单最多有4个选项卡，故事模式一定在最右边
             self.next_page()
             time.sleep(1)
 
