@@ -153,7 +153,8 @@ class GameAction:
 
     def launch_job_setup_panel(self):
         """在差事点上进入差事准备面板，目前只需要按一下十字键右键。"""
-        self.gamepad.click_button(Button.DPAD_RIGHT)
+        self.gamepad.click_button(Button.DPAD_RIGHT, 110)
+        time.sleep(0.5)
 
     def setup_job_panel(self):
         """在差事准备面板中，设置差事参数"""
