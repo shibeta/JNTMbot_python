@@ -155,6 +155,7 @@ class JobWorkflow(_BaseWorkflow):
         """
         进入差事并等待差事面板出现。
 
+        :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)``: 等待差事面板打开超时
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         self.action.launch_job_setup_panel()

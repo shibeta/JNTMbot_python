@@ -56,6 +56,7 @@ class GTAAutomator:
         :raises ``UnexpectedGameState(expected={GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, actual=GameState.UNKNOWN)``: 切换战局时失败
         :raises ``OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)``: 等待在事务所床上复活超时
         :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)``: 无法找到任务触发点
+        :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)``: 等待差事面板打开超时
         :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)``: 在等待玩家和启动差事阶段，意外离开了任务面板
         """
         logger.info("动作: 正在开始新一轮循环...")
@@ -70,7 +71,7 @@ class GTAAutomator:
                 and e.actual_state == GameState.UNKNOWN
             ):
                 # 开始新战局时，用尽全部恢复策略后仍无法切换战局
-                logger.error("开始新战局失败次数过多。杀死 GTA V 进程。")
+                logger.error("开始新战局失败次数过多，将杀死 GTA V 进程。")
                 self.lifecycle_manager.force_shutdown_gta()
             raise e
 
@@ -80,8 +81,13 @@ class GTAAutomator:
         # 步骤3: 导航至任务点
         self.workflow_manager.navigate_from_bed_to_job_point()
 
-        # 步骤4: 进入差事并等待面板
-        self.workflow_manager.enter_and_wait_for_job_panel()
+        # 步骤4: 进入差事准备面板
+        try:
+            self.workflow_manager.enter_and_wait_for_job_panel()
+        except OperationTimeout as e:
+            logger.error("打开任务面板超时，为避免 RockStar 在线服务导致的故障，将杀死 GTA V 进程。")
+            self.lifecycle_manager.force_shutdown_gta()
+            raise e
 
         # 步骤5: 管理大厅并启动差事
         try:
