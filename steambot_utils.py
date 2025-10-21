@@ -135,6 +135,16 @@ class SteamBotClient:
         # 启动 supervisor 线程，它将在后台处理所有事情
         self.supervisor.start()
 
+        # 等待后端启动
+        if not self._wait_for_ready(30):
+            raise TimeoutError("启动超时，未能在 30 秒内准备就绪。")
+        
+        # 等待 Steam Bot 完成登录，无限期等待
+        while self.get_login_status()["loggedIn"] != True:
+            time.sleep(5)
+
+        logger.warning("Steam Bot 客户端初始化完成。")
+
     def _launch_process_internal_unsafe(self):
         """
         启动子进程的内部实现。
@@ -251,7 +261,7 @@ class SteamBotClient:
         else:
             return raw_proxy_config
 
-    def wait_for_ready(self, timeout: int) -> bool:
+    def _wait_for_ready(self, timeout: int) -> bool:
         """
         阻塞当前线程，直到 Supervisor 线程报告后端首次进入健康状态，或达到超时。
 
