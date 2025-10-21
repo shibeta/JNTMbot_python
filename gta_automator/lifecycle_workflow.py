@@ -190,6 +190,7 @@ class LifecycleWorkflow(_BaseWorkflow):
 
         # 在主菜单中切换到故事模式页面
         self.action.navigate_to_storymode_tab_in_mainmenu()
+        time.sleep(1)
 
         # 检查是否在故事模式页面
         if not self.screen.is_on_mainmenu_storymode_page():
