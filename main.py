@@ -27,7 +27,8 @@ def interrupt_decorator(func):
             return func(*args, **kwargs)
         except KeyboardInterrupt:
             logger.warning("程序被用户中断，正在退出。")
-            return
+        finally:
+            trigger_atexit()
 
     return wrapper
 
