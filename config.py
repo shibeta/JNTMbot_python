@@ -29,10 +29,6 @@ class Config:
         },
         "steamGroupId": {"value": "37660928", "comment": "要发送消息的Steam群组ID，程序启动时可以读取到"},
         "steamChannelName": {"value": "BOT候车室", "comment": "要发送消息的Steam群组频道名称"},
-        "steamBotLoginTimeout": {
-            "value": 120,
-            "comment": "初始化Steam Bot时，等待后端完成登录的最大等待时间 (秒)",
-        },
         "enableHealthCheck": {
             "value": True,
             "comment": "启用健康检查，每间隔一段时间检查Bot上次向Steam发送信息的时间",
@@ -131,7 +127,6 @@ class Config:
         steamBotProxy: str
         steamGroupId: str
         steamChannelName: str
-        steamBotLoginTimeout: int
         enableHealthCheck: bool
         healthCheckInterval: int
         healthCheckSteamChatTimeoutThreshold: int

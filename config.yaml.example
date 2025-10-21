@@ -12,8 +12,6 @@ steamBotProxy: system
 steamGroupId: "37660928"
 # 要发送消息的Steam群组频道名称
 steamChannelName: BOT候车室
-# 初始化Steam Bot时，等待后端完成登录的最大等待时间 (秒)
-steamBotLoginTimeout: 120
 # 启用健康检查，每间隔一段时间检查Bot上次向Steam发送信息的时间
 enableHealthCheck: true
 # 健康检查的频率，即两次健康检查之间等待的时间 (分钟)
