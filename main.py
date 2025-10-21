@@ -98,7 +98,7 @@ def main():
     if bot_userinfo.get("error"):
         logger.warning(f"获取群组列表失败。错误: {bot_userinfo.get('error', '未知原因')}")
     else:
-        logger.info(f"登录的 Steam 用户名: {bot_userinfo["name"]}")
+        logger.info(f"登录的 Steam 用户名: {bot_userinfo['name']}")
         for group in bot_userinfo["groups"]:
             if config.steamGroupId == group["id"]:
                 logger.info(f"Bot发车信息将发送到{group['name']} ({group['id']})群组。")
