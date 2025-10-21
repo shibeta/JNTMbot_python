@@ -338,7 +338,7 @@ class GamepadSimulator:
         except Exception as e:
             logger.error(f"松开按钮 {button} 时出错: {e}")
 
-    def click_button(self, button: AnyButton, duration_milliseconds: int = 90):
+    def click_button(self, button: AnyButton, duration_milliseconds: int = 100):
         """
         按住一个按钮，一段时间后松开。
 
@@ -372,7 +372,7 @@ class GamepadSimulator:
         except Exception as e:
             logger.error(f"移动左摇杆时出错: {e}")
 
-    def hold_left_joystick(self, direction: tuple[float, float], duration_milliseconds: int = 80):
+    def hold_left_joystick(self, direction: tuple[float, float], duration_milliseconds: int = 100):
         """
         推动左摇杆到某位置，一段时间后回中。
 
@@ -403,7 +403,7 @@ class GamepadSimulator:
         except Exception as e:
             logger.error(f"Error moving right stick: {e}")
 
-    def hold_right_joystick(self, direction: tuple[float, float], duration_milliseconds: int = 80):
+    def hold_right_joystick(self, direction: tuple[float, float], duration_milliseconds: int = 100):
         """
         推动右摇杆到某位置，一段时间后回中。
 
@@ -435,7 +435,7 @@ class GamepadSimulator:
         """完全松开左扳机。"""
         self.press_left_trigger(TriggerPressure.released)
 
-    def hold_left_trigger(self, pressure_float: float, duration_milliseconds: int = 80):
+    def hold_left_trigger(self, pressure_float: float, duration_milliseconds: int = 100):
         """
         按住左扳机一段时间后松开。
 
@@ -466,7 +466,7 @@ class GamepadSimulator:
         """完全松开右扳机。"""
         self.press_right_trigger(TriggerPressure.released)
 
-    def hold_right_trigger(self, pressure_float: float, duration_milliseconds: int = 80):
+    def hold_right_trigger(self, pressure_float: float, duration_milliseconds: int = 100):
         """
         按住右扳机一段时间后松开。
 
