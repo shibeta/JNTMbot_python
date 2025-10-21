@@ -161,6 +161,7 @@ class JobWorkflow(_BaseWorkflow):
         self.action.launch_job_setup_panel()
         logger.info("等待差事面板打开...")
         if not self.wait_for_state(self.screen.is_on_job_panel, timeout=60):
+            # 这个过程需要从 RockStar 在线服务下载一些差事参数，如果相关服务故障，将无法打开面板
             logger.error("等待差事面板打开超时。")
             raise OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)
 

@@ -85,7 +85,8 @@ class GTAAutomator:
         try:
             self.workflow_manager.enter_and_wait_for_job_panel()
         except OperationTimeout as e:
-            logger.error("打开任务面板超时，为避免 RockStar 在线服务导致的故障，将杀死 GTA V 进程。")
+            # 等待差事面板打开超时
+            logger.error("等待差事面板超时，为避免 RockStar 在线服务导致的故障，将杀死 GTA V 进程。")
             self.lifecycle_manager.force_shutdown_gta()
             raise e
 
