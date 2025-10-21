@@ -283,7 +283,7 @@ class _BaseWorkflow:
             elif self.handle_warning_page(ocr_text):
                 # 弹出错误窗口，比如网络不好，R星发钱等情况
                 continue
-            elif self.screen.is_on_mainmenu_online_page(ocr_text):
+            elif self.screen.is_on_mainmenu(ocr_text):
                 # 由于网络不好或者被BE踢了，进入了主菜单
                 raise UnexpectedGameState(GameState.ONLINE_FREEMODE, GameState.MAIN_MENU)
 

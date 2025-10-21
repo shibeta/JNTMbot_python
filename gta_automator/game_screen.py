@@ -159,13 +159,13 @@ class GameScreen:
         """
         return self._check_state("已登出", ocr_text, 0, 0, 1, 1)
 
-    def is_on_mainmenu_online_page(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_mainmenu(self, ocr_text: Optional[str] = None) -> bool:
         """
         检查游戏是否在主菜单的在线页面。
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state("加入自由模式", ocr_text, 0, 0.7, 1, 0.3)
+        return self._check_state("移动标签", ocr_text, 0.5, 0.8, 0.5, 0.2)
 
     def is_on_mainmenu_storymode_page(self, ocr_text: Optional[str] = None) -> bool:
         """

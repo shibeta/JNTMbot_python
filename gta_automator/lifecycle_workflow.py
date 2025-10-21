@@ -156,7 +156,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         while time.monotonic() - start_time < 180:  # 3分钟加载超时
             # 两次检查需要分开进行 OCR , 因为 OCR 区域不一样
             # 检查是否在主菜单
-            if self.screen.is_on_mainmenu_online_page():
+            if self.screen.is_on_mainmenu():
                 # 进入了主菜单
                 return
             # 有时候主菜单会展示一个显示 GTA+ 广告的窗口
