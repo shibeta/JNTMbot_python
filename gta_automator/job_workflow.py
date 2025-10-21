@@ -157,7 +157,7 @@ class JobWorkflow(_BaseWorkflow):
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        self.action.enter_job_setup()
+        self.action.launch_job_setup_panel()
         logger.info("等待差事面板打开...")
         if not self.wait_for_state(self.screen.is_on_job_panel, timeout=60):
             logger.error("等待差事面板打开超时。")

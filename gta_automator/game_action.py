@@ -151,7 +151,7 @@ class GameAction:
         logger.info("动作：正在穿过差事层走廊...")
         self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFTDOWN, self.config.crossAisleTime)
 
-    def enter_job_setup(self):
+    def launch_job_setup_panel(self):
         """在差事点上进入差事准备面板，目前只需要按一下十字键右键。"""
         self.gamepad.click_button(Button.DPAD_RIGHT)
 
