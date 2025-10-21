@@ -83,22 +83,22 @@ def main():
         steam_bot = SteamBotClient(config)
     except Exception as e:
         logger.error(f"初始化 Steam Bot 客户端失败: {e}")
-        if steam_bot:
-            steam_bot.shutdown()
         return
     # 等待至多 steamBotLoginTimeout 秒来让 Steam Bot 完成初始化
     if not steam_bot.wait_for_ready(timeout=config.steamBotLoginTimeout):
-        logger.error(f"Steam Bot 后端未能在 {config.steamBotLoginTimeout} 秒内准备就绪。")
-    # 等待 Steam Bot 完成首次登录
+        logger.error(f"Steam Bot 后端未能在 {config.steamBotLoginTimeout} 秒内准备就绪，退出程序。")
+        return
+    # 等待 Steam Bot 完成登录
     while steam_bot.get_login_status()["loggedIn"] != True:
         time.sleep(5)
     logger.info("Steam Bot 客户端初始化完成。")
 
-    # 验证配置中的群组ID
+    # 验证 Steam Bot 能否访问配置中的群组ID
     bot_userinfo = steam_bot.get_userinfo()
     if bot_userinfo.get("error"):
         logger.warning(f"获取群组列表失败。错误: {bot_userinfo.get('error', '未知原因')}")
     else:
+        logger.info(f"登录的 Steam 用户名: {bot_userinfo["name"]}")
         for group in bot_userinfo["groups"]:
             if config.steamGroupId == group["id"]:
                 logger.info(f"Bot发车信息将发送到{group['name']} ({group['id']})群组。")
