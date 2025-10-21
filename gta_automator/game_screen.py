@@ -262,19 +262,11 @@ class GameScreen:
 
     def is_job_starting(self, ocr_text: Optional[str] = None) -> bool:
         """
-        检查任务是否在启动中。如果使用 OCR 则进行 3 次检查，以避免游戏响应慢。
+        检查任务是否在启动中。
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        if ocr_text is not None:
-            return self._search_in_text(ocr_text, self._PATTERN_IS_JOB_STARTING)
-        else:
-            for _ in range(3):
-                if self._search_text_in_area(self._PATTERN_IS_JOB_STARTING, 0.7, 0.9, 0.3, 0.1):
-                    return True
-                time.sleep(0.1)
-            else:
-                return False
+        return self._check_state(self._PATTERN_IS_JOB_STARTING, ocr_text, 0, 0.8, 1, 0.2)
 
     _PATTERN_IS_ON_WARNING_PAGE = re.compile("|".join(re.escape(text) for text in ["警告", "注意"]))
 

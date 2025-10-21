@@ -132,7 +132,7 @@ class JobWorkflow(_BaseWorkflow):
             for _ in range(repetitions):
                 # 每走一步都检查一次
                 action(self.config.walkTimeFindJob)
-                time.sleep(0.2)  # 等待左上角显示差事触发提示
+                time.sleep(0.1)  # 等待移动结束
                 if self.screen.is_job_marker_found():
                     logger.info("成功找到差事触发点。")
                     return
@@ -238,11 +238,15 @@ class JobWorkflow(_BaseWorkflow):
             pass
 
         self.action.confirm()  # 按A键启动
+        # 不能等太久，否则"启动中"状态可能被跳过
         time.sleep(0.5)  # 多等一会，让游戏响应差事启动
 
-        if self.screen.is_job_starting():
-            logger.info("启动差事成功。")
-            return True  # 成功启动
+        # 检查 3 次，避免游戏响应太慢
+        for _ in range(3):
+            if self.screen.is_job_starting():
+                logger.info("启动差事成功。")
+                return True  # 成功启动
+            time.sleep(0.1)  # 每次检查间等待 0.1 秒
         else:
             # 处理启动失败的情况
             logger.warning("启动差事失败，正在尝试恢复...")
