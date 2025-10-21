@@ -263,17 +263,14 @@
 -   `RapidOCR_api.py`: 调用`RapidOCR-json.exe`进行 OCR 的类。[来源](https://github.com/hiroi-sora/RapidOCR-json/raw/refs/heads/main/api/python/RapidOCR_api.py)
 -   `ocr_utils.py`: 对 RapidOCR_api 的封装，用于游戏画面识别。
 -   `windows_utils.py`: 封装了 Windows 中对进程和窗口的一些操作。
--   `keyboard_utils.py`: 模拟键盘输入。
--   `gamepad_utils.py`: 模拟手柄输入。支持宏定义和执行。
+-   `keyboard_utils.py`: 模拟键盘输入，设置键盘快捷键。
+-   `gamepad_utils.py`: 模拟手柄输入。
 -   `push_utils.py`: 消息平台推送，目前实现了基于 PushPlus 的微信推送。
 -   `health_check.py`: 监控 Bot 是否正常工作。
 -   `logger.py`: 简单的日志格式化工具。
--   `gameautomator_exception.py`: 定义了自动化操作抛出的异常。
 -   `gta_automator`: 封装了所有对 GTA5 的自动化操作。
 -   `steambot_utils.py`: 用于管理 `steam_bot` 后端并调用其 API 发送消息。
--   `steam_bot/server.js`: 基于 `node-steam-user` 的 Node.js 后端，将 Steam 功能封装为 HTTP API。
--   `steam_bot/SteamChatBot.js`: 对 `node-steam-user` 库的核心封装。
--   `steam_bot/demo.js`: 未使用的测试文件。
+-   `steam_bot`: 基于 `node-steam-user` 的 Node.js 后端，将 Steam 功能封装为 HTTP API。
 
 ## 🤝 贡献指南
 
