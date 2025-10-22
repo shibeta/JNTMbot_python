@@ -77,10 +77,10 @@ class _BaseWorkflow:
 
     def check_if_in_storymode(self, max_retries: int = 3) -> bool:
         """
-        通过打开暂停菜单，检查当前是否在故事模式中。只应在打开暂停菜单操作不会导致副作用的场景下执行
+        通过打开暂停菜单，检查当前是否在故事模式中。只应在打开暂停菜单操作不会导致副作用的场景下执行。
 
         :param max_retries: 最大尝试次数，默认值为 3
-        :return: 如果在在线模式中则返回 True，否则返回 False
+        :return: 如果在故事模式中则返回 True，否则返回 False
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         for _ in range(max_retries):
