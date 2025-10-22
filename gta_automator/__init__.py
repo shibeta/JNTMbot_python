@@ -27,19 +27,21 @@ class GTAAutomator:
     def __init__(
         self,
         config: Config,
-        ocr_engine: OCREngine,
-        steam_bot: SteamBotClient,
+        ocr_engine: Optional[OCREngine] = None,
+        steam_bot: Optional[SteamBotClient] = None,
         gamepad: Optional[GamepadSimulator] = None,
     ):
         # 初始化底层模块
         process = GameProcess()
-        screen = GameScreen(ocr_engine, process)
+        screen = GameScreen(ocr_engine if ocr_engine else OCREngine(config.ocrArgs), process)
         player_input = GameAction(gamepad if gamepad else GamepadSimulator(), config)
 
         # 初始化管理器，注入依赖
         self.lifecycle_manager = LifecycleWorkflow(screen, player_input, process, config)
         self.session_manager = SessionWorkflow(screen, player_input, process, config)
-        self.workflow_manager = JobWorkflow(screen, player_input, process, config, steam_bot)
+        self.workflow_manager = JobWorkflow(
+            screen, player_input, process, config, steam_bot if steam_bot else SteamBotClient(config)
+        )
 
         # 注册退出处理函数，以确保Python程序退出时 GTA V 进程不会被挂起
         atexit.register(process.resume_gta_process)
@@ -110,7 +112,10 @@ class GTAAutomator:
         try:
             self.workflow_manager.handle_post_job_start()
         except OperationTimeout as e:
-            if e.context == OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR or OperationTimeoutContext.CHARACTER_LAND:
+            if (
+                e.context == OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR
+                or OperationTimeoutContext.CHARACTER_LAND
+            ):
                 logger.warning(f"{e.message}。卡单后将杀死 GTA V 进程。")
                 self.session_manager.glitch_single_player_session()
                 time.sleep(5)  # 等待游戏状态稳定
