@@ -174,3 +174,15 @@ class GameAction:
         self.back()
         self.confirm()
         time.sleep(4)  # 多等一会，确保退出完成
+
+    def confirm_online_service_page(self):
+        """确认在线服务页面，只能在当前高亮条目为第一条政策的时候执行"""
+        # 选中"我已阅读"选项
+        self.down()
+        self.down()
+        # 勾选"我已阅读"选项
+        self.confirm()
+        # 切换到"提交"选项
+        self.down()
+        # 确认提交
+        self.confirm()

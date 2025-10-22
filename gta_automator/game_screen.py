@@ -291,6 +291,14 @@ class GameScreen:
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         return self._check_state(self._PATTERN_IS_ON_BAD_PCSETTING_WARNING_PAGE, ocr_text, 0, 0, 1, 1)
+    
+    def is_on_online_service_policy_page(self, ocr_text: Optional[str] = None) -> bool:
+        """
+        检查是否在需要确认 RockStar Games 在线服务政策的页面。
+
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        """
+        return self._check_state("在线服务政策", ocr_text, 0, 0, 0.7, 0.3)
 
     _PATTERN_IS_ON_PAUSE_MENU = re.compile("|".join(re.escape(text) for text in ["地图", "职业", "简讯"]))
 

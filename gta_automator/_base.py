@@ -306,8 +306,9 @@ class _BaseWorkflow:
             elif self.screen.is_on_mainmenu(ocr_text):
                 # 由于网络不好或者被BE踢了，进入了主菜单
                 raise UnexpectedGameState(GameState.ONLINE_FREEMODE, GameState.MAIN_MENU)
-
-            # TODO: R星有时候会更新用户协议，需要补充确认新的用户协议的检查和动作。目前问题在于不清楚如何判断在用户协议页面和如何用手柄确认
+            elif self.screen.is_on_online_service_policy_page(ocr_text):
+                # 弹出 RockStar Games 在线服务政策页面
+                self.action.confirm_online_service_page()
 
             # 检查是否进入了在线模式
             if self.check_if_in_onlinemode():
