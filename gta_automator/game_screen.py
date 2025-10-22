@@ -1,5 +1,5 @@
+import atexit
 import re
-import time
 from typing import List, Optional, Tuple, Union
 
 from ocr_utils import OCREngine
@@ -18,6 +18,9 @@ class GameScreen:
     def __init__(self, OCREngine: OCREngine, process: GameProcess):
         self.ocr = OCREngine
         self.process = process
+
+        # 注册退出处理函数，以确保Python程序退出时 GTA V 窗口不会处于置顶状态
+        atexit.register(self.unset_gta_window_topmost)
 
     def unset_gta_window_topmost(self):
         """将 GTA V 窗口取消置顶"""

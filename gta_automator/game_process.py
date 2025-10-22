@@ -1,9 +1,9 @@
+import atexit
 from typing import Optional
 
 from logger import get_logger
 from windows_utils import (
     find_window,
-    get_process_name,
     get_window_title,
     kill_processes,
     resume_process_from_suspend,
@@ -35,6 +35,9 @@ class GameProcess:
     ):
         self.hwnd = hwnd  # 窗口句柄
         self.pid = pid  # 进程ID
+
+        # 注册退出处理函数，以确保Python程序退出时 GTA V 进程不会被挂起
+        atexit.register(self.resume_gta_process)
 
     def update_gta_window_info(self):
         """

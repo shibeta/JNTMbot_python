@@ -1,4 +1,3 @@
-import atexit
 import time
 from typing import Optional
 
@@ -42,11 +41,6 @@ class GTAAutomator:
         self.workflow_manager = JobWorkflow(
             screen, player_input, process, config, steam_bot if steam_bot else SteamBotClient(config)
         )
-
-        # 注册退出处理函数，以确保Python程序退出时 GTA V 进程不会被挂起
-        atexit.register(process.resume_gta_process)
-        # 注册退出处理函数，以确保Python程序退出时 GTA V 窗口不会处于置顶状态
-        atexit.register(screen.unset_gta_window_topmost)
 
     def run_dre_bot(self):
         """
