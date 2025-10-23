@@ -46,7 +46,7 @@ class LobbyStateTracker:
 
     def has_wait_timeout(self, timeout: int) -> bool:
         """检查是否长时间没有任何玩家加入。"""
-        is_empty = ( self.last_joined_player == 0 and self.last_joining_player == 0 )
+        is_empty = self.last_joined_player == 0 and self.last_joining_player == 0
         time_elapsed = time.monotonic() - self.start_wait_time
         return is_empty and time_elapsed > timeout
 
@@ -333,14 +333,14 @@ class JobWorkflow(_BaseWorkflow):
         """
         处理差事启动后的一系列操作：等待加载、卡单、等待落地、再次卡单。
 
-        :raises ``OperationTimeout(OperationTimeoutContext.JOB_START)``: 启动差事时，等待差事面板消失超时
+        :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR)``: 启动差事时，等待差事面板消失超时
         :raises ``OperationTimeout(OperationTimeoutContext.CHARACTER_LAND)``: 启动差事后，等待人物落地超时
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         # 等待面板消失
         logger.info("差事启动成功！等待面板消失...")
         if not self.wait_for_state(lambda: not self.screen.is_on_job_panel(), self.config.exitMatchTimeout):
-            # 超时后直接抛出异常，因为目前完全不知道为什么会遇到这种情况
+            # 超时后直接抛出异常，应该是网络故障相关
             raise OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR)
 
         # 首次卡单
@@ -351,6 +351,7 @@ class JobWorkflow(_BaseWorkflow):
         # 等待人物落地
         logger.info("差事加载完成！等待人物落地...")
         if not self.wait_for_state(self.screen.is_job_started, self.config.exitMatchTimeout):
+            logger.warning("等待人物落地超时，卡单并再等待30秒...")
             # 超时后再卡一次单并等 30 秒作为保底，这有时会有效
             self.glitch_single_player_session()
             if not self.wait_for_state(self.screen.is_job_started, 30):
@@ -358,8 +359,8 @@ class JobWorkflow(_BaseWorkflow):
                 raise OperationTimeout(OperationTimeoutContext.CHARACTER_LAND)
 
         # 再次卡单
-        logger.info(f"人物已落地。{self.config.delaySuspendTime} 秒后将卡单。")
-        time.sleep(self.config.delaySuspendTime)
+        logger.info(f"人物已落地。{10 + self.config.delaySuspendTime} 秒后将卡单。")
+        time.sleep(10 + self.config.delaySuspendTime)
         self.glitch_single_player_session()
 
     def verify_mission_status_after_glitch(self):
@@ -368,20 +369,24 @@ class JobWorkflow(_BaseWorkflow):
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        logger.info("动作: 正在检查当前差事状态...")
-        time.sleep(5)  # 等待状态稳定
+        logger.info("动作: 正在检查当前差事状态，等待10秒以响应其他玩家离开")
+        time.sleep(10)  # 响应其他玩家离开
 
-        if self.screen.is_job_started():
-            logger.info("当前在差事中，状态正常。")
-            return
-
-        logger.warning("未检测到在差事中，可能因其他玩家导致任务失败。正在检查计分板...")
-        if self.wait_for_state(self.screen.is_on_scoreboard, timeout=15):
-            logger.info("检测到任务失败计分板。等待20秒以自动退出。")
-            try:
-                self.steam_bot.send_group_message(self.config.msgDetectedSB)
-            except requests.RequestException:
-                pass
-            time.sleep(20)
+        if not self.screen.is_job_started():
+            logger.warning("未检测到在差事中，可能因其他玩家导致任务失败。正在检查计分板...")
+            if self.wait_for_state(self.screen.is_on_scoreboard, timeout=15):
+                logger.info("检测到任务失败计分板。等待20秒以自动退出。")
+                # 小技巧: 发送消息也需要时间
+                wait_end_time = time.monotonic() + 20
+                try:
+                    self.steam_bot.send_group_message(self.config.msgDetectedSB)
+                except requests.RequestException:
+                    pass
+                # 计算还需要等待的时间
+                remaining_wait_time = wait_end_time - time.monotonic()
+                if remaining_wait_time > 0:
+                    time.sleep(remaining_wait_time)
+            else:
+                logger.warning("无法确定当前差事状态。")
         else:
-            logger.warning("无法确定当前差事状态，但已卡单，将继续执行下一轮。")
+            logger.info("当前在差事中，状态正常。")

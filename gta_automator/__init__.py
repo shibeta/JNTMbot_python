@@ -112,7 +112,7 @@ class GTAAutomator:
             ):
                 logger.warning(f"{e.message}。卡单并退出游戏。")
                 self.session_manager.glitch_single_player_session()
-                time.sleep(5)  # 等待游戏状态稳定
+                time.sleep(2)  # 等待游戏状态稳定
                 self.lifecycle_manager.shutdown_gta()
             raise e
 
