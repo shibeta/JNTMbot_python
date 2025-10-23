@@ -24,13 +24,14 @@ class LifecycleWorkflow(_BaseWorkflow):
             # 没启动就先启动
             logger.warning("GTA V 未启动。正在启动游戏...")
             # 尝试启动 restartGTAConsecutiveFailThreshold 次，至少一次
-            for retry_times in range(max(self.config.restartGTAConsecutiveFailThreshold, 1)):
-                self.kill_and_restart_gta()
+            max_retry_times = max(self.config.restartGTAConsecutiveFailThreshold, 1)
+            for retry_times in range(max_retry_times):
+                self.restart_gta()
                 if self.process.is_game_started():
                     # 启动过程中会自己设置 PID 和窗口句柄, 不需要做任何事
                     return
                 else:
-                    logger.warning(f"GTA V 启动失败。将重试 {5-1-retry_times} 次。")
+                    logger.warning(f"GTA V 启动失败。将重试 {max_retry_times-1-retry_times} 次。")
                     continue
             else:
                 # 达到最大失败次数后抛出异常
@@ -38,37 +39,67 @@ class LifecycleWorkflow(_BaseWorkflow):
                 raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
         else:
             # 如果启动了则更新 PID 和窗口句柄
-            self.process.update_gta_window_info()
+            self.process.update_info()
 
         # 以防万一将其从挂起中恢复
-        self.process.resume_gta_process()
+        self.process.resume()
 
         logger.info("初始化 GTA V 完成。")
 
+    def shutdown_gta(self):
+        """关闭游戏。首先尝试通过 alt+f4 退出，如果失败则杀死进程。"""
+        logger.info("动作: 正在退出游戏...")
+        # 先尝试常规退出流程
+        try:
+            # 如过游戏没启动，则抛出异常以跳过常规退出流程
+            if not self.process.is_game_started():
+                raise UnexpectedGameState(GameState.ON, GameState.OFF)
+            # 处理警告页面，以避免其他警告页面干扰退出页面判断
+            self.handle_warning_page()
+            # 触发 alt+f4, 然后等待游戏加载退出页面
+            self.process.request_exit()
+            time.sleep(3)
+            # 检查是否在确认退出页面
+            if self.screen.is_on_exit_confirm_page():
+                # 游戏会先尝试与 RockStar 在线服务通信以进行保存, 直到保存成功或保存失败后才能确认退出
+                if self.wait_for_state(self.screen.is_confirm_option_available, 30):
+                    # 选择退出选项
+                    self.action.confirm()
+                    # 等待游戏关闭
+                    if self.wait_for_state(lambda: not self.process.is_game_started(), 30):
+                        # 游戏关闭后等待 20 秒，给进程响应时间
+                        time.sleep(20)
+                        logger.info("通过常规方法退出游戏成功。")
+        except Exception as e:
+            logger.warning(f"通过常规方法退出游戏时，发生异常: {e}")
+            pass
+        finally:
+            # 更新游戏进程信息
+            self.process.update_info()
+        
+        # 如果游戏还在运行，强制关闭
+        if self.process.is_game_started():
+            logger.info("通过常规方法退出游戏失败，将强制关闭。")
+            self.force_shutdown_gta()
+        logger.info("退出游戏完成。")
+
     def force_shutdown_gta(self):
-        """强制退出游戏，通过杀死进程实现"""
-        self.process.kill_gta_process()
+        """杀死进程以强制关闭游戏"""
+        logger.info("动作: 正在强制关闭游戏...")
+        self.process.kill()
+        logger.info("强制关闭游戏完成。")
 
-    def kill_and_restart_gta(self):
+    def launch_gta_online(self):
         """
-        杀死并重启 GTA V 游戏，并进入在线模式仅邀请战局。
+        启动游戏，并进入在线模式仅邀请战局。
 
-        如果重启游戏失败，将杀死游戏进程。
+        如果启动游戏失败，将关闭游戏。
         """
-        logger.info(f"动作: 正在杀死并重启 GTA V...")
-
-        self.force_shutdown_gta()
-        logger.info("20秒后将重启 GTA V...")
-        time.sleep(20)  # 等待20秒钟用于 steam 客户端响应 GTA V 退出
-        # 以防万一再杀一次
-        self.force_shutdown_gta()
-
-        # 启动游戏
         try:
             self.start_gta_steam()
         except GameAutomatorException as e:
             logger.error(f"启动 GTA V 时，发生异常: {e}")
-            self.force_shutdown_gta()
+            self.shutdown_gta()
             return
 
         # 进入故事模式
@@ -77,7 +108,7 @@ class LifecycleWorkflow(_BaseWorkflow):
             self.enter_storymode_from_mainmenu()
         except GameAutomatorException as e:
             logger.error(f"进入故事模式时，发生异常: {e}")
-            self.force_shutdown_gta()
+            self.shutdown_gta()
             return
 
         # 进入在线模式
@@ -87,15 +118,37 @@ class LifecycleWorkflow(_BaseWorkflow):
         except UnexpectedGameState as e:
             logger.error(f"进入在线模式时，发生异常: {e}")
             if e.actual_state == GameState.BAD_PCSETTING_BIN:
-                self.force_shutdown_gta()
+                self.shutdown_gta()
                 self.fix_bad_pcsetting()
             else:
-                self.force_shutdown_gta()
+                self.shutdown_gta()
             return
         except GameAutomatorException as e:
             logger.error(f"进入在线模式时，发生异常: {e}")
-            self.force_shutdown_gta()
+            self.shutdown_gta()
             return
+
+    def restart_gta(self, force: bool = False):
+        """
+        杀死并重启 GTA V 游戏，并进入在线模式仅邀请战局。
+
+        如果重启游戏失败，将关闭游戏。
+        """
+        logger.info(f"动作: 正在重启 GTA V...")
+
+        # 关闭游戏
+        if force:
+            self.force_shutdown_gta()
+        else:
+            self.shutdown_gta()
+
+        logger.info("20秒后将重启 GTA V...")
+        time.sleep(20)  # 等待20秒钟用于 steam 客户端响应 GTA V 退出
+        # 以防万一，再触发一次强制关闭
+        self.force_shutdown_gta()
+
+        # 启动游戏并进入在线模式
+        self.launch_gta_online()
 
         logger.info("重启 GTA V 成功。")
 
@@ -111,7 +164,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         """
         # 游戏启动则仅更新 pid 和 hwnd
         if self.process.is_game_started():
-            self.process.update_gta_window_info()
+            self.process.update_info()
             logger.warning(
                 "在游戏运行时，调用启动游戏方法将仅更新 GTA V 窗口信息。如果需要重启，请调用重启方法。"
             )
@@ -126,7 +179,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         time.sleep(5)  # 等待5秒钟让游戏稳定
 
         # 更新 GTA V 窗口信息
-        self.process.update_gta_window_info()
+        self.process.update_info()
 
         # 等待主菜单加载
         self.wait_for_mainmenu_load()
@@ -140,7 +193,9 @@ class LifecycleWorkflow(_BaseWorkflow):
         """
         logger.info("正在等待 GTA V 窗口出现...")
 
-        if not self.wait_for_state(self.process.is_game_started, 300, 10, False):  # 5分钟超时，因为rockstar启动器非常慢
+        if not self.wait_for_state(
+            self.process.is_game_started, 300, 10, False
+        ):  # 5分钟超时，因为rockstar启动器非常慢
             raise OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)
 
     def wait_for_mainmenu_load(self):

@@ -67,8 +67,8 @@ class GTAAutomator:
                 and e.actual_state == GameState.UNKNOWN
             ):
                 # 开始新战局时，用尽全部恢复策略后仍无法切换战局
-                logger.error("开始新战局失败次数过多，将杀死 GTA V 进程。")
-                self.lifecycle_manager.force_shutdown_gta()
+                logger.error("开始新战局失败次数过多，退出游戏。")
+                self.lifecycle_manager.shutdown_gta()
             raise e
 
         # 步骤2: 等待复活
@@ -82,8 +82,8 @@ class GTAAutomator:
             self.workflow_manager.enter_and_wait_for_job_panel()
         except OperationTimeout as e:
             # 等待差事面板打开超时
-            logger.error("等待差事面板超时，为避免 RockStar 在线服务导致的故障，将杀死 GTA V 进程。")
-            self.lifecycle_manager.force_shutdown_gta()
+            logger.error("等待差事面板超时，为避免 RockStar 在线服务导致的故障，退出游戏。")
+            self.lifecycle_manager.shutdown_gta()
             raise e
 
         # 步骤5: 管理大厅并启动差事
@@ -110,10 +110,10 @@ class GTAAutomator:
                 e.context == OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR
                 or OperationTimeoutContext.CHARACTER_LAND
             ):
-                logger.warning(f"{e.message}。卡单后将杀死 GTA V 进程。")
+                logger.warning(f"{e.message}。卡单并退出游戏。")
                 self.session_manager.glitch_single_player_session()
                 time.sleep(5)  # 等待游戏状态稳定
-                self.lifecycle_manager.force_shutdown_gta()
+                self.lifecycle_manager.shutdown_gta()
             raise e
 
         # 步骤7: 检查最终状态
