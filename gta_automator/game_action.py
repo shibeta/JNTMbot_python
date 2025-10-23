@@ -108,6 +108,7 @@ class GameAction:
             self.next_page()
         self.confirm()  # 打开在线选择卡
         self.up()  # 选中"进入在线模式"
+        time.sleep(0.5)  # 多等一会
         self.confirm()  # 进入"进入在线模式"选项卡
 
     def navigate_to_switch_session_tab_in_onlinemode(self):
@@ -117,11 +118,13 @@ class GameAction:
         # 选中"寻找新战局"
         for _ in range(5):
             self.up()
+        time.sleep(0.5)  # 多等一会
         self.confirm()  # 进入"切换会话"选项卡
 
     def enter_invite_only_session(self):
         """在'寻找新战局'选项卡中，进入仅受邀请的战局"""
         self.down()  # 选中"仅邀请战局"
+        time.sleep(0.5)  # 多等一会
         self.confirm()  # 进入"仅邀请战局"
         time.sleep(1)  # 多等一会
         self.confirm()  # 确认进入战局
@@ -165,6 +168,7 @@ class GameAction:
     def exit_job_panel_from_first_page(self):
         """从差事准备面板的第一个面板退出"""
         self.back()
+        time.sleep(0.5)  # 多等一会
         self.confirm()
         time.sleep(4)  # 多等一会，确保退出完成
 
@@ -172,5 +176,6 @@ class GameAction:
         """从差事准备面板的第二个面板退出"""
         self.back()
         self.back()
+        time.sleep(0.5)  # 多等一会
         self.confirm()
         time.sleep(4)  # 多等一会，确保退出完成
