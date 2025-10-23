@@ -167,7 +167,7 @@ class _BaseWorkflow:
         :param check_function: 一个无参数并返回布尔值的函数 (e.g., self.screen.is_on_job_panel)
         :param timeout: 超时秒数
         :param check_interval: 检查间隔秒数
-        :param game_started: 游戏是否已经启动。传入 False 时，会跳过游戏窗口检查
+        :param game_started: 游戏是否应当启动。传入 False 时，会跳过游戏启动检查
         :return: 如果在超时前状态达成则返回 True，否则返回 False
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
