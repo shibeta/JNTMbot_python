@@ -7,6 +7,7 @@ class OperationTimeoutContext(enum.Enum):
     GAME_WINDOW_STARTUP = "游戏窗口启动"
     MAIN_MENU_LOAD = "主菜单加载"
     STORY_MODE_LOAD = "故事模式加载"
+    DOWNLOAD_POLICY = "下载在线服务政策"
     JOIN_ONLINE_SESSION = "加入在线战局"
     WAIT_TEAMMATE = "队友"
     PLAYER_JOIN = "玩家完成加入"

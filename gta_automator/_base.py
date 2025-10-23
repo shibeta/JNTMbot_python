@@ -100,20 +100,63 @@ class _BaseWorkflow:
 
     def handle_warning_page(self, ocr_text: Optional[str] = None) -> bool:
         """
-        如果当前在警告页面，则按 A 键确认。
+        如果当前在警告页面，则确认警告。
 
         :param ocr_text: 可选的 OCR 结果字符串，如果未提供则会自动获取当前屏幕的 OCR 结果
         :return: 没有发现警告页面时返回 False，发现并确认警告页面时返回 True
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        if self.screen.is_on_warning_page(ocr_text):
-            logger.info("动作: 发现警告页面，正在按 A 键确认...")
-            self.action.confirm()
-            time.sleep(0.2)  # 等待游戏响应弹窗关闭
-            logger.info("已确认警告页面。")
-            return True
-        else:
+        # 不在警告页面，直接返回
+        if not self.screen.is_on_warning_page(ocr_text):
             return False
+
+        logger.info("动作: 发现警告页面，正在确认...")
+        self.action.confirm()
+        time.sleep(0.2)  # 等待游戏响应页面关闭
+        logger.info("已确认警告页面。")
+        return True
+
+    def handle_online_service_policy_page(self, ocr_text: Optional[str] = None) -> bool:
+        """
+        如果当前在"RockStar Games 在线服务政策"页面，则勾选"我已阅读"并提交。
+
+        :param ocr_text: 可选的 OCR 结果字符串，用于检查是否在在线服务政策页面。如果未提供则会自动获取当前屏幕的 OCR 结果
+        :return: 没有发现在线服务政策页面时返回 False，发现并确认在线服务政策页面时返回 True
+        :raises ``OperationTimeout(OperationTimeoutContext.DOWNLOAD_POLICY)``: 下载在线服务政策超时
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        """
+        # 不在在线服务政策页面，直接返回
+        if not self.screen.is_on_online_service_policy_page(ocr_text):
+            return False
+
+        logger.info("动作: 发现在线服务政策页面，正在确认...")
+        # 在线服务政策页面首先会下载各种政策，等待至多 60 秒来完成下载
+        if not self.wait_for_state(self.screen.is_online_service_policy_loaded, 60, 1):
+            raise OperationTimeout(OperationTimeoutContext.DOWNLOAD_POLICY)
+
+        # 目前有两条在线服务政策，第一条是隐私政策，第二条是服务条款
+        # 尝试点击确认键，看看是否还停留在在线服务政策页面
+        self.action.confirm()
+        # 如果不在在线服务政策页面，说明点到条款里了
+        ocr_result = self.screen.ocr_game_window(0, 0, 0.7, 0.3)
+        if not self.screen.is_on_online_service_policy_page(ocr_result):
+            # 如果在隐私政策中，返回并下移两次，选中"我已确认"
+            if self.screen.is_on_privacy_policy_page(ocr_result):
+                self.action.back()
+                self.action.down()
+                self.action.down()
+            # 如果在服务条款中，返回并下移一次，选中"我已确认"
+            elif self.screen.is_on_term_of_service_page(ocr_result):
+                self.action.back()
+                self.action.down()
+
+        # 以上步骤会选中"我已确认"选项，进行确认并提交
+        self.action.confirm()
+        self.action.down()
+        self.action.confirm()
+        time.sleep(0.2)  # 等待游戏响应页面关闭
+        logger.info("已确认在线服务政策页面。")
+        return True
 
     def wait_for_state(
         self, check_function, timeout: int, check_interval: float = 1.0, game_has_started: bool = True
@@ -306,9 +349,9 @@ class _BaseWorkflow:
             elif self.screen.is_on_mainmenu(ocr_text):
                 # 由于网络不好或者被BE踢了，进入了主菜单
                 raise UnexpectedGameState(GameState.ONLINE_FREEMODE, GameState.MAIN_MENU)
-            elif self.screen.is_on_online_service_policy_page(ocr_text):
-                # 弹出 RockStar Games 在线服务政策页面
-                self.action.confirm_online_service_page()
+            elif self.handle_online_service_policy_page(ocr_text):
+                # 处理 RockStar Games 在线服务政策页面
+                continue
 
             # 检查是否进入了在线模式
             if self.check_if_in_onlinemode():

@@ -337,6 +337,38 @@ class GameScreen:
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         return self._check_state("在线服务政策", ocr_text, 0, 0, 0.7, 0.3)
+    
+    def is_online_service_policy_loaded(self, ocr_text: Optional[str] = None) -> bool:
+        """
+        检查是否在需要确认 RockStar Games 在线服务政策的页面，并且已经完全加载。
+
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        """
+        if not ocr_text:
+            ocr_text = self.ocr_game_window(0, 0, 0.7, 0.5)
+        # 先检查是否在在线服务政策页面
+        if self.is_on_online_service_policy_page(ocr_text):
+            # 再检查是否有关键字
+            return self._search_in_text(ocr_text, "想要阅读")
+        else:
+            # 如果不在在线服务政策页面，直接返回False
+            return False
+    
+    def is_on_privacy_policy_page(self, ocr_text: Optional[str] = None) -> bool:
+        """
+        检查是否在隐私政策页面。
+
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        """
+        return self._check_state("隐私政策", ocr_text, 0, 0, 0.7, 0.3)
+    
+    def is_on_term_of_service_page(self, ocr_text: Optional[str] = None) -> bool:
+        """
+        检查是否在服务条款页面。
+
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        """
+        return self._check_state("服务条款", ocr_text, 0, 0, 0.7, 0.3)
 
     def is_on_pause_menu(self, ocr_text: Optional[str] = None) -> bool:
         """
