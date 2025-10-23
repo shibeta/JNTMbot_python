@@ -66,7 +66,7 @@ class LifecycleWorkflow(_BaseWorkflow):
                     # 选择退出选项
                     self.action.confirm()
                     # 等待游戏关闭
-                    if self.wait_for_state(lambda: not self.process.is_game_started(), 30):
+                    if self.wait_for_state(lambda: not self.process.is_game_started(), 30, 1, False):
                         # 游戏关闭后等待 20 秒，给进程响应时间
                         time.sleep(20)
                         logger.info("通过常规方法退出游戏成功。")
