@@ -177,13 +177,13 @@ class HotKeyManager:
             try:
                 self._listener.stop()
             except:
-                # 我管你这那的
+                # 忽略任何异常
                 pass
         if self._listener_thread and self._listener_thread.is_alive():
             try:
                 self._listener_thread.join()
             except:
-                # 我管你这那的
+                # 忽略任何异常
                 pass
 
         self._listener = None
@@ -222,6 +222,7 @@ class HotKeyManager:
     def add_hotkey(self, hotkey: str, callback: Callable) -> None:
         """
         添加或更新一个全局热键。
+        如果管理器处于活动状态，此操作会自动更新或停止监听器。
         """
         with self._lock:
             self._hotkeys[hotkey] = callback
