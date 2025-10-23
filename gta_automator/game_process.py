@@ -93,11 +93,9 @@ class GameProcess:
                 logger.error(f"恢复 GTA V 进程时，发生异常: {e}")
 
     def kill(self):
-        """杀死 GTA V 进程，并且清除窗口句柄和 PID 。"""
-        logger.info("动作: 正在杀死 GTA V 相关进程...")
+        """杀死 GTA V 所有相关进程，并且清除窗口句柄和 PID 。"""
         kill_processes(self.GTA_ASSOCIATED_PROCESS_NAMES)
         self.hwnd, self.pid = None, None
-        logger.info("杀死 GTA V 相关进程完成。")
 
     def request_exit(self):
         """

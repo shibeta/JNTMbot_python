@@ -55,7 +55,7 @@ class _BaseWorkflow:
                 return True
         else:
             return False
-        
+
     def deprecated_check_if_in_onlinemode(self, max_retries: int = 3) -> bool:
         """
         通过打开信息面板，检查当前是否在在线模式中。只应在打开信息面板操作不会导致副作用的场景下执行。
@@ -301,7 +301,7 @@ class _BaseWorkflow:
                 # 由于 pc_setting.bin 问题无法进线上
                 raise UnexpectedGameState(GameState.ONLINE_FREEMODE, GameState.BAD_PCSETTING_BIN)
             elif self.handle_warning_page(ocr_text):
-                # 弹出错误窗口，比如网络不好，R星发钱等情况
+                # 处理错误窗口，比如网络不好，R星发钱等情况
                 continue
             elif self.screen.is_on_mainmenu(ocr_text):
                 # 由于网络不好或者被BE踢了，进入了主菜单

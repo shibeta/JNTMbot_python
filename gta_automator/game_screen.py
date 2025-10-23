@@ -89,19 +89,19 @@ class GameScreen:
 
     def _search_in_text(
         self,
-        content_to_search: str,
+        text: str,
         query_text: Union[str, List[str], re.Pattern[str]],
     ) -> bool:
         """
         辅助函数，用于检查文本是否存在于给定的字符串中。
         """
         if isinstance(query_text, re.Pattern):
-            return query_text.search(content_to_search) is not None
+            return query_text.search(text) is not None
         elif isinstance(query_text, (list, tuple)):
             pattern_str = "|".join(re.escape(text) for text in query_text)
-            return re.search(pattern_str, content_to_search) is not None
+            return re.search(pattern_str, text) is not None
         else:
-            return query_text in content_to_search
+            return query_text in text
 
     def _search_text_in_area(
         self,
