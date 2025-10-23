@@ -88,6 +88,18 @@ class GameProcess:
         self.hwnd, self.pid = None, None
         logger.info("杀死 GTA V 相关进程完成。")
 
+    def request_exit(self):
+        """
+        触发 alt+f4 退出，如果 GTA V 未启动，则不做任何事。
+
+        :raises ``Exception``: 向 GTA V 进程发出中断信号时出错
+        """
+        if self.hwnd:
+            try:
+                close_window(self.hwnd)
+            except Exception as e:
+                raise Exception("触发 alt+f4 退出失败") from e
+
     # --- 状态检查方法 ---
     def is_game_started(self) -> bool:
         """检查游戏是否启动。"""
