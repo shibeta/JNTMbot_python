@@ -110,10 +110,6 @@ class Config:
             "value": "有人没有卡单，请先阅读教程，了解Bot的使用方法后再使用本bot",
             "comment": "发现有人没卡单时发的消息 (设置为空字符串则不发这条消息)",
         },
-        "jobTpBotIndex": {
-            "value": -1,
-            "comment": "差传bot的序号，-1: 不指定, 按顺序加入直到成功, 1: 第一个差传(一般为辅助瞄准), 2: 第二个差传(一般为自由瞄准); ",
-        },
     }
 
     if TYPE_CHECKING:
@@ -156,7 +152,6 @@ class Config:
         msgJobStarting: str
         msgJobStartFail: str
         msgDetectedSB: str
-        jobTpBotIndex: int
 
     def __init__(self, config_filename: str = "config.yaml"):
         """

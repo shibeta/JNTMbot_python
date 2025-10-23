@@ -116,61 +116,6 @@ class SessionWorkflow(_BaseWorkflow):
         logger.error("切换新战局失败次数过多，认为游戏正处于未知状态。")
         raise UnexpectedGameState({GameState.ONLINE_FREEMODE, GameState.IN_MISSION}, GameState.UNKNOWN)
 
-    def deprecated_try_to_join_jobwarp_bot(self):
-        """
-        尝试通过 Steam 加入差传 Bot 战局。
-
-        该方法只能在游戏启动后才能运行，因为游戏未启动时使用 steam://rungame/ 会出现一个程序无法处理的弹窗。
-
-        该方法目前已废弃，将在未来版本中被移除。
-
-        如何迁移到其他方法: 用于回到在线模式自由模式: 重启游戏。用于差传: alt+f4等40秒。用于换战局: 菜单寻找新战局
-
-        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动所以无法加入差传 Bot 战局
-        :raises ``NetworkError(NetworkErrorContext.FETCH_WARPBOT_INFO)``: 从 mageangela 的接口获取差传 Bot 的战局链接时发生网络错误
-        :raises ``NetworkError(NetworkErrorContext.JOIN_WARPBOT_SESSION)``: 加入所有差传 Bot 战局均失败
-        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
-        """
-        logger.warning("警告: 正在使用已废弃的加入差传 Bot 方法。该方法将来会被移除，请尽快迁移到其他方法。")
-        logger.warning(
-            "如何迁移到其他方法: 用于回到在线模式自由模式: 重启游戏。用于差传: alt+f4等40秒。用于换战局: 菜单寻找新战局"
-        )
-
-        logger.info("动作: 正在加入差传 Bot 战局...")
-
-        if not self.process.is_game_started():
-            raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
-
-        list_bot_jvp = self.get_mageangela_jobwarp_bot_steamjvp()
-
-        # 根据 config 中的配置决定加入哪些差传 Bot
-        if self.config.jobTpBotIndex > 0:
-            # 配置为大于 0 时，使用对应该序号的 Bot
-            bot_lines_to_try = [list_bot_jvp[self.config.jobTpBotIndex - 1]]
-        else:
-            # 配置为小于 0 时，使用所有可用的 Bot
-            bot_lines_to_try = list_bot_jvp
-
-        # 使用 Steam 加入差传 Bot 战局
-        for bot in bot_lines_to_try:
-            try:
-                self.join_session_through_steam(bot)
-                # 加入差传 Bot 后，有时会掉进公开战局，所以需要卡单
-                time.sleep(5)  # 等待5秒钟让游戏稳定
-                self.glitch_single_player_session()
-                break
-            except OperationTimeout as e:
-                logger.error(f"加入差传 Bot 时，{e}")
-                # 超时后先进行一次卡单，然后再尝试下一个 Bot
-                time.sleep(5)  # 等待5秒钟让游戏稳定
-                self.glitch_single_player_session()
-            except UnexpectedGameState as e:
-                logger.error(f"加入差传 Bot 时，{e}")
-        else:
-            raise NetworkError(NetworkErrorContext.JOIN_WARPBOT_SESSION)
-
-        logger.info("成功加入差传 Bot 战局。")
-
     def join_session_through_steam(self, steam_jvp: str):
         """
         通过 Steam 的"加入游戏"功能，加入一个战局。
