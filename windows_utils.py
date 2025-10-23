@@ -4,6 +4,7 @@ import time
 import psutil
 import win32gui
 import win32process
+import win32con
 from win32con import (
     SW_RESTORE,
     HWND_TOPMOST,
@@ -221,7 +222,20 @@ def kill_processes(process_names: list[str]):
                 proc.kill()
                 logger.info(f"已强制终止进程: {proc.info['name']} (PID: {proc.pid})")
             except Exception as e:
-                logger.warning(f"无法终止进程 {proc.info['name']}: {e}")
+                logger.warning(f"无法强制终止进程 {proc.info['name']}: {e}")
+
+
+def close_window(hwnd: int):
+    """
+    向一个窗口发送 WM_CLOSE 消息以触发其关闭。
+
+    :param hwnd: 要关闭的窗口句柄
+    :raises ``ValueError``: 提供的窗口句柄不存在
+    :raises ``Exception``: 发送 WM_CLOSE 消息时出错
+    """
+    if not is_window_handler_exist(hwnd):
+        raise ValueError(f"未找到句柄为 {hwnd} 的窗口。")
+    win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
 
 
 def set_active_window(hwnd: int):
