@@ -1,6 +1,6 @@
 import atexit
 import re
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Union
 
 from ocr_utils import OCREngine
 from windows_utils import unset_top_window
@@ -10,6 +10,51 @@ from .exception import *
 from .game_process import GameProcess
 
 logger = get_logger(name="game_screen")
+
+
+class GameScreenTextPatterns:
+    @staticmethod
+    def _compile_to_pattern(
+        keywords: Union[str, List[str]],
+        escape_spicial_character: bool = True,
+    ) -> re.Pattern[str]:
+        """将传入的关键字编译为模式字符串"""
+        if not keywords:
+            raise ValueError(f"关键字 {keywords} 无效")
+        if isinstance(keywords, str):
+            if escape_spicial_character:
+                return re.compile(re.escape(keywords))
+            else:
+                return re.compile(keywords)
+        elif isinstance(keywords, list):
+            # 只接受纯字符串构成的列表
+            if not all(isinstance(keyword, str) for keyword in keywords):
+                raise ValueError(f"列表 {keywords} 中含有非字符串元素")
+            if escape_spicial_character:
+                final_regex_str = "|".join(re.escape(text) for text in keywords)
+            else:
+                final_regex_str = "|".join(text for text in keywords)
+            return re.compile(final_regex_str)
+
+    IS_ON_JOB_PANEL_RIGHT_SCREEN = _compile_to_pattern(["浑球", "办事", "角色"])
+    IS_ON_MAINMENU_GTAPLUS_ADVERTISEMENT_PAGE = _compile_to_pattern(["导览", "跳过"])
+    IS_ON_JOB_PANEL_LEFT_SCREEN = _compile_to_pattern(["别惹", "德瑞", "搭档"])
+    IS_ON_FIRST_JOB_SETUP_PAGE = _compile_to_pattern(["设置", "镜头", "武器"])
+    IS_ON_SECOND_JOB_SETUP_PAGE = _compile_to_pattern(["匹配", "邀请", "帮会"])
+    IS_ON_SCOREBOARD = _compile_to_pattern(["别惹", "德瑞"])
+    IS_JOB_MARKER_FOUND = _compile_to_pattern(["猎杀", "约翰尼"])
+    # 有时任务会以英文启动，因此检查"团队生命数"作为保底
+    IS_JOB_STARTED = _compile_to_pattern(["前往", "出现", "汇报", "进度", "团队", "生命数"])
+    IS_JOB_STARTING = _compile_to_pattern(["正在", "启动", "战局"])
+    IS_ON_WARNING_PAGE = _compile_to_pattern(["警告", "注意"])
+    IS_CONFIRM_OPTION_AVAILABLE = _compile_to_pattern(["是", "否"])
+    # 增强版是"目前无法从Rockstar云服务器下载您保存的数据"，确认后会返回主菜单
+    # 传承版是"此时无法从Rockstar云服务器载入您保存的数据"，确认后会返回故事模式
+    IS_ON_BAD_PCSETTING_WARNING_PAGE = _compile_to_pattern(["目前无法", "此时无法"])
+    IS_ON_PAUSE_MENU = _compile_to_pattern(["地图", "职业", "简讯"])
+    IS_ON_STORY_PAUSE_MENU = _compile_to_pattern(["简讯", "统计", "设置"])
+    IS_ON_ONLINE_PAUSE_MENU = _compile_to_pattern(["职业", "好友", "商店"])
+    IS_ON_GO_ONLINE_MENU = _compile_to_pattern(["公开战局", "邀请的", "帮会战局"])
 
 
 class GameScreen:
@@ -45,7 +90,7 @@ class GameScreen:
     def _search_in_text(
         self,
         content_to_search: str,
-        query_text: Union[str, List[str], Tuple[str, ...], re.Pattern[str]],
+        query_text: Union[str, List[str], re.Pattern[str]],
     ) -> bool:
         """
         辅助函数，用于检查文本是否存在于给定的字符串中。
@@ -60,7 +105,7 @@ class GameScreen:
 
     def _search_text_in_area(
         self,
-        query_text: Union[str, List[str], Tuple[str, ...], re.Pattern[str]],
+        query_text: Union[str, List[str], re.Pattern[str]],
         left: float,
         top: float,
         width: float,
@@ -78,7 +123,7 @@ class GameScreen:
 
     def _check_state(
         self,
-        query_text: Union[str, List[str], Tuple[str, ...], re.Pattern[str]],
+        query_text: Union[str, List[str], re.Pattern[str]],
         ocr_text: Optional[str],
         left: float,
         top: float,
@@ -113,8 +158,6 @@ class GameScreen:
         else:
             return self._search_text_in_area(query_text, left, top, width, height)
 
-    _PATTERN_IS_ON_JOB_PANEL_RIGHT_SCREEN = re.compile("|".join(re.escape(text) for text in ["浑球", "办事", "角色"]))
-
     def get_job_setup_status(self) -> tuple[bool, int, int, int]:
         """
         检查差事面板状态，包括是否在面板中，以及加入的玩家数。
@@ -126,7 +169,7 @@ class GameScreen:
         ocr_result = self.ocr_game_window(0.5, 0, 0.5, 1)
 
         # 使用正则表达式搜索是否在面板中
-        if self._search_in_text(ocr_result, self._PATTERN_IS_ON_JOB_PANEL_RIGHT_SCREEN):
+        if self._search_in_text(ocr_result, GameScreenTextPatterns.IS_ON_JOB_PANEL_RIGHT_SCREEN):
             # 在面板中则识别加入玩家数
             # "离开"是加入失败，可以认为这也是一种"正在加入"状态
             joining_count = ocr_result.count("正在") + ocr_result.count("离开")
@@ -139,10 +182,6 @@ class GameScreen:
             return False, -1, -1, -1
 
     # --- 状态检查方法 ---
-    _PATTERN_IS_ON_MAINMENU_GTAPLUS_ADVERTISEMENT_PAGE = re.compile(
-        "|".join(re.escape(text) for text in ["导览", "跳过"])
-    )
-
     def is_on_mainmenu_gtaplus_advertisement_page(self, ocr_text: Optional[str] = None) -> bool:
         """
         检查游戏是否在主菜单的gta+广告页面。
@@ -150,7 +189,12 @@ class GameScreen:
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         return self._check_state(
-            self._PATTERN_IS_ON_MAINMENU_GTAPLUS_ADVERTISEMENT_PAGE, ocr_text, 0.5, 0.8, 0.5, 0.2
+            GameScreenTextPatterns.IS_ON_MAINMENU_GTAPLUS_ADVERTISEMENT_PAGE,
+            ocr_text,
+            0.5,
+            0.8,
+            0.5,
+            0.2,
         )
 
     def is_on_mainmenu_logout(self, ocr_text: Optional[str] = None) -> bool:
@@ -194,19 +238,13 @@ class GameScreen:
         """
         return self._check_state("床", ocr_text, 0, 0, 0.5, 0.5)
 
-    _PATTERN_IS_ON_JOB_PANEL_LEFT_SCREEN = re.compile("|".join(re.escape(text) for text in ["别惹", "德瑞", "搭档"]))
-
     def is_on_job_panel(self, ocr_text: Optional[str] = None) -> bool:
         """
         检查当前是否在差事面板界面。
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(self._PATTERN_IS_ON_JOB_PANEL_LEFT_SCREEN, ocr_text, 0, 0, 0.5, 0.5)
-
-    _PATTERN_IS_ON_FIRST_JOB_SETUP_PAGE = re.compile(
-        "|".join(re.escape(text) for text in ["设置", "镜头", "武器"])
-    )
+        return self._check_state(GameScreenTextPatterns.IS_ON_JOB_PANEL_LEFT_SCREEN, ocr_text, 0, 0, 0.5, 0.5)
 
     def is_on_first_job_setup_page(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -214,11 +252,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(self._PATTERN_IS_ON_FIRST_JOB_SETUP_PAGE, ocr_text, 0, 0, 1, 1)
-
-    _PATTERN_IS_ON_SECOND_JOB_SETUP_PAGE = re.compile(
-        "|".join(re.escape(text) for text in ["匹配", "邀请", "帮会"])
-    )
+        return self._check_state(GameScreenTextPatterns.IS_ON_FIRST_JOB_SETUP_PAGE, ocr_text, 0, 0, 1, 1)
 
     def is_on_second_job_setup_page(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -226,9 +260,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(self._PATTERN_IS_ON_SECOND_JOB_SETUP_PAGE, ocr_text, 0, 0, 1, 1)
-
-    _PATTERN_IS_ON_SCOREBOARD = re.compile("|".join(re.escape(text) for text in ["别惹", "德瑞"]))
+        return self._check_state(GameScreenTextPatterns.IS_ON_SECOND_JOB_SETUP_PAGE, ocr_text, 0, 0, 1, 1)
 
     def is_on_scoreboard(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -236,9 +268,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(self._PATTERN_IS_ON_SCOREBOARD, ocr_text, 0, 0, 0.5, 0.5)
-
-    _PATTERN_IS_JOB_MARKER_FOUND = re.compile("|".join(re.escape(text) for text in ["猎杀", "约翰尼"]))
+        return self._check_state(GameScreenTextPatterns.IS_ON_SCOREBOARD, ocr_text, 0, 0, 0.5, 0.5)
 
     def is_job_marker_found(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -246,12 +276,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(self._PATTERN_IS_JOB_MARKER_FOUND, ocr_text, 0, 0, 0.5, 0.5)
-
-    # 有时任务会以英文启动，因此检查"团队生命数"作为保底
-    _PATTERN_IS_JOB_STARTED = re.compile(
-        "|".join(re.escape(text) for text in ["前往", "出现", "汇报", "进度", "团队", "生命数"])
-    )
+        return self._check_state(GameScreenTextPatterns.IS_JOB_MARKER_FOUND, ocr_text, 0, 0, 0.5, 0.5)
 
     def is_job_started(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -259,9 +284,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(self._PATTERN_IS_JOB_STARTED, ocr_text, 0, 0.8, 1, 0.2)
-
-    _PATTERN_IS_JOB_STARTING = re.compile("|".join(re.escape(text) for text in ["正在", "启动", "战局"]))
+        return self._check_state(GameScreenTextPatterns.IS_JOB_STARTED, ocr_text, 0, 0.8, 1, 0.2)
 
     def is_job_starting(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -269,9 +292,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(self._PATTERN_IS_JOB_STARTING, ocr_text, 0, 0.8, 1, 0.2)
-
-    _PATTERN_IS_ON_WARNING_PAGE = re.compile("|".join(re.escape(text) for text in ["警告", "注意"]))
+        return self._check_state(GameScreenTextPatterns.IS_JOB_STARTING, ocr_text, 0, 0.8, 1, 0.2)
 
     def is_on_warning_page(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -279,13 +300,25 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(self._PATTERN_IS_ON_WARNING_PAGE, ocr_text, 0, 0, 1, 1)
+        return self._check_state(GameScreenTextPatterns.IS_ON_WARNING_PAGE, ocr_text, 0.25, 0, 0.5, 0.6)
 
-    # 增强版是"目前无法从Rockstar云服务器下载您保存的数据"，确认后会返回主菜单
-    # 传承版是"此时无法从Rockstar云服务器载入您保存的数据"，确认后会返回故事模式
-    _PATTERN_IS_ON_BAD_PCSETTING_WARNING_PAGE = re.compile(
-        "|".join(re.escape(text) for text in ["目前无法", "此时无法"])
-    )
+    def is_on_exit_confirm_page(self, ocr_text: Optional[str] = None) -> bool:
+        """
+        检查是否在确认退出页面。
+
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        """
+        return self._check_state("退出", ocr_text, 0.25, 0.2, 0.5, 0.5)
+
+    def is_confirm_option_available(self, ocr_text: Optional[str] = None) -> bool:
+        """
+        检查右下角是否出现"是""否"选项。
+
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        """
+        return self._check_state(
+            GameScreenTextPatterns.IS_CONFIRM_OPTION_AVAILABLE, ocr_text, 0.75, 0.8, 0.25, 0.2
+        )
 
     def is_on_bad_pcsetting_warning_page(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -293,8 +326,10 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(self._PATTERN_IS_ON_BAD_PCSETTING_WARNING_PAGE, ocr_text, 0, 0, 1, 1)
-    
+        return self._check_state(
+            GameScreenTextPatterns.IS_ON_BAD_PCSETTING_WARNING_PAGE, ocr_text, 0, 0, 1, 1
+        )
+
     def is_on_online_service_policy_page(self, ocr_text: Optional[str] = None) -> bool:
         """
         检查是否在需要确认 RockStar Games 在线服务政策的页面。
@@ -303,19 +338,13 @@ class GameScreen:
         """
         return self._check_state("在线服务政策", ocr_text, 0, 0, 0.7, 0.3)
 
-    _PATTERN_IS_ON_PAUSE_MENU = re.compile("|".join(re.escape(text) for text in ["地图", "职业", "简讯"]))
-
     def is_on_pause_menu(self, ocr_text: Optional[str] = None) -> bool:
         """
         检查是否在暂停菜单，无论是在线模式还是故事模式。
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(self._PATTERN_IS_ON_PAUSE_MENU, ocr_text, 0, 0.1, 0.5, 0.3)
-
-    _PATTERN_IS_ON_STORY_PAUSE_MENU = re.compile(
-        "|".join(re.escape(text) for text in ["简讯", "统计", "设置"])
-    )
+        return self._check_state(GameScreenTextPatterns.IS_ON_PAUSE_MENU, ocr_text, 0, 0.1, 0.5, 0.3)
 
     def is_on_story_pause_menu(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -323,11 +352,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(self._PATTERN_IS_ON_STORY_PAUSE_MENU, ocr_text, 0.1, 0.1, 0.7, 0.3)
-
-    _PATTERN_IS_ON_ONLINE_PAUSE_MENU = re.compile(
-        "|".join(re.escape(text) for text in ["职业", "好友", "商店"])
-    )
+        return self._check_state(GameScreenTextPatterns.IS_ON_STORY_PAUSE_MENU, ocr_text, 0.1, 0.1, 0.7, 0.3)
 
     def is_on_online_pause_menu(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -335,11 +360,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(self._PATTERN_IS_ON_ONLINE_PAUSE_MENU, ocr_text, 0.1, 0.1, 0.5, 0.3)
-
-    _PATTERN_IS_ON_GO_ONLINE_MENU = re.compile(
-        "|".join(re.escape(text) for text in ["公开战局", "邀请的", "帮会战局", "公开帮会", "公开好友"])
-    )
+        return self._check_state(GameScreenTextPatterns.IS_ON_ONLINE_PAUSE_MENU, ocr_text, 0.1, 0.1, 0.5, 0.3)
 
     def is_on_go_online_menu(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -347,4 +368,4 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(self._PATTERN_IS_ON_GO_ONLINE_MENU, ocr_text, 0, 0, 0.5, 0.5)
+        return self._check_state(GameScreenTextPatterns.IS_ON_GO_ONLINE_MENU, ocr_text, 0, 0, 0.5, 0.5)
