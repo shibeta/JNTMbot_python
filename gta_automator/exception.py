@@ -20,7 +20,7 @@ class GameState(enum.Enum):
     """定义了游戏中所有可被程序识别的高级状态。"""
 
     ON = "游戏运行中的任意状态"  # 仅用于expected
-    UNKNOWN = "游戏运行中的无法识别的状态"  # 仅用于actual
+    UNKNOWN = "游戏运行中的未识别的状态"  # 仅用于actual
     OFF = "游戏未运行"
     OFFLINE = "离线模式"
     MAIN_MENU = "主菜单"
