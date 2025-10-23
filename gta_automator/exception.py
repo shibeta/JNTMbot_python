@@ -39,13 +39,6 @@ class GameState(enum.Enum):
     BAD_PCSETTING_BIN = "此时无法载入您保存的数据"
 
 
-class NavigationFailedContext(enum.Enum):
-    """抛出 NavigationFailed 异常时，可能处于的上下文"""
-
-    ENTER_AGENCY = "进入事务所"
-    EXIT_AGENCY = "离开事务所"
-
-
 class UIElementNotFoundContext(enum.Enum):
     """抛出 UIElementNotFound 异常时，可能处于的上下文"""
 
@@ -109,15 +102,6 @@ class UnexpectedGameState(GameAutomatorException):
         return "未知期望"
 
 
-class NavigationFailed(GameAutomatorException):
-    """角色移动失败的错误。"""
-
-    def __init__(self, context: NavigationFailedContext):
-        self.context = context
-        self.message = f"无法{self.context.value}"
-        super().__init__(self.message)
-
-
 class UIElementNotFound(GameAutomatorException):
     """在屏幕上找不到预期的UI元素的错误。"""
 
@@ -154,7 +138,7 @@ if __name__ == "__main__":
         raise UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.LOADING_SCREEN)
     except UnexpectedGameState as e:
         print(f"成功捕获异常: {e}")
-        assert e.message == '期望状态为 "IN_ONLINE_LOBBY", 但实际状态为 "LOADING_SCREEN"'
+        assert e.message == '期望状态为 "在线战局自由模式", 但实际状态为 "加载界面"'
 
     # 2b. 期望是一组状态
     try:
@@ -164,20 +148,11 @@ if __name__ == "__main__":
     except UnexpectedGameState as e:
         print(f"成功捕获异常: {e}")
         assert (
-            e.message == '期望状态为 "IN_ONLINE_LOBBY 或 IN_MISSION", 但实际状态为 "ONLINE_PAUSED"'
-            or e.message == '期望状态为 "IN_MISSION 或 IN_ONLINE_LOBBY", 但实际状态为 "ONLINE_PAUSED"'
+            e.message == '期望状态为 "在线战局自由模式 或 任务中", 但实际状态为 "在线模式暂停菜单"'
+            or e.message == '期望状态为 "任务中 或 在线战局自由模式", 但实际状态为 "在线模式暂停菜单"'
         )
 
-    # 3. 测试 NavigationFailed
-    try:
-        print("\n测试: NavigationFailed")
-        # 注意: 我为 NavigationFailedContext 添加了示例成员，以便测试
-        raise NavigationFailed(NavigationFailedContext.ENTER_AGENCY)
-    except NavigationFailed as e:
-        print(f"成功捕获异常: {e}")
-        assert e.message == "无法进入事务所"
-
-    # 4. 测试 UIElementNotFound
+    # 3. 测试 UIElementNotFound
     try:
         print("\n测试: UIElementNotFound")
         raise UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)
@@ -185,7 +160,7 @@ if __name__ == "__main__":
         print(f"成功捕获异常: {e}")
         assert e.message == "找不到任务触发点"
 
-    # 5. 测试 NetworkError
+    # 4. 测试 NetworkError
     try:
         print("\n测试: NetworkError")
         raise NetworkError(NetworkErrorContext.JOIN_WARPBOT_SESSION)
