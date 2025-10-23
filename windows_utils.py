@@ -28,12 +28,8 @@ def is_process_exist(pid: int):
     :return: True表示进程存在，False表示不存在
     """
     try:
-        if pid is not None:
-            return psutil.pid_exists(pid)
-        else:
-            raise ValueError("PID 必须是一个整数")
-    except Exception as e:
-        logger.error(f"检查进程ID({pid})是否存在时出错: {e}。")
+        return psutil.pid_exists(pid)
+    except:
         return False
 
 
@@ -45,12 +41,8 @@ def is_window_handler_exist(hwnd: int) -> bool:
     :return: True表示窗口存在，False表示不存在
     """
     try:
-        if hwnd is not None:
-            return bool(win32gui.IsWindow(hwnd))
-        else:
-            raise ValueError("窗口句柄必须是一个整数")
-    except Exception as e:
-        logger.error(f"检查窗口句柄({hwnd})是否存在时出错: {e}。")
+        return bool(win32gui.IsWindow(hwnd))
+    except:
         return False
 
 
