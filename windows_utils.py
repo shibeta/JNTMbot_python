@@ -94,7 +94,7 @@ def get_window_info(window_name: str) -> Optional[Tuple[int, int]]:
 
 def find_window(window_title: str, process_name: str) -> Optional[Tuple[int, int]]:
     """
-    一个更加可靠(?)的窗口查找器，用于找到一个标题和进程名称均匹配的，非0*0的窗口。
+    一个可靠的窗口查找器，用于找到一个标题和进程名称均匹配的，非0*0的窗口。
 
     :param window_title: 目标窗口的标题。
     :param process_name: 目标窗口的进程名称。
@@ -173,7 +173,7 @@ def suspend_process_for_duration(pid: int, duration_seconds: float):
         proc.suspend()
         time.sleep(duration_seconds)
     except psutil.NoSuchProcess:
-        raise ValueError(f"无法挂起：未找到 PID 为 {pid} 的进程。")
+        raise ValueError(f"无法挂起：未找到 PID 为 {pid} 的进程")
     except Exception as e:
         raise Exception(f"挂起进程({pid})时发生异常: {e}") from e
     finally:
@@ -204,14 +204,14 @@ def resume_process_from_suspend(pid: int):
         except psutil.NoSuchProcess:
             pass  # 进程可能在操作期间关闭了
     except psutil.NoSuchProcess:
-        raise ValueError(f"无法从挂起恢复：未找到 PID 为 {pid} 的进程。")
+        raise ValueError(f"无法从挂起恢复：未找到 PID 为 {pid} 的进程")
     except Exception as e:
         raise Exception(f"恢复进程 {pid} 时出错: {e}") from e
 
 
 def kill_processes(process_names: list[str]):
     """
-    终止所有符合名称的进程。
+    强制终止所有符合名称的进程。
 
     :param process_names: 进程名称列表
     """
@@ -219,7 +219,7 @@ def kill_processes(process_names: list[str]):
         if proc.info["name"] in process_names:
             try:
                 proc.kill()
-                logger.info(f"已终止进程: {proc.info['name']} (PID: {proc.pid})")
+                logger.info(f"已强制终止进程: {proc.info['name']} (PID: {proc.pid})")
             except Exception as e:
                 logger.warning(f"无法终止进程 {proc.info['name']}: {e}")
 
