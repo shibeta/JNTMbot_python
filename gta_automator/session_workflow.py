@@ -83,7 +83,7 @@ class SessionWorkflow(_BaseWorkflow):
 
     def start_new_match(self):
         """
-        尝试从在线战局中切换到另一个仅邀请战局，必须在自由模式下才能工作。
+        尝试从在线战局中切换到另一个仅邀请战局，必须在在线模式中才能工作。
 
         :raises ``UnexpectedGameState(expected={GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, actual=GameState.UNKNOWN)``: 游戏状态未知，无法切换战局
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法切换战局
