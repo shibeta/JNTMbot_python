@@ -77,7 +77,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         finally:
             # 更新游戏进程信息
             self.process.update_info()
-        
+
         # 如果游戏还在运行，强制关闭
         if self.process.is_game_started():
             logger.info("通过常规方法退出游戏失败，将强制关闭游戏。")
@@ -210,18 +210,26 @@ class LifecycleWorkflow(_BaseWorkflow):
         logger.info("动作: 正在等待主菜单加载...")
         start_time = time.monotonic()
         while time.monotonic() - start_time < 180:  # 3分钟加载超时，有时需要等待预编译管线
-            # 两次检查需要分开进行 OCR , 因为 OCR 区域不一样
+            # 每5秒检查一次
+            time.sleep(5)
+
+            # 获取一次当前屏幕状态
+            ocr_text = self.screen.ocr_game_window(0.5, 0.8, 0.5, 0.2)
+
             # 检查是否在主菜单
-            if self.screen.is_on_mainmenu():
+            if self.screen.is_on_mainmenu(ocr_text):
                 # 进入了主菜单
                 return
-            # 有时候主菜单会展示一个显示 GTA+ 广告的窗口
-            elif self.screen.is_on_mainmenu_gtaplus_advertisement_page():
+            # 当pcsetting文件损坏时，会展示设置伽马值的页面
+            elif self.screen.is_on_mainmenu_display_calibration_page(ocr_text):
+                time.sleep(2)  # 等待页面加载完成
+                self.action.confirm()
+                continue
+            # 有时候会展示 GTA+ 广告窗口
+            elif self.screen.is_on_mainmenu_gtaplus_advertisement_page(ocr_text):
                 time.sleep(2)  # 等待广告页面加载完成
                 self.action.confirm()
-                # 确认掉广告页面后，也会进入主菜单
-                return
-            time.sleep(5)
+                continue
         else:
             # 循环结束仍未加载成功
             raise OperationTimeout(OperationTimeoutContext.MAIN_MENU_LOAD)

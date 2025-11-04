@@ -37,6 +37,7 @@ class GameScreenTextPatterns:
             return re.compile(final_regex_str)
 
     IS_ON_JOB_PANEL_RIGHT_SCREEN = _compile_to_pattern(["浑球", "办事", "角色"])
+    IS_ON_MAINMENU_DISPLAY_CALIBRATION_PAGE = _compile_to_pattern(["调整", "确认"])
     IS_ON_MAINMENU_GTAPLUS_ADVERTISEMENT_PAGE = _compile_to_pattern(["导览", "跳过"])
     IS_ON_JOB_PANEL_LEFT_SCREEN = _compile_to_pattern(["别惹", "德瑞", "搭档"])
     IS_ON_FIRST_JOB_SETUP_PAGE = _compile_to_pattern(["设置", "镜头", "武器"])
@@ -182,6 +183,16 @@ class GameScreen:
             return False, -1, -1, -1
 
     # --- 状态检查方法 ---
+    def is_on_mainmenu_display_calibration_page(self, ocr_text: Optional[str] = None) -> bool:
+        """
+        检查游戏是否在主菜单的亮度调整页面。
+
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        """
+        return self._check_state(
+            GameScreenTextPatterns.IS_ON_MAINMENU_DISPLAY_CALIBRATION_PAGE, ocr_text, 0.25, 0.4, 0.5, 0.2
+        )
+
     def is_on_mainmenu_gtaplus_advertisement_page(self, ocr_text: Optional[str] = None) -> bool:
         """
         检查游戏是否在主菜单的gta+广告页面。
@@ -337,7 +348,7 @@ class GameScreen:
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         return self._check_state("在线服务政策", ocr_text, 0, 0, 0.7, 0.3)
-    
+
     def is_online_service_policy_loaded(self, ocr_text: Optional[str] = None) -> bool:
         """
         检查是否在需要确认 RockStar Games 在线服务政策的页面，并且已经完全加载。
@@ -353,7 +364,7 @@ class GameScreen:
         else:
             # 如果不在在线服务政策页面，直接返回False
             return False
-    
+
     def is_on_privacy_policy_page(self, ocr_text: Optional[str] = None) -> bool:
         """
         检查是否在隐私政策页面。
@@ -361,7 +372,7 @@ class GameScreen:
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         return self._check_state("隐私政策", ocr_text, 0, 0, 0.7, 0.3)
-    
+
     def is_on_term_of_service_page(self, ocr_text: Optional[str] = None) -> bool:
         """
         检查是否在服务条款页面。
