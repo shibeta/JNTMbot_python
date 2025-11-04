@@ -8,10 +8,51 @@ on:
   workflow_dispatch:
 
 jobs:
+  # --- 检查是否有新的提交 ---
+  check_for_changes:
+    name: Check for new commits
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.should_build }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # 获取所有历史记录，以便找到 tag
+          fetch-depth: 0
+
+      - name: Check for changes since last nightly tag
+        id: check
+        run: |
+          # 从远程获取所有 tag
+          git fetch --all --tags
+
+          # 获取当前分支的 HEAD commit SHA
+          HEAD_SHA=$(git rev-parse HEAD)
+          echo "Current HEAD SHA: $HEAD_SHA"
+
+          # 获取 'nightly' tag 指向的 commit SHA。
+          # 如果 tag 不存在 (例如首次运行), 命令会失败，我们将 NIGHTLY_SHA 设为空字符串。
+          NIGHTLY_SHA=$(git rev-parse nightly 2>/dev/null || echo "")
+          echo "Nightly tag SHA: $NIGHTLY_SHA"
+
+          # 比较两个 SHA。如果不同，或者 nightly 标签不存在，则需要构建。
+          if [ "$HEAD_SHA" != "$NIGHTLY_SHA" ]; then
+            echo "发现新提交，开始构建。"
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "自上次 nightly 发布以来无新提交，跳过构建。"
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+          fi
+        shell: bash
+
   # --- 构建 Python 部分 ---
   build_python:
     name: Build Python Executable
     runs-on: windows-latest
+    needs: check_for_changes
+    if: needs.check_for_changes.outputs.should_build == 'true'
     env:
       PYTHONUTF8: "1"  # 强制 Python 使用 UTF-8 模式
 
@@ -89,6 +130,8 @@ jobs:
   build_node:
     name: Build Node.js Executable
     runs-on: windows-latest
+    needs: check_for_changes
+    if: needs.check_for_changes.outputs.should_build == 'true'
     
     steps:
       - name: Checkout repository
