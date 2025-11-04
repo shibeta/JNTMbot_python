@@ -183,7 +183,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         self.process.update_info()
 
         # 等待主菜单加载
-        self.wait_for_mainmenu_load()
+        self.process_main_menu_loading()
 
         logger.info("已启动 GTA V。")
 
@@ -199,9 +199,9 @@ class LifecycleWorkflow(_BaseWorkflow):
         ):  # 5分钟超时，因为rockstar启动器非常慢
             raise OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)
 
-    def wait_for_mainmenu_load(self):
+    def process_main_menu_loading(self):
         """
-        等待主菜单加载完成。
+        等待主菜单加载完成，并处理加载过程中的各种意外情况。
 
         :raises ``OperationTimeout(OperationTimeoutContext.MAIN_MENU_LOAD)``: 等待主菜单加载超时
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
@@ -329,6 +329,6 @@ class LifecycleWorkflow(_BaseWorkflow):
         self.action.enter_invite_only_session()
 
         # 等待进入在线模式
-        self.wait_for_online_mode_load()
+        self.process_online_loading()
 
         logger.info("已进入在线模式。")

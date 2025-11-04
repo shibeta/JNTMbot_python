@@ -137,6 +137,6 @@ class SessionWorkflow(_BaseWorkflow):
         time.sleep(3)
 
         # 等待加入战局
-        self.wait_for_online_mode_load()
+        self.process_online_loading()
 
         logger.info(f"成功加入战局: {steam_jvp}")

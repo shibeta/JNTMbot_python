@@ -306,7 +306,7 @@ class _BaseWorkflow:
 
         return list_bot_steamjvp
 
-    def wait_for_online_mode_load(self):
+    def process_online_loading(self):
         """
         等待进入在线模式，并处理加载过程中的各种意外情况。
         该方法被多个管理器共用，因此被放置在基类中。
