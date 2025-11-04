@@ -309,6 +309,7 @@ class _BaseWorkflow:
     def wait_for_online_mode_load(self):
         """
         等待进入在线模式，并处理加载过程中的各种意外情况。
+        该方法被多个管理器共用，因此被放置在基类中。
 
         :raises ``OperationTimeout(OperationTimeoutContext.JOIN_ONLINE_SESSION)``: 等待进入在线模式超时
         :raises ``UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.BAD_PCSETTING_BIN)``: 由于 pc_setting.bin 问题无法进入在线模式
