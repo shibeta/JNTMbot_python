@@ -306,19 +306,6 @@ class _BaseWorkflow:
 
         return list_bot_steamjvp
 
-    def wait_for_storymode_load(self):
-        """
-        等待故事模式加载完成。该方法被多个管理器共用，因此放在基类中。
-
-        :raises ``OperationTimeout(OperationTimeoutContext.STORY_MODE_LOAD)``: 等待故事模式加载超时
-        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
-
-        """
-        logger.info("动作: 正在等待故事模式加载...")
-
-        if not self.wait_for_state(self.check_if_in_storymode, 120, 5):
-            raise OperationTimeout(OperationTimeoutContext.STORY_MODE_LOAD)
-
     def wait_for_online_mode_load(self):
         """
         等待进入在线模式，并处理加载过程中的各种意外情况。

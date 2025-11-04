@@ -260,6 +260,19 @@ class LifecycleWorkflow(_BaseWorkflow):
 
         logger.info("已进入故事模式。")
 
+    def wait_for_storymode_load(self):
+        """
+        等待故事模式加载完成。
+
+        :raises ``OperationTimeout(OperationTimeoutContext.STORY_MODE_LOAD)``: 等待故事模式加载超时
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+
+        """
+        logger.info("动作: 正在等待故事模式加载...")
+
+        if not self.wait_for_state(self.check_if_in_storymode, 120, 5):
+            raise OperationTimeout(OperationTimeoutContext.STORY_MODE_LOAD)
+
     def navigate_to_go_online_menu(self):
         """
         从暂停菜单导航至'进入在线模式'的菜单。
