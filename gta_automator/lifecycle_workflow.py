@@ -51,25 +51,26 @@ class LifecycleWorkflow(_BaseWorkflow):
         logger.info("动作: 正在退出游戏...")
         # 先尝试常规退出流程
         try:
-            # 如过游戏没启动，则抛出异常以跳过常规退出流程
+            # 如过游戏没启动，则跳过常规退出流程
             if not self.process.is_game_started():
-                raise UnexpectedGameState(GameState.ON, GameState.OFF)
-            # 处理警告页面，以避免其他警告页面干扰退出页面判断
-            self.handle_warning_page()
-            # 触发 alt+f4, 然后等待游戏加载退出页面
-            self.process.request_exit()
-            time.sleep(3)
-            # 检查是否在确认退出页面
-            if self.screen.is_on_exit_confirm_page():
-                # 游戏会先尝试与 RockStar 在线服务通信以进行保存, 直到保存成功或保存失败后才能确认退出
-                if self.wait_for_state(self.screen.is_confirm_option_available, 30):
-                    # 选择退出选项
-                    self.action.confirm()
-                    # 等待游戏关闭
-                    if self.wait_for_state(lambda: not self.process.is_game_started(), 30, 1, False):
-                        # 游戏关闭后等待 20 秒，给进程响应时间
-                        time.sleep(20)
-                        logger.info("通过常规方法退出游戏成功。")
+                logger.warning("GTA V 未启动，跳过退出流程。")
+            else:
+                # 处理警告页面，以避免其他警告页面干扰退出页面判断
+                self.handle_warning_page()
+                # 触发 alt+f4, 然后等待游戏加载退出页面
+                self.process.request_exit()
+                time.sleep(3)
+                # 检查是否在确认退出页面
+                if self.screen.is_on_exit_confirm_page():
+                    # 游戏会先尝试与 RockStar 在线服务通信以进行保存, 直到保存成功或保存失败后才能确认退出
+                    if self.wait_for_state(self.screen.is_confirm_option_available, 30):
+                        # 选择退出选项
+                        self.action.confirm()
+                        # 等待游戏关闭
+                        if self.wait_for_state(lambda: not self.process.is_game_started(), 30, 1, False):
+                            # 游戏关闭后等待 20 秒，给进程响应时间
+                            time.sleep(20)
+                            logger.info("通过常规方法退出游戏成功。")
         except Exception as e:
             logger.warning(f"通过常规方法退出游戏时，发生异常: {e}")
             pass
@@ -79,7 +80,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         
         # 如果游戏还在运行，强制关闭
         if self.process.is_game_started():
-            logger.info("通过常规方法退出游戏失败，将强制关闭。")
+            logger.info("通过常规方法退出游戏失败，将强制关闭游戏。")
             self.force_shutdown_gta()
         logger.info("退出游戏完成。")
 
