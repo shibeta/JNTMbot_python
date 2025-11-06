@@ -377,6 +377,7 @@ class SteamBotClient:
             raise e
 
     def reset_send_timer(self):
+        """重置上次发送消息的时间戳为当前时间。"""
         self.last_send_monotonic_time = time.monotonic()
         self.last_send_system_time = time.time()
 
