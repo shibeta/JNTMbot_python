@@ -88,7 +88,7 @@ class GameScreen:
 
         return self.ocr.ocr_window(self.process.hwnd, left, top, width, height)
 
-    def _search_in_text(
+    def _search_text_in_text(
         self,
         text: str,
         query_text: Union[str, List[str], re.Pattern[str]],
@@ -120,9 +120,9 @@ class GameScreen:
         # 执行 OCR
         ocr_result = self.ocr_game_window(left, top, width, height)
 
-        return self._search_in_text(ocr_result, query_text)
+        return self._search_text_in_text(ocr_result, query_text)
 
-    def _check_state(
+    def search_text(
         self,
         query_text: Union[str, List[str], re.Pattern[str]],
         ocr_text: Optional[str],
@@ -132,7 +132,7 @@ class GameScreen:
         height: float,
     ):
         """
-        辅助函数，用于检查文本是否存在于游戏窗口的指定区域。
+        辅助函数，用于检查文本是否存在于给定的 OCR 结果中，或者游戏窗口的指定区域中。
 
         - texts (Pattern): 如果是预编译的正则表达式对象，会用它来搜索。空的正则表达式总是返回 False。
         - texts (str): 如果是单个字符串，会检查该文本是否存在。空字符串总是返回 False。
@@ -155,7 +155,7 @@ class GameScreen:
                 return False
 
         if ocr_text is not None:
-            return self._search_in_text(ocr_text, query_text)
+            return self._search_text_in_text(ocr_text, query_text)
         else:
             return self._search_text_in_area(query_text, left, top, width, height)
 
@@ -170,7 +170,7 @@ class GameScreen:
         ocr_result = self.ocr_game_window(0.5, 0, 0.5, 1)
 
         # 使用正则表达式搜索是否在面板中
-        if self._search_in_text(ocr_result, GameScreenTextPatterns.IS_ON_JOB_PANEL_RIGHT_SCREEN):
+        if self._search_text_in_text(ocr_result, GameScreenTextPatterns.IS_ON_JOB_PANEL_RIGHT_SCREEN):
             # 在面板中则识别加入玩家数
             # "离开"是加入失败，可以认为这也是一种"正在加入"状态
             joining_count = ocr_result.count("正在") + ocr_result.count("离开")
@@ -189,7 +189,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(
+        return self.search_text(
             GameScreenTextPatterns.IS_ON_MAINMENU_DISPLAY_CALIBRATION_PAGE, ocr_text, 0.25, 0.4, 0.5, 0.2
         )
 
@@ -199,7 +199,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(
+        return self.search_text(
             GameScreenTextPatterns.IS_ON_MAINMENU_GTAPLUS_ADVERTISEMENT_PAGE,
             ocr_text,
             0.5,
@@ -215,7 +215,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state("已登出", ocr_text, 0, 0, 1, 1)
+        return self.search_text("已登出", ocr_text, 0, 0, 1, 1)
 
     def is_on_mainmenu(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -223,7 +223,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state("移动标签", ocr_text, 0.5, 0.8, 0.5, 0.2)
+        return self.search_text("移动标签", ocr_text, 0.5, 0.8, 0.5, 0.2)
 
     def is_on_mainmenu_storymode_page(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -231,7 +231,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state("故事模式", ocr_text, 0, 0.5, 0.7, 0.5)
+        return self.search_text("故事模式", ocr_text, 0, 0.5, 0.7, 0.5)
 
     def is_on_onlinemode_info_panel(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -239,7 +239,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state("在线模式", ocr_text, 0, 0, 0.4, 0.1)
+        return self.search_text("在线模式", ocr_text, 0, 0, 0.4, 0.1)
 
     def is_respawned_in_agency(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -247,7 +247,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state("床", ocr_text, 0, 0, 0.5, 0.5)
+        return self.search_text("床", ocr_text, 0, 0, 0.5, 0.5)
 
     def is_on_job_panel(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -255,7 +255,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(GameScreenTextPatterns.IS_ON_JOB_PANEL_LEFT_SCREEN, ocr_text, 0, 0, 0.5, 0.5)
+        return self.search_text(GameScreenTextPatterns.IS_ON_JOB_PANEL_LEFT_SCREEN, ocr_text, 0, 0, 0.5, 0.5)
 
     def is_on_first_job_setup_page(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -263,7 +263,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(GameScreenTextPatterns.IS_ON_FIRST_JOB_SETUP_PAGE, ocr_text, 0, 0, 1, 1)
+        return self.search_text(GameScreenTextPatterns.IS_ON_FIRST_JOB_SETUP_PAGE, ocr_text, 0, 0, 1, 1)
 
     def is_on_second_job_setup_page(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -271,7 +271,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(GameScreenTextPatterns.IS_ON_SECOND_JOB_SETUP_PAGE, ocr_text, 0, 0, 1, 1)
+        return self.search_text(GameScreenTextPatterns.IS_ON_SECOND_JOB_SETUP_PAGE, ocr_text, 0, 0, 1, 1)
 
     def is_on_scoreboard(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -279,7 +279,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(GameScreenTextPatterns.IS_ON_SCOREBOARD, ocr_text, 0, 0, 0.5, 0.5)
+        return self.search_text(GameScreenTextPatterns.IS_ON_SCOREBOARD, ocr_text, 0, 0, 0.5, 0.5)
 
     def is_job_marker_found(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -287,7 +287,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(GameScreenTextPatterns.IS_JOB_MARKER_FOUND, ocr_text, 0, 0, 0.5, 0.5)
+        return self.search_text(GameScreenTextPatterns.IS_JOB_MARKER_FOUND, ocr_text, 0, 0, 0.5, 0.5)
 
     def is_job_started(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -295,7 +295,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(GameScreenTextPatterns.IS_JOB_STARTED, ocr_text, 0, 0.8, 1, 0.2)
+        return self.search_text(GameScreenTextPatterns.IS_JOB_STARTED, ocr_text, 0, 0.8, 1, 0.2)
 
     def is_job_starting(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -303,7 +303,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(GameScreenTextPatterns.IS_JOB_STARTING, ocr_text, 0, 0.8, 1, 0.2)
+        return self.search_text(GameScreenTextPatterns.IS_JOB_STARTING, ocr_text, 0, 0.8, 1, 0.2)
 
     def is_on_warning_page(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -311,7 +311,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(GameScreenTextPatterns.IS_ON_WARNING_PAGE, ocr_text, 0.25, 0, 0.5, 0.6)
+        return self.search_text(GameScreenTextPatterns.IS_ON_WARNING_PAGE, ocr_text, 0.25, 0, 0.5, 0.6)
 
     def is_on_exit_confirm_page(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -319,7 +319,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state("退出", ocr_text, 0.25, 0.2, 0.5, 0.5)
+        return self.search_text("退出", ocr_text, 0.25, 0.2, 0.5, 0.5)
 
     def is_confirm_option_available(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -327,7 +327,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(
+        return self.search_text(
             GameScreenTextPatterns.IS_CONFIRM_OPTION_AVAILABLE, ocr_text, 0.75, 0.8, 0.25, 0.2
         )
 
@@ -337,7 +337,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(
+        return self.search_text(
             GameScreenTextPatterns.IS_ON_BAD_PCSETTING_WARNING_PAGE, ocr_text, 0, 0, 1, 1
         )
 
@@ -347,7 +347,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state("在线服务政策", ocr_text, 0, 0, 0.7, 0.3)
+        return self.search_text("在线服务政策", ocr_text, 0, 0, 0.7, 0.3)
 
     def is_online_service_policy_loaded(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -360,7 +360,7 @@ class GameScreen:
         # 先检查是否在在线服务政策页面
         if self.is_on_online_service_policy_page(ocr_text):
             # 再检查是否有关键字
-            return self._search_in_text(ocr_text, "想要阅读")
+            return self._search_text_in_text(ocr_text, "想要阅读")
         else:
             # 如果不在在线服务政策页面，直接返回False
             return False
@@ -371,7 +371,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state("隐私政策", ocr_text, 0, 0, 0.7, 0.3)
+        return self.search_text("隐私政策", ocr_text, 0, 0, 0.7, 0.3)
 
     def is_on_term_of_service_page(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -379,7 +379,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state("服务条款", ocr_text, 0, 0, 0.7, 0.3)
+        return self.search_text("服务条款", ocr_text, 0, 0, 0.7, 0.3)
 
     def is_on_pause_menu(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -387,7 +387,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(GameScreenTextPatterns.IS_ON_PAUSE_MENU, ocr_text, 0, 0.1, 0.5, 0.3)
+        return self.search_text(GameScreenTextPatterns.IS_ON_PAUSE_MENU, ocr_text, 0, 0.1, 0.5, 0.3)
 
     def is_on_story_pause_menu(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -395,7 +395,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(GameScreenTextPatterns.IS_ON_STORY_PAUSE_MENU, ocr_text, 0.1, 0.1, 0.7, 0.3)
+        return self.search_text(GameScreenTextPatterns.IS_ON_STORY_PAUSE_MENU, ocr_text, 0.1, 0.1, 0.7, 0.3)
 
     def is_on_online_pause_menu(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -403,7 +403,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(GameScreenTextPatterns.IS_ON_ONLINE_PAUSE_MENU, ocr_text, 0.1, 0.1, 0.5, 0.3)
+        return self.search_text(GameScreenTextPatterns.IS_ON_ONLINE_PAUSE_MENU, ocr_text, 0.1, 0.1, 0.5, 0.3)
 
     def is_on_go_online_menu(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -411,4 +411,4 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self._check_state(GameScreenTextPatterns.IS_ON_GO_ONLINE_MENU, ocr_text, 0, 0, 0.5, 0.5)
+        return self.search_text(GameScreenTextPatterns.IS_ON_GO_ONLINE_MENU, ocr_text, 0, 0, 0.5, 0.5)
