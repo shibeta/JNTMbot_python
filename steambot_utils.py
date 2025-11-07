@@ -356,7 +356,6 @@ class SteamBotClient:
             "message": message,
         }
 
-        response = None
         try:
             logger.info(f"正在通过API向Steam群组 \"{payload['groupId']}\" 发送消息...")
             response = self._make_authenticated_request(
@@ -375,13 +374,13 @@ class SteamBotClient:
             raise Exception("Steam Bot 后端未运行，无法发送消息") from e
         except requests.RequestException as e:
             logger.error(f"调用 /send-message API 失败: {e}")
-            if response:
+            if e.response:
                 try:
-                    error_info = response.json()
+                    error_info = e.response.json()
                     logger.error(f"错误信息: {error_info['error']}")
                     logger.error(f"错误详情: {error_info['details']}")
                 except Exception:
-                    logger.error(f"错误详情: {response.text}")
+                    logger.error(f"错误详情: {e.response.text}")
 
             raise e
 
