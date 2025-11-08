@@ -237,6 +237,7 @@ class JobWorkflow(_BaseWorkflow):
         except requests.RequestException:
             pass
 
+        time.sleep(1)  # 等待1秒以给其他玩家反应时间
         self.action.confirm()  # 按A键启动
         # 不能等太久，否则"启动中"状态可能被跳过
         time.sleep(0.5)  # 多等一会，让游戏响应差事启动
