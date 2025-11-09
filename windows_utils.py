@@ -21,19 +21,6 @@ from logger import get_logger
 logger = get_logger("windows_utils")
 
 
-def is_process_exist(pid: int):
-    """
-    检查进程ID是否有效。
-
-    :param pid: 进程ID (整数)
-    :return: True表示进程存在，False表示不存在
-    """
-    try:
-        return psutil.pid_exists(pid)
-    except:
-        return False
-
-
 def is_window_handler_exist(hwnd: int) -> bool:
     """
     检查窗口句柄是否有效
@@ -73,90 +60,31 @@ def get_process_name(pid: int) -> Optional[str]:
         return None
 
 
-def get_window_info(window_name: str) -> Optional[Tuple[int, int]]:
+def find_window(window_class: str, window_title: str, process_name: str) -> Optional[Tuple[int, int]]:
     """
-    根据窗口名称查找窗口，并返回其句柄(hwnd)和进程ID(pid)。
+    通过窗口类名, 窗口标题和进程名查找窗口，返回窗口句柄和进程ID。
+    :param window_class: 窗口类名
+    :param window_title: 窗口标题
+    :param process_name: 进程名称
+    :return: 如果找到符合条件的窗口，返回 (hwnd, pid) 元组，否则返回 None
+    """
+    # 使用 FindWindow 直接查找窗口
+    hwnd = win32gui.FindWindow(window_class, window_title)
 
-    :param window_name: 目标窗口的标题。
-    :return: 一个包含 (hwnd, pid) 的元组，如果未找到窗口则返回 None。
-    """
-    hwnd = win32gui.FindWindow(None, window_name)
-    if not hwnd:
+    if hwnd == 0:
         return None
 
+    # 验证进程名称
     try:
         _, pid = win32process.GetWindowThreadProcessId(hwnd)
-        if not pid:
+        proc = psutil.Process(pid)
+        if proc.name() != process_name:
+            # 这种情况极少发生，但可能存在伪装窗口
             return None
-        return hwnd, pid
-    except Exception as e:
+    except (psutil.NoSuchProcess, psutil.AccessDenied):
         return None
 
-
-def find_window(window_title: str, process_name: str) -> Optional[Tuple[int, int]]:
-    """
-    一个可靠的窗口查找器，用于找到一个标题和进程名称均匹配的，非0*0的窗口。
-
-    :param window_title: 目标窗口的标题。
-    :param process_name: 目标窗口的进程名称。
-    :return: 一个包含 (hwnd, pid) 的元组，如果未找到窗口则返回 None。
-    """
-    # 找到所有的窗口
-    top_windows = []
-    win32gui.EnumWindows(lambda hwnd, top_windows: top_windows.append(hwnd), top_windows)
-
-    candidate_windows = []
-    for hwnd in top_windows:
-        # 检查标题是否匹配
-        if window_title == win32gui.GetWindowText(hwnd):
-            # 检查进程名称是否匹配
-            _, pid = win32process.GetWindowThreadProcessId(hwnd)
-            try:
-                process = psutil.Process(pid)
-                if process_name == process.name():
-                    candidate_windows.append(hwnd)
-            except (psutil.NoSuchProcess, psutil.AccessDenied):
-                continue
-
-    # 从候选者中找到最佳窗口
-    for hwnd in candidate_windows:
-        # 优先找非最小化的窗口
-        if not win32gui.IsIconic(hwnd):
-            # 检查窗口是否可见
-            if win32gui.IsWindowVisible(hwnd):
-                rect = win32gui.GetWindowRect(hwnd)
-                width = rect[2] - rect[0]
-                height = rect[3] - rect[1]
-                # 检查窗口是否具有尺寸
-                if width > 1 and height > 1:
-                    # 最佳选项
-                    _, pid = win32process.GetWindowThreadProcessId(hwnd)
-                    return hwnd, pid
-
-    # 如果没找到正在显示的，再检查是否有最小化的候选者
-    for hwnd in candidate_windows:
-        if win32gui.IsIconic(hwnd):
-            _, pid = win32process.GetWindowThreadProcessId(hwnd)
-            return hwnd, pid
-
-    # 遍历完所有窗口都没找到
-    return None
-
-
-def get_process_pid_by_window_handler(hwnd: int) -> int:
-    """
-    根据窗口句柄获取进程pid
-
-    :param handler: 目标窗口的句柄
-    :raises ``Exception``: 获取进程pid失败
-    """
-    try:
-        _, pid = win32process.GetWindowThreadProcessId(hwnd)
-        if not pid:
-            raise Exception(f"找不到句柄{hwnd}对应的进程")
-        return pid
-    except Exception as e:
-        raise Exception(f"获取句柄{hwnd}的进程ID时发生异常: {e}") from e
+    return hwnd, pid
 
 
 def suspend_process_for_duration(pid: int, duration_seconds: float):
