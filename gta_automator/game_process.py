@@ -59,14 +59,12 @@ class GameProcess:
         else:
             info = find_window(self.GTA_WINDOW_TITLE, self.GTA_PROCESS_NAMES)
             if info:
-                logger.debug(f"找到 GTA V 窗口。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
+                logger.info(f"更新 GTA V 进程信息完成。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
                 self.hwnd, self.pid = info
             else:
-                logger.error("未找到 GTA V 窗口。")
+                logger.info("更新 GTA V 进程信息完成。未找到 GTA V 窗口。")
                 self.hwnd, self.pid = None, None
                 return
-
-        logger.info("更新 GTA V 进程信息完成。")
 
     def suspend(self, suspend_time: float):
         """
