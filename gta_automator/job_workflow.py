@@ -159,7 +159,10 @@ class JobWorkflow(_BaseWorkflow):
         :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)``: 等待差事面板打开超时
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        self.action.launch_job_setup_panel()
+        for _ in range(3):
+            # 多点两下，有时候第一次按没反应
+            # 这游戏bug真多
+            self.action.launch_job_setup_panel()
         logger.info("等待差事面板打开...")
         if not self.wait_for_state(self.screen.is_on_job_panel, timeout=60):
             # 这个过程需要从 RockStar 在线服务下载一些差事参数，如果相关服务故障，将无法打开面板
@@ -196,9 +199,10 @@ class JobWorkflow(_BaseWorkflow):
         if not lobby_tracker.team_full_notified and (joining_count + joined_count) >= 3:
             try:
                 self.steam_bot.send_group_message(self.config.msgTeamFull)
-                lobby_tracker.team_full_notified = True  # 标记为已通知，避免重复发送
             except requests.RequestException:
                 pass  # 忽略网络错误
+            finally:
+                lobby_tracker.team_full_notified = True
 
     def _check_for_timeouts(self, lobby_tracker: LobbyStateTracker):
         """
@@ -370,7 +374,7 @@ class JobWorkflow(_BaseWorkflow):
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        logger.info("动作: 正在检查当前差事状态，等待10秒以响应其他玩家离开")
+        logger.info("动作: 正在检查当前差事状态，等待 10 秒以响应其他玩家离开")
         time.sleep(10)  # 响应其他玩家离开
 
         if not self.screen.is_job_started():
@@ -391,3 +395,10 @@ class JobWorkflow(_BaseWorkflow):
                 logger.warning("无法确定当前差事状态。")
         else:
             logger.info("当前在差事中，状态正常。")
+
+    def execute_malicious_value_reduction(self):
+        """
+        通过游玩简单差事来减少恶意值。每次完成差事都会降低一定的恶意值。
+        """
+        # TODO: 实现减少恶意值的差事流程
+        logger.info("减少恶意值任务流程尚未实现。")
