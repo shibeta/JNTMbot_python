@@ -108,29 +108,32 @@ def main():
     # 初始化热键
     hotkey = HotKeyManager()
 
+    # 暂停/恢复热键
+    pause_lock = threading.Lock()
     pause_event = threading.Event()
     pause_event.set()  # 初始状态为“已恢复”
-
-    # 暂停/恢复热键
     def toggle_pause():
-        if pause_event.is_set():
-            pause_event.clear()  # 清除标志，进入暂停状态
-            logger.warning("暂停/恢复热键被按下，Bot 将在本循环结束后暂停。按 CTRL+F9 恢复。")
-        else:
-            pause_event.set()  # 设置标志，恢复运行
-            try:
-                if steam_bot:
-                    steam_bot.reset_send_timer()
-            except:
-                pass  # 没有什么需要做的
-            logger.warning("暂停/恢复热键被按下，Bot 已恢复。")
+        with pause_lock:
+            if pause_event.is_set():
+                pause_event.clear()  # 清除标志，进入暂停状态
+                logger.warning("暂停/恢复热键被按下，Bot 将在本循环结束后暂停。按 CTRL+F9 恢复。")
+            else:
+                pause_event.set()  # 设置标志，恢复运行
+                try:
+                    if steam_bot:
+                        steam_bot.reset_send_timer()
+                except:
+                    pass  # 没有什么需要做的
+                logger.warning("暂停/恢复热键被按下，Bot 已恢复。")
 
     hotkey.add_hotkey("<ctrl>+<f9>", toggle_pause)
 
     # 退出热键
+    exit_lock = threading.Lock()
     def toggle_exit():
-        logger.warning("退出热键被按下，退出程序...")
-        unsafe_exit()
+        with exit_lock:
+            logger.warning("退出热键被按下，退出程序...")
+            unsafe_exit()
 
     hotkey.add_hotkey("<ctrl>+<f10>", toggle_exit)
     logger.warning("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
