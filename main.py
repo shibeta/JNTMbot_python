@@ -188,8 +188,7 @@ def main():
             # 出错后等待的时间, 随连续出错次数增大而指数增长, 最多等待 120 秒
             wait_before_restart_loop = min(2**main_loop_consecutive_error_count * 5, 120)
 
-            logger.error(f"主循环中发生错误: {e}")
-            logger.error(traceback.format_exc())
+            logger.error(f"主循环中发生错误: {e}", exc_info=True)
 
             # 根据配置文件决定是重试还是退出
             logger.info(
