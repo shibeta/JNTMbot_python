@@ -178,6 +178,7 @@ class SteamBotClient:
 
         logger.info(f"正在启动 Steam Bot 后端: {' '.join(command)}")
         try:
+            # CREATE_NEW_PROCESS_GROUP 可以避免主进程的 Ctrl+C 信号传递给子进程
             self.process = subprocess.Popen(command, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
             logger.warning(f"Steam Bot 后端已启动，进程ID: {self.process.pid}")
         except FileNotFoundError:
