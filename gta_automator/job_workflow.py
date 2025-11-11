@@ -374,7 +374,7 @@ class JobWorkflow(_BaseWorkflow):
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        logger.info("动作: 正在检查当前差事状态，等待 10 秒以响应其他玩家离开")
+        logger.info("动作: 正在检查当前差事状态，等待 10 秒以响应其他玩家离开。")
         time.sleep(10)  # 响应其他玩家离开
 
         if not self.screen.is_job_started():

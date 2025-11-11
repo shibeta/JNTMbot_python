@@ -72,9 +72,9 @@ class GTAAutomator:
             logger.warning(f"{e.message}。退出差事。")
             self.job_workflow.exit_job_panel()
             return
-        except UnexpectedGameState as e:
+        except UnexpectedGameState as time_e:
             # 有待命状态玩家，退出差事
-            if e.actual_state == GameState.BAD_JOB_PANEL_STANDBY_PLAYER:
+            if time_e.actual_state == GameState.BAD_JOB_PANEL_STANDBY_PLAYER:
                 logger.warning(f"发现待命状态玩家。退出差事。")
                 self.job_workflow.exit_job_panel()
                 return
