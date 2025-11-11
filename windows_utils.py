@@ -1,6 +1,7 @@
 from pathlib import Path
 import ctypes.wintypes
 import time
+import winreg
 import psutil
 import win32gui
 import win32process
@@ -246,3 +247,22 @@ def get_document_fold_path() -> Path:
         documents_path = Path.home() / "Documents"
 
     return documents_path
+
+def get_steam_exe_path() -> Optional[str]:
+    """
+    从 Windows 注册表中获取 steam.exe 的路径。
+
+    :return: steam.exe 的完整路径字符串。如果未找到，返回 None
+    """
+    try:
+        # HKEY_CURRENT_USER\Software\Valve\Steam
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam")
+        steam_path, _ = winreg.QueryValueEx(key, "SteamExe")
+        winreg.CloseKey(key)
+        return steam_path
+    except FileNotFoundError:
+        logger.error("错误: 找不到 Steam 的注册表项。请确保 Steam 已安装。")
+        return None
+    except Exception as e:
+        logger.error(f"读取注册表时发生未知错误: {e}")
+        return None
