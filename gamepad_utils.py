@@ -49,7 +49,9 @@ class Button(enum.IntFlag):
     LEFT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_LEFT_SHOULDER
     RIGHT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER
 
+
 AnyButton = Union[vg.XUSB_BUTTON, Button]
+
 
 class JoystickDirection(tuple[float, float]):
     """常用摇杆方向映射"""
@@ -76,6 +78,7 @@ class JoystickDirection(tuple[float, float]):
     FULL_LEFTDOWN = (-1.0, -1.0)
     FULL_RIGHTDOWN = (1.0, -1.0)
 
+
 AnyJoystickDirection = tuple[float, float]
 
 
@@ -85,6 +88,7 @@ class TriggerPressure:
     released = 0.0  # 完全松开
     light = 0.4  # 轻压 (适用于需要精确控制的场景，如半按加速)
     full = 1.0  # 完全按下 (适用于射击等场景)
+
 
 AnyTriggerPressure = float
 
@@ -168,13 +172,12 @@ class Macro:
         """
         new_events = []
         if not offset_ms:
-            offset_ms = - self._events[0].time_ms
+            offset_ms = -self._events[0].time_ms
         for event in self._events:
             new_time = event.time_ms + offset_ms
             if new_time >= 0:
                 new_events.append(MacroEvent(new_time, event.action_name, event.params))
         return Macro(new_events)
-
 
     def append(self, other_macro: Macro, delay_ms: int = 0):
         """
@@ -281,6 +284,9 @@ class GamepadSimulator:
 
             # 注册清理函数
             atexit.register(self._cleanup)
+
+            # 初始化手柄状态
+            self.pad.reset()
 
             # 按一下A键以唤醒手柄
             self.click_button(Button.A)
@@ -612,12 +618,9 @@ if __name__ == "__main__":
 
     print("通过fitter创建一个小舒婷")
     # 将按X键后移20ms，来打出小舒婷
-    fist_and_back_macro = (
-        shooting_macro.filter(lambda event: event.time_ms > 10)
-    )
-    bad_shooting_macro = (
-        shooting_macro.filter(lambda event: event.time_ms <= 10)
-        .append(fist_and_back_macro, 20)
+    fist_and_back_macro = shooting_macro.filter(lambda event: event.time_ms > 10)
+    bad_shooting_macro = shooting_macro.filter(lambda event: event.time_ms <= 10).append(
+        fist_and_back_macro, 20
     )
 
     print("生成的 '小舒婷' 宏:")
