@@ -1,6 +1,18 @@
 const express = require("express");
 const SteamChatBot = require("./SteamChatBot");
 
+// 全局错误处理
+process.on("uncaughtException", (error) => {
+    console.error("Uncaught Exception:", error);
+    // 在记录日志后，通常建议退出进程，因为应用可能处于不稳定状态
+    // process.exit(1);
+});
+
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("Unhandled Rejection at:", promise, "reason:", reason);
+    // process.exit(1);
+});
+
 // 解析启动参数
 // 设置代理
 const proxyArg = process.argv.find((arg) => arg.startsWith("--proxy="));
@@ -144,9 +156,7 @@ app.post("/send-message", async (req, res) => {
             channelName,
             message
         );
-        console.debug(
-            `💻 后端已完成发送消息操作。`
-        );
+        console.debug(`💻 后端已完成发送消息操作。`);
         res.status(200).json({
             success: true,
             message: "消息已成功发送。",
@@ -155,21 +165,25 @@ app.post("/send-message", async (req, res) => {
     } catch (error) {
         // 根据错误类型返回具体的状态码
         if (error.message.includes("发送操作超时")) {
+            console.warn("⚠️ 发送消息操作超时:", error);
             res.status(202).json({
                 error: "服务器确认超时，但消息有可能已成功发送。",
                 details: error.message,
             });
         } else if (error.message.includes("找不到群组")) {
+            console.warn("⚠️ 找不到指定的群组:", error);
             res.status(400).json({
                 error: "发送失败：找不到指定的群组。",
                 details: error.message,
             });
         } else if (error.message.includes("找不到频道")) {
+            console.warn("⚠️ 找不到指定的频道:", error);
             res.status(400).json({
                 error: "发送失败：找不到指定的频道。",
                 details: error.message,
             });
         } else {
+            console.error("💥 发送消息时发生错误:", error);
             res.status(500).json({
                 error: "发送消息时发生内部错误。",
                 details: error.message,
@@ -210,6 +224,20 @@ app.post("/logout", async (req, res) => {
             details: error.message,
         });
     }
+});
+
+// 全局错误处理中间件
+app.use((err, req, res, next) => {
+    console.error(err.stack); // 在服务器控制台打印完整的错误堆栈
+
+    // 确保即使发生错误，也总是发送一个 JSON 响应
+    if (res.headersSent) {
+        return next(err);
+    }
+    res.status(500).json({
+        error: "Internal Server Error",
+        details: err.message || "An unexpected error occurred.",
+    });
 });
 
 // 启动服务器
