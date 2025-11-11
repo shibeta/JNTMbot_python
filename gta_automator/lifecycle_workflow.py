@@ -190,13 +190,15 @@ class LifecycleWorkflow(_BaseWorkflow):
     def wait_for_gta_window_showup(self):
         """
         等待 GTA V 窗口出现。
+
         :raises ``OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)``: 等待 GTA V 窗口出现超时
         """
         logger.info("正在等待 GTA V 窗口出现...")
 
+        # 5分钟超时，因为rockstar启动器非常慢
         if not self.wait_for_state(
             self.process.is_game_started, 300, 10, False
-        ):  # 5分钟超时，因为rockstar启动器非常慢
+        ):
             raise OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)
 
     def process_main_menu_loading(self):
