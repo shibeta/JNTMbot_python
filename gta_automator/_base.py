@@ -173,8 +173,8 @@ class _BaseWorkflow:
         """
         start_time = time.monotonic()
         while time.monotonic() - start_time < timeout:
-            # 确保游戏窗口句柄有效
-            if game_has_started and not self.process.is_hwnd_valid():
+            # 确保游戏启动
+            if game_has_started and not self.process.is_pid_vaild():
                 raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
 
             if check_function():
