@@ -237,10 +237,10 @@ class SteamBotClient:
                 except Exception as login_e:
                     logger.error(f"自动重新登录失败: {login_e}")
                     # 抛出原始的 401 错误，因为我们无法恢复
-                    raise e
+                    raise
             else:
                 # 如果是其他HTTP错误，直接抛出
-                raise e
+                raise
 
     def _get_http_proxy_string(self, raw_proxy_config: str) -> str:
         """
@@ -323,7 +323,7 @@ class SteamBotClient:
                 logger.info("登录请求已成功发送。")
             except requests.RequestException as e:
                 logger.error(f"调用 /login API 失败: {e}")
-                raise e  # 将异常抛出，让调用者处理
+                raise  # 将异常抛出，让调用者处理
             finally:
                 self._is_login_in_progress = False
 
@@ -382,7 +382,7 @@ class SteamBotClient:
                 except Exception:
                     logger.error(f"错误详情: {e.response.text}")
 
-            raise e
+            raise
 
     def reset_send_timer(self):
         """重置上次发送消息的时间戳为当前时间。"""

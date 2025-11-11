@@ -22,7 +22,7 @@ except Exception as e:
         input("按 Enter 键退出...")
         sys.exit(1)
     else:
-        raise e
+        raise
 
 
 class Button(enum.IntFlag):
@@ -291,7 +291,7 @@ class GamepadSimulator:
                 f"初始化虚拟手柄失败: {e}。请确保已安装 ViGEmBus 驱动，并且没有其他程序正在使用 ViGEmBus 模拟手柄。"
             )
             logger.info('请运行程序目录下的 "install_vigembus.bat" 来安装驱动。')
-            raise e
+            raise
 
     def _cleanup(self):
         """程序退出时调用的清理函数。"""

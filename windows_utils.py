@@ -111,7 +111,7 @@ def suspend_process_for_duration(pid: int, duration_seconds: float):
             # 确保进程总是被恢复
             resume_process_from_suspend(pid)
         except Exception as e:
-            raise e
+            raise
 
 
 def resume_process_from_suspend(pid: int):
