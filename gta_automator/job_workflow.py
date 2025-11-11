@@ -395,10 +395,3 @@ class JobWorkflow(_BaseWorkflow):
                 logger.warning("无法确定当前差事状态。")
         else:
             logger.info("当前在差事中，状态正常。")
-
-    def execute_malicious_value_reduction(self):
-        """
-        通过游玩简单差事来减少恶意值。每次完成差事都会降低一定的恶意值。
-        """
-        # TODO: 实现减少恶意值的差事流程
-        logger.info("减少恶意值任务流程尚未实现。")
