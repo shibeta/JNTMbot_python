@@ -173,10 +173,10 @@ class OCREngine:
                 return ""
 
             # 调用 OcrAPI 的 runBytes 方法进行识别
-            logger.debug("将截图字节流发送到 C++ 引擎进行 OCR。")
+            # logger.debug("将截图字节流发送到 C++ 引擎进行 OCR。")
             with rapidocr_lock:
                 result = self.api.runBytes(screenshot_png)
-            logger.debug("从 C++ 引擎收到 OCR 结果。")
+            # logger.debug("从 C++ 引擎收到 OCR 结果。")
 
             # 解析返回的 JSON 结果
             if result and result.get("code") == 100:
