@@ -375,13 +375,19 @@ class SteamBotClient:
             raise Exception("Steam Bot 后端未运行，无法发送消息") from e
         except requests.RequestException as e:
             logger.error(f"调用 /send-message API 失败: {e}")
-            if e.response:
+            # DEBUG: 我要看看这异常里都有啥
+            logger.error(f"异常类型: {type(e)}")
+            if e.response is not None:
+                logger.error(f"状态码: {e.response.status_code}")
+                logger.error(f"响应内容: {e.response.text}")
                 try:
                     error_info = e.response.json()
                     logger.error(f"错误信息: {error_info['error']}")
                     logger.error(f"错误详情: {error_info['details']}")
                 except Exception:
                     logger.error(f"错误详情: {e.response.text}")
+            else:
+                logger.error("未收到任何服务器响应。")
 
             raise
 
