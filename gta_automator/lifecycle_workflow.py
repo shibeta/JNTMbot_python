@@ -1,5 +1,5 @@
-import os
 import time
+import subprocess
 
 from logger import get_logger
 
@@ -172,7 +172,9 @@ class LifecycleWorkflow(_BaseWorkflow):
             return
 
         logger.info("动作: 正在通过 Steam 启动 GTA V...")
-        os.startfile("steam://rungameid/3240220")
+        # subprocess.Popen 可以避免阻塞主进程
+        # CREATE_BREAKAWAY_FROM_JOB 使主程序退出时不会关闭 Steam 进程和 GTA V 进程
+        subprocess.Popen(["start", "", "steam://rungameid/3240220"], shell=True, creationflags=subprocess.CREATE_BREAKAWAY_FROM_JOB)
 
         # 等待 GTA V 窗口出现
         self.wait_for_gta_window_showup()
@@ -196,9 +198,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         logger.info("正在等待 GTA V 窗口出现...")
 
         # 5分钟超时，因为rockstar启动器非常慢
-        if not self.wait_for_state(
-            self.process.is_game_started, 300, 10, False
-        ):
+        if not self.wait_for_state(self.process.is_game_started, 300, 10, False):
             raise OperationTimeout(OperationTimeoutContext.GAME_WINDOW_STARTUP)
 
     def process_main_menu_loading(self):
