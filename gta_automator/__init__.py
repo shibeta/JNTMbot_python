@@ -35,88 +35,137 @@ class GTAAutomator:
         screen = GameScreen(ocr_engine if ocr_engine else OCREngine(config.ocrArgs), process)
         player_input = GameAction(gamepad if gamepad else GamepadSimulator(), config)
 
-        # 初始化管理器，注入依赖
-        self.lifecycle_manager = LifecycleWorkflow(screen, player_input, process, config)
-        self.session_manager = SessionWorkflow(screen, player_input, process, config)
-        self.workflow_manager = JobWorkflow(
+        # 初始化工作流，注入依赖
+        self.lifecycle_workflow = LifecycleWorkflow(screen, player_input, process, config)
+        self.session_workflow = SessionWorkflow(screen, player_input, process, config)
+        self.job_workflow = JobWorkflow(
             screen, player_input, process, config, steam_bot if steam_bot else SteamBotClient(config)
         )
 
-    def run_dre_bot(self):
+    def play_dre_job(self):
         """
-        执行一轮完整的德瑞 Bot 任务，从准备游戏到完成一轮差事流程。
-        如果遇到可恢复的错误（如超时），会自行处理并结束当前循环。
-        如果遇到致命错误，会向上抛出异常。
+        执行德瑞差事的任务流程。
 
         :raises ``UnexpectedGameState(actual=GameState.OFF)``: 在自动化任务中，游戏意外关闭
+        :raises ``OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)``: 等待在事务所床上复活超时
+        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)``: 无法找到任务触发点
+        :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)``: 等待差事面板打开超时
+        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)``: 在等待玩家和启动差事阶段，意外离开了任务面板
+        """
+        # 导航至任务点
+        self.job_workflow.navigate_from_bed_to_job_point()
+
+        # 进入差事准备面板
+        try:
+            self.job_workflow.enter_and_wait_for_job_panel()
+        except OperationTimeout as e:
+            # 等待差事面板打开超时
+            logger.error("等待差事面板超时，为避免 RockStar 在线服务导致的故障，退出游戏。")
+            self.lifecycle_workflow.shutdown_gta()
+            raise
+
+        # 管理大厅并启动差事
+        try:
+            self.job_workflow.setup_wait_start_job()
+        except OperationTimeout as e:
+            # 等待玩家加入超时，退出差事
+            logger.warning(f"{e.message}。退出差事。")
+            self.job_workflow.exit_job_panel()
+            return
+        except UnexpectedGameState as e:
+            # 有待命状态玩家，退出差事
+            if e.actual_state == GameState.BAD_JOB_PANEL_STANDBY_PLAYER:
+                logger.warning(f"发现待命状态玩家。退出差事。")
+                self.job_workflow.exit_job_panel()
+                return
+            else:
+                raise  # 其他异常向上抛出
+
+        # 处理差事启动后阶段
+        try:
+            self.job_workflow.handle_post_job_start()
+        except OperationTimeout as e:
+            if (
+                e.context == OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR
+                or OperationTimeoutContext.CHARACTER_LAND
+            ):
+                timeout_context = e.context
+                # 在差事中检查状态超时，尝试更换战局
+                # 在差事中退出游戏可能导致恶意值增加，所以这里选择切换战局
+                logger.warning(f"{e.message}。卡单并切换战局。")
+                # 首先需要卡单，进入单人战局状态，因为在多人差事中切换战局会增加恶意值
+                self.session_workflow.glitch_single_player_session()
+                time.sleep(2)  # 等待游戏状态稳定
+
+                # 切换战局
+                try:
+                    self.session_workflow.start_new_match()
+                    return  # 切换战局成功，结束当前差事流程
+
+                except UnexpectedGameState as e:
+                    if (
+                        e.expected == {GameState.ONLINE_FREEMODE, GameState.IN_MISSION}
+                        and e.actual_state == GameState.UNKNOWN
+                    ):
+                        # 这种情况下要么不在任务中，要么游戏卡死了，只能退出游戏
+                        logger.error(f"处理{timeout_context}超时时，切换战局失败次数过多，退出游戏。")
+                        self.lifecycle_workflow.shutdown_gta()
+                    raise
+            else:
+                raise  # 其他超时是致命的，向上抛出
+
+        # 检查最终状态
+        self.job_workflow.verify_mission_status_after_glitch()
+
+    def reduce_malicious_value(self):
+        """
+        执行减少恶意值的任务流程。
+        """
+        logger.info("动作: 正在开始减少恶意值任务流程...")
+
+        # TODO: 实现减少恶意值的差事流程
+        # 目前认为，减少恶意值可以通过单纯挂机或完成多人差事来实现
+        # 但需要进一步研究恶意值增减的时机和数值，以高效清除恶意值
+        logger.info("减少恶意值任务流程尚未实现。")
+
+        logger.info("减少恶意值任务流程成功完成。")
+
+    def run_dre_bot(self):
+        """
+        执行一轮完整的德瑞 Bot 任务:
+        1. 启动游戏并确保进入在线模式。
+        2. 执行一轮德瑞差事。
+
         :raises ``UnexpectedGameState(expected={GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, actual=GameState.UNKNOWN)``: 切换战局时失败
+        :raises ``UnexpectedGameState(actual=GameState.OFF)``: 在自动化任务中，游戏意外关闭
         :raises ``OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)``: 等待在事务所床上复活超时
         :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)``: 无法找到任务触发点
         :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)``: 等待差事面板打开超时
         :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)``: 在等待玩家和启动差事阶段，意外离开了任务面板
         """
         logger.info("动作: 正在开始新一轮循环...")
+        # 确保游戏就绪
+        self.lifecycle_workflow.setup_gta()
 
-        # 步骤1: 确保游戏就绪并进入新战局
-        self.lifecycle_manager.setup_gta()
+        # TODO: 添加检测恶意值的逻辑，如果恶意值过高则先执行减少恶意值任务
+
+        # 切换到新战局
         try:
-            self.session_manager.start_new_match()
+            self.session_workflow.start_new_match()
         except UnexpectedGameState as e:
             if (
                 e.expected == {GameState.ONLINE_FREEMODE, GameState.IN_MISSION}
                 and e.actual_state == GameState.UNKNOWN
             ):
                 # 开始新战局时，用尽全部恢复策略后仍无法切换战局
-                logger.error("开始新战局失败次数过多，退出游戏。")
-                self.lifecycle_manager.shutdown_gta()
-            raise e
+                logger.error("初始化游戏时，切换战局失败次数过多，退出游戏。")
+                self.lifecycle_workflow.shutdown_gta()
+            raise
 
-        # 步骤2: 等待复活
-        self.workflow_manager.wait_for_respawn()
+        # 等待复活
+        self.job_workflow.wait_for_respawn()
 
-        # 步骤3: 导航至任务点
-        self.workflow_manager.navigate_from_bed_to_job_point()
-
-        # 步骤4: 进入差事准备面板
-        try:
-            self.workflow_manager.enter_and_wait_for_job_panel()
-        except OperationTimeout as e:
-            # 等待差事面板打开超时
-            logger.error("等待差事面板超时，为避免 RockStar 在线服务导致的故障，退出游戏。")
-            self.lifecycle_manager.shutdown_gta()
-            raise e
-
-        # 步骤5: 管理大厅并启动差事
-        try:
-            self.workflow_manager.setup_wait_start_job()
-        except OperationTimeout as e:
-            # 玩家超时是正常现象，不是Bot的错。记录日志并安全退出当前循环。
-            logger.warning(f"{e.message}。将开始下一轮。")
-            self.workflow_manager.exit_job_panel()
-            return
-        except UnexpectedGameState as e:
-            if e.actual_state == GameState.BAD_JOB_PANEL_STANDBY_PLAYER:
-                logger.warning(f"发现待命状态玩家。将开始下一轮。")
-                self.workflow_manager.exit_job_panel()
-                return
-            else:
-                raise  # 其他UnexpectedGameState是致命的，向上抛出
-
-        # 步骤6: 处理差事启动后阶段
-        try:
-            self.workflow_manager.handle_post_job_start()
-        except OperationTimeout as e:
-            if (
-                e.context == OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR
-                or OperationTimeoutContext.CHARACTER_LAND
-            ):
-                logger.warning(f"{e.message}。卡单并退出游戏。")
-                self.session_manager.glitch_single_player_session()
-                time.sleep(2)  # 等待游戏状态稳定
-                self.lifecycle_manager.shutdown_gta()
-            raise e
-
-        # 步骤7: 检查最终状态
-        self.workflow_manager.verify_mission_status_after_glitch()
+        # 执行德瑞bot任务
+        self.play_dre_job()
 
         logger.info("本轮循环成功完成。")
