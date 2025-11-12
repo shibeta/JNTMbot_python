@@ -38,6 +38,8 @@ class GameState(enum.Enum):
     BAD_JOB_PANEL_STANDBY_PLAYER = "有待命状态玩家的任务面板"
     WARNING = "警告/错误页面"
     BAD_PCSETTING_BIN = "此时无法载入您保存的数据"
+    BAD_SPORT_LEVEL = "恶意等级过高"
+    GOOD_SPORT_LEVEL = "恶意等级正常"
 
 
 class UIElementNotFoundContext(enum.Enum):
@@ -45,8 +47,11 @@ class UIElementNotFoundContext(enum.Enum):
 
     STORY_MODE_MENU = "故事模式菜单"
     ONLINE_MODE_TAB = "在线模式选项卡"
+    SWITCH_SESSION_TAB = "寻找新战局选项卡"
     JOB_SETUP_PANEL = "任务准备面板"
     JOB_TRIGGER_POINT = "任务触发点"
+    PAUSE_MENU = "暂停菜单"
+    BAD_SPORT_LEVEL_INDICATOR = "恶意等级指示器"
 
 
 class NetworkErrorContext(enum.Enum):
