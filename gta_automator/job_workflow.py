@@ -286,7 +286,7 @@ class JobWorkflow(_BaseWorkflow):
             if is_on_panel:
                 logger.info(f"队伍状态: {joined}人已加入, {joining}人正在加入, {standby}人待命。")
             else:
-                logger.error("不知为何离开了面板。")
+                logger.error("检查队伍状态失败。")
 
             # 2. 检查致命错误
             self._check_lobby_integrity(is_on_panel, standby)
