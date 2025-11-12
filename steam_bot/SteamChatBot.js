@@ -298,66 +298,80 @@ class SteamChatBot {
     }
 
     /**
-     * 向指定群组的指定频道发送消息
+     * 以异步非阻塞（即发即忘）的方式向指定群组的指定频道发送消息。
+     * 此方法会立即返回，而消息将在后台发送。
      * @param {string} groupId - 目标群组的 64 位 ID
      * @param {string} channelName - 目标频道的名称
      * @param {string} message - 要发送的消息
-     * @returns {Promise<{server_timestamp: Date}>}
-     * @throws {Error} 如果找不到群组或频道，或发送失败
+     * @returns {Promise<void>} 此 Promise 在消息被提交发送后立即 resolve，不代表消息已成功送达。
+     * @throws {Error} 如果在发送前找不到群组或频道，则会抛出错误。
      */
     async sendGroupMessage(groupId, channelName, message) {
         this.#ensureLoggedIn();
 
-        const groupStateResponse =
-            await this.#client.chat.setSessionActiveGroups([groupId]);
-
-        let targetGroupState = null;
-        for (const id in groupStateResponse.chat_room_groups) {
-            const group = groupStateResponse.chat_room_groups[id];
-            if (group.header_state.chat_group_id == groupId) {
-                targetGroupState = group;
-                break;
-            }
-        }
-
-        if (!targetGroupState) {
-            console.error(
-                `💥 找不到群组 ID: ${groupId}。请确认机器人是该群组成员。`
-            );
-            throw new Error(
-                `找不到群组 ID: ${groupId}。请确认机器人是该群组成员。`
-            );
-        }
-
-        const targetChannel = targetGroupState.chat_rooms.find(
-            (room) => room.chat_name === channelName
-        );
-        if (!targetChannel) {
-            console.error(
-                `💥 在群组 "${targetGroupState.header_state.chat_name}" 中找不到频道: "${channelName}"。`
-            );
-            throw new Error(
-                `在群组 "${targetGroupState.header_state.chat_name}" 中找不到频道: "${channelName}"。`
-            );
-        }
-
-        const chatId = targetChannel.chat_id;
-
-        // 发送消息
+        let chatId;
         try {
-            const result = this.#client.chat.sendChatMessage(
-                groupId,
-                chatId,
-                message
-            );
-            console.log(`✅ 成功发送消息到群组 ${groupId}。`);
-            return result;
-        } catch (error) {
-            if (error.message === 'Request timed out') {
-                console.warn(`⚠️ 对群组 ${groupId} 的消息发送确认超时，但消息可能已发出。`);
+            const groupStateResponse =
+                await this.#client.chat.setSessionActiveGroups([groupId]);
+
+            // 检查 Bot 是否在目标群组中
+            let targetGroupState = null;
+            if (groupStateResponse.chat_room_groups[groupId]) {
+                targetGroupState = groupStateResponse.chat_room_groups[groupId];
             }
+
+            if (!targetGroupState) {
+                const errorMsg = `找不到群组 ID: ${groupId}。请确认机器人是该群组成员。`;
+                console.error(`💥 ${errorMsg}`);
+                throw new Error(errorMsg);
+            }
+
+            // 检查目标频道是否存在
+            const targetChannel = targetGroupState.chat_rooms.find(
+                (room) => room.chat_name === channelName
+            );
+
+            if (!targetChannel) {
+                const errorMsg = `在群组 "${targetGroupState.header_state.chat_name}" 中找不到频道: "${channelName}"。`;
+                console.error(`💥 ${errorMsg}`);
+                throw new Error(errorMsg);
+            }
+
+            chatId = targetChannel.chat_id;
+        } catch (error) {
+            console.error(
+                `💥 在准备向群组 ${groupId} 发送消息时出错:`,
+                error.message
+            );
             throw error;
         }
+
+        this.#client.chat
+            .sendChatMessage(groupId, chatId, message)
+            .then((result) => {
+                console.log(
+                    `✅ 消息已成功送达至群组 ${groupId} (频道: ${channelName})。`
+                );
+            })
+            .catch((error) => {
+                // 等待发送确认超时
+                if (error.message === "Request timed out") {
+                    console.warn(
+                        `⚠️ 对群组 ${groupId} (频道: ${channelName}) 的消息发送确认超时，但消息可能已发出。`
+                    );
+                } else {
+                    // 其他类型的错误
+                    console.error(
+                        `❌ 发送消息到群组 ${groupId} (频道: ${channelName}) 时发生未知错误:`,
+                        error
+                    );
+                }
+            });
+
+        // 立即返回，并告知调用者任务已提交
+        console.log(
+            `✅ 已提交向群组 ${groupId} (频道: ${channelName}) 发送消息的请求。`
+        );
     }
 
     /**

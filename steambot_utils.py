@@ -367,7 +367,7 @@ class SteamBotClient:
                 timeout=(5, 20),
             )
             response.raise_for_status()
-            logger.info("消息发送成功。")
+            logger.info("已提交消息发送任务。")
             self.last_send_monotonic_time = time.monotonic()
             self.last_send_system_time = time.time()
         except requests.ConnectionError as e:

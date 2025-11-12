@@ -130,7 +130,7 @@ app.get("/userinfo", async (req, res) => {
 });
 
 /**
- * 发送消息到群组
+ * 提交发送群组消息的请求
  */
 app.post("/send-message", async (req, res) => {
     if (!bot.isLoggedIn().loggedIn) {
@@ -151,41 +151,31 @@ app.post("/send-message", async (req, res) => {
         console.log(
             `💬 收到API请求: 向群组[${groupId}]的频道[${channelName}]发送消息...`
         );
-        const result = await bot.sendGroupMessage(
-            groupId,
-            channelName,
-            message
-        );
-        console.debug(`💻 后端已完成发送消息操作。`);
-        res.status(200).json({
+        await bot.sendGroupMessage(groupId, channelName, message);
+        console.log(`✅ 发送任务已成功提交。`);
+        res.status(202).json({
             success: true,
-            message: "消息已成功发送。",
-            ...result,
+            message: "消息发送请求已接受，正在后台处理。",
         });
     } catch (error) {
         // 根据错误类型返回具体的状态码
-        if (error.message.includes("发送操作超时")) {
-            console.warn("⚠️ 发送消息操作超时:", error);
-            res.status(202).json({
-                error: "服务器确认超时，但消息有可能已成功发送。",
-                details: error.message,
-            });
-        } else if (error.message.includes("找不到群组")) {
-            console.warn("⚠️ 找不到指定的群组:", error);
+        if (error.message.includes("找不到群组")) {
+            console.warn("⚠️ 找不到指定的群组:", error.message);
             res.status(400).json({
-                error: "发送失败：找不到指定的群组。",
+                error: "请求失败：找不到指定的群组。",
                 details: error.message,
             });
         } else if (error.message.includes("找不到频道")) {
-            console.warn("⚠️ 找不到指定的频道:", error);
+            console.warn("⚠️ 找不到指定的频道:", error.message);
             res.status(400).json({
-                error: "发送失败：找不到指定的频道。",
+                error: "请求失败：找不到指定的频道。",
                 details: error.message,
             });
         } else {
-            console.error("💥 发送消息时发生错误:", error);
+            // 其他在准备阶段可能发生的未知错误
+            console.error("💥 提交发送任务时发生内部错误:", error);
             res.status(500).json({
-                error: "发送消息时发生内部错误。",
+                error: "提交发送任务时发生内部错误。",
                 details: error.message,
             });
         }
