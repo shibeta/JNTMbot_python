@@ -5,7 +5,7 @@ from logger import get_logger
 from config import Config
 from steambot_utils import SteamBotClient
 
-from ._base import _BaseWorkflow
+from ._base_workflow import _BaseWorkflow
 from .game_process import GameProcess
 from .game_screen import GameScreen
 from .exception import *
