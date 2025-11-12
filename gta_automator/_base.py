@@ -56,25 +56,6 @@ class _BaseWorkflow:
         else:
             return False
 
-    def deprecated_check_if_in_onlinemode(self, max_retries: int = 3) -> bool:
-        """
-        通过打开信息面板，检查当前是否在在线模式中。只应在打开信息面板操作不会导致副作用的场景下执行。
-
-        由于打开信息面板的按键 (十字键下) 与确认在线服务政策的按键冲突，为避免意外将其废弃。
-        应改为使用 check_if_in_onlinemode() 方法
-
-        :param max_retries: 最大尝试次数，默认值为 3
-        :return: 如果在在线模式中则返回 True，否则返回 False
-        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
-        """
-        for _ in range(max_retries):
-            self.action.open_onlinemode_info_panel()
-            if self.screen.is_on_onlinemode_info_panel():
-                # 进入了在线模式
-                return True
-        else:
-            return False
-
     def check_if_in_storymode(self, max_retries: int = 3) -> bool:
         """
         通过打开暂停菜单，检查当前是否在故事模式中。只应在打开暂停菜单操作不会导致副作用的场景下执行。
