@@ -121,6 +121,16 @@ class GameAction:
         time.sleep(0.5)  # 多等一会
         self.confirm()  # 进入"切换会话"选项卡
 
+    def navigate_to_player_list_tab_in_onlinemode(self):
+        """在在线模式的暂停菜单中，导航到'玩家'选项卡"""
+        self.next_page()  # 选中在线选择卡
+        self.confirm()  # 打开在线选择卡
+        # 选中"玩家"
+        for _ in range(4):
+            self.down()
+        time.sleep(0.5)  # 多等一会
+        self.confirm()  # 进入"玩家"选项卡
+
     def enter_invite_only_session(self):
         """在'寻找新战局'选项卡中，进入仅受邀请的战局"""
         self.down()  # 选中"仅邀请战局"
