@@ -134,16 +134,16 @@ class LifecycleWorkflow(_BaseWorkflow):
         else:
             self.shutdown()
 
-        logger.info("20秒后将重启 GTA V...")
-        time.sleep(10)  # 等待 10 秒钟用于 steam 客户端响应 GTA V 退出
-        # 以防万一，再触发一次强制关闭
-        self.force_shutdown()
+        logger.info("20秒后将重启 GTA V...")  # 剩下那 10 秒在第一次循环里
         time.sleep(10)  # 等待 10 秒钟用于 steam 客户端响应 GTA V 退出
 
         # 启动游戏并进入在线模式仅邀请战局
         # 从 config 获取最大尝试次数，至少 1 次
         max_retry_times = max(self.config.restartGTAConsecutiveFailThreshold, 1)
         for retry_times in range(max_retry_times):
+            # 每次重试前确保游戏已关闭
+            self.force_shutdown()
+            time.sleep(10)  # 等待 10 秒钟用于 steam 客户端响应 GTA V 退出
             logger.info(f"GTA V 重启尝试第 {retry_times + 1} 次...")
             self.launch()
             if self.process.is_game_started():
