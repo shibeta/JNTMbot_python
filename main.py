@@ -117,7 +117,7 @@ def main():
         with pause_lock:
             if pause_event.is_set():
                 pause_event.clear()  # 清除标志，进入暂停状态
-                logger.warning("暂停/恢复热键被按下，Bot 将在本循环结束后暂停。按 CTRL+F9 恢复。")
+                logger.warning("暂停/恢复热键被按下，Bot 将在本轮循环结束后暂停。按 CTRL+F9 恢复。")
             else:
                 pause_event.set()  # 设置标志，恢复运行
                 try:
@@ -181,8 +181,9 @@ def main():
             automator.run_dre_bot()
 
             # 如果成功完成，重置连续错误计数器
-            logger.info("本轮循环成功，重置连续错误计数。")
-            main_loop_consecutive_error_count = 0
+            if main_loop_consecutive_error_count != 0:
+                logger.info("本轮循环成功，重置连续错误计数。")
+                main_loop_consecutive_error_count = 0
 
         except UnexpectedGameState as e:
             # 恶意玩家状态报错，直接退出程序
