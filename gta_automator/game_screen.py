@@ -162,9 +162,8 @@ class GameScreen:
     def get_job_setup_status(self) -> tuple[bool, int, int, int]:
         """
         检查差事面板状态，包括是否在面板中，以及加入的玩家数。
-        如果不在面板中玩家数将固定返回-1。
 
-        :return: 是否在面板(bool)，正在加入的玩家数(int)，已经加入的玩家数(int)，待命状态的玩家数(int)
+        :return: 是否在面板(bool)，正在加入的玩家数(int)，已经加入的玩家数(int)，待命状态的玩家数(int)。如果不在面板中玩家数将固定返回 False, -1, -1, -1 。
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         ocr_result = self.ocr_game_window(0.5, 0, 0.5, 1)
