@@ -181,6 +181,23 @@ class GameScreen:
             # 不在面板中则跳过识别直接返回-1
             return False, -1, -1, -1
 
+    def get_bad_sport_level_of_first_player_in_list(self) -> str:
+        """
+        读取玩家列表中第一个玩家的恶意等级。
+
+        :return: 恶意等级字符串，如 "清白玩家", "可疑玩家", "恶意玩家", "未知等级"
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        """
+        ocr_result = self.ocr_game_window(0.75, 0.2, 0.25, 0.3)
+        if "清白" in ocr_result:
+            return "清白玩家"
+        elif "可疑" in ocr_result:
+            return "可疑玩家"
+        elif "恶意" in ocr_result:
+            return "恶意玩家"
+        else:
+            return "未知等级"
+
     # --- 状态检查方法 ---
     def is_on_mainmenu_display_calibration_page(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -336,9 +353,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self.search_text(
-            GameScreenTextPatterns.IS_ON_BAD_PCSETTING_WARNING_PAGE, ocr_text, 0, 0, 1, 1
-        )
+        return self.search_text(GameScreenTextPatterns.IS_ON_BAD_PCSETTING_WARNING_PAGE, ocr_text, 0, 0, 1, 1)
 
     def is_on_online_service_policy_page(self, ocr_text: Optional[str] = None) -> bool:
         """

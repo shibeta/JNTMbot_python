@@ -1,7 +1,8 @@
 import time
-import subprocess
+from typing import Optional
 
 from logger import get_logger
+from windows_utils import exec_command_detached
 
 from .exception import *
 from ._base import _BaseWorkflow
@@ -10,43 +11,30 @@ logger = get_logger(__name__.split(".")[-1])
 
 
 class LifecycleWorkflow(_BaseWorkflow):
-    """处理游戏启动与关闭，以及如何进入在线模式等过程"""
+    """游戏启动与关闭，以及进入在线模式相关的操作"""
 
-    def setup_gta(self):
+    def is_game_ready(self) -> bool:
         """
-        确保 GTA V 启动，同时更新 PID 和窗口句柄。
+        检查游戏是否已启动并进入在线模式。
 
-        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 启动 GTA V 失败
+        :return: 如果游戏已启动并进入在线模式则返回 True，否则返回 False
         """
-        logger.info("动作: 正在初始化 GTA V ...")
-
         if not self.process.is_game_started():
-            # 没启动就先启动
-            logger.warning("GTA V 未启动。正在启动游戏...")
-            # 尝试启动 restartGTAConsecutiveFailThreshold 次，至少一次
-            max_retry_times = max(self.config.restartGTAConsecutiveFailThreshold, 1)
-            for retry_times in range(max_retry_times):
-                self.restart_gta()
-                if self.process.is_game_started():
-                    # 启动过程中会自己设置 PID 和窗口句柄, 不需要做任何事
-                    return
-                else:
-                    logger.warning(f"GTA V 启动失败。将重试 {max_retry_times-1-retry_times} 次。")
-                    continue
-            else:
-                # 达到最大失败次数后抛出异常
-                logger.error("GTA V 启动失败次数过多，认为游戏处于无法启动的状态。")
-                raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
-        else:
-            # 如果启动了则更新 PID 和窗口句柄
-            self.process.update_info()
+            return False
 
-        # 以防万一将其从挂起中恢复
+        # 更新游戏进程信息
+        self.process.update_info()
+        # 确保进程未被挂起
         self.process.resume()
 
-        logger.info("初始化 GTA V 完成。")
+        try:
+            # 处理警告页面
+            self.handle_warning_page()
+            return self.check_if_in_onlinemode()
+        except UnexpectedGameState:
+            return False
 
-    def shutdown_gta(self):
+    def shutdown(self):
         """关闭游戏。首先尝试通过 alt+f4 退出，如果失败则杀死进程。"""
         logger.info("动作: 正在退出游戏...")
         # 先尝试常规退出流程
@@ -81,26 +69,26 @@ class LifecycleWorkflow(_BaseWorkflow):
         # 如果游戏还在运行，强制关闭
         if self.process.is_game_started():
             logger.info("通过常规方法退出游戏失败，将强制关闭游戏。")
-            self.force_shutdown_gta()
+            self.force_shutdown()
         logger.info("退出游戏完成。")
 
-    def force_shutdown_gta(self):
+    def force_shutdown(self):
         """杀死进程以强制关闭游戏"""
         logger.info("动作: 正在强制关闭游戏...")
         self.process.kill()
         logger.info("强制关闭游戏完成。")
 
-    def launch_gta_online(self):
+    def launch(self):
         """
         启动游戏，并进入在线模式仅邀请战局。
 
         如果启动游戏失败，将关闭游戏。
         """
         try:
-            self.start_gta_steam()
+            self.start_via_steam()
         except GameAutomatorException as e:
             logger.error(f"启动 GTA V 时，发生异常: {e}")
-            self.shutdown_gta()
+            self.shutdown()
             return
 
         # 进入故事模式
@@ -109,7 +97,7 @@ class LifecycleWorkflow(_BaseWorkflow):
             self.enter_storymode_from_mainmenu()
         except GameAutomatorException as e:
             logger.error(f"进入故事模式时，发生异常: {e}")
-            self.shutdown_gta()
+            self.shutdown()
             return
 
         # 进入在线模式
@@ -119,41 +107,60 @@ class LifecycleWorkflow(_BaseWorkflow):
         except UnexpectedGameState as e:
             logger.error(f"进入在线模式时，发生异常: {e}")
             if e.actual_state == GameState.BAD_PCSETTING_BIN:
-                self.shutdown_gta()
+                self.shutdown()
                 self.fix_bad_pcsetting()
             else:
-                self.shutdown_gta()
+                self.shutdown()
             return
         except GameAutomatorException as e:
             logger.error(f"进入在线模式时，发生异常: {e}")
-            self.shutdown_gta()
+            self.shutdown()
             return
 
-    def restart_gta(self, force: bool = False):
+    def restart(self, force: bool = False):
         """
         杀死并重启 GTA V 游戏，并进入在线模式仅邀请战局。
 
-        如果重启游戏失败，将关闭游戏。
+        如果重启游戏失败，将关闭游戏并抛出异常。
+
+        :param force: 如果为 True，则强制关闭游戏而不尝试常规退出
+        :raise ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.UNKNOWN)``: 重启游戏失败次数过多
         """
         logger.info(f"动作: 正在重启 GTA V...")
 
         # 关闭游戏
         if force:
-            self.force_shutdown_gta()
+            self.force_shutdown()
         else:
-            self.shutdown_gta()
+            self.shutdown()
 
         logger.info("20秒后将重启 GTA V...")
-        time.sleep(20)  # 等待20秒钟用于 steam 客户端响应 GTA V 退出
+        time.sleep(20)  # 等待 20 秒钟用于 steam 客户端响应 GTA V 退出
         # 以防万一，再触发一次强制关闭
-        self.force_shutdown_gta()
+        self.force_shutdown()
 
-        # 启动游戏并进入在线模式
-        self.launch_gta_online()
+        # 启动游戏并进入在线模式仅邀请战局
+        # 从 config 获取最大尝试次数，至少 1 次
+        max_retry_times = max(self.config.restartGTAConsecutiveFailThreshold, 1)
+        for retry_times in range(max_retry_times):
+            logger.info(f"GTA V 重启尝试第 {retry_times + 1} 次...")
+            self.launch()
+            if self.process.is_game_started():
+                # 游戏成功启动
+                break
+            else:
+                logger.warning(f"GTA V 重启失败。将重试 {max_retry_times-1-retry_times} 次。")
+                continue
+        else:
+            # 达到最大失败次数后抛出异常
+            logger.error("GTA V 重启失败次数过多，退出游戏。")
+            if self.process.is_game_started():
+                self.shutdown()
+            raise UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.UNKNOWN)
 
         logger.info("重启 GTA V 成功。")
 
-    def start_gta_steam(self):
+    def start_via_steam(self):
         """
         如果 GTA V 没有启动，通过 Steam 启动游戏，并更新 pid 和 hwnd。
 
@@ -172,12 +179,10 @@ class LifecycleWorkflow(_BaseWorkflow):
             return
 
         logger.info("动作: 正在通过 Steam 启动 GTA V...")
-        # subprocess.Popen 可以避免阻塞主进程
-        # CREATE_BREAKAWAY_FROM_JOB 使主程序退出时不会关闭 Steam 进程和 GTA V 进程
-        subprocess.Popen(["start", "", "steam://rungameid/3240220"], shell=True, creationflags=subprocess.CREATE_BREAKAWAY_FROM_JOB)
+        exec_command_detached(["start", "", "steam://rungameid/3240220"])
 
         # 等待 GTA V 窗口出现
-        self.wait_for_gta_window_showup()
+        self.wait_for_window_showup()
         logger.info("GTA V 窗口已出现。")
         time.sleep(5)  # 等待5秒钟让游戏稳定
 
@@ -189,7 +194,7 @@ class LifecycleWorkflow(_BaseWorkflow):
 
         logger.info("已启动 GTA V。")
 
-    def wait_for_gta_window_showup(self):
+    def wait_for_window_showup(self):
         """
         等待 GTA V 窗口出现。
 
@@ -303,7 +308,7 @@ class LifecycleWorkflow(_BaseWorkflow):
             logger.warning("导航失败，正在尝试恢复...")
             for _ in range(3):
                 self.action.back()
-            self.ensure_pause_menu_is_open()
+            self.open_pause_menu()
         else:
             # 三次尝试均失败，抛出异常
             raise UIElementNotFound(UIElementNotFoundContext.ONLINE_MODE_TAB)
@@ -322,7 +327,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         logger.info("动作: 正在进入在线模式...")
 
         # 打开暂停菜单
-        self.ensure_pause_menu_is_open()
+        self.open_pause_menu()
 
         # 打开进入在线模式的菜单
         self.navigate_to_go_online_menu()
@@ -334,3 +339,118 @@ class LifecycleWorkflow(_BaseWorkflow):
         self.process_online_loading()
 
         logger.info("已进入在线模式。")
+
+    def process_online_loading(self):
+        """
+        等待进入在线模式，并处理加载过程中的各种意外情况。
+        该方法被多个管理器共用，因此被放置在基类中。
+
+        :raises ``OperationTimeout(OperationTimeoutContext.JOIN_ONLINE_SESSION)``: 等待进入在线模式超时
+        :raises ``UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.BAD_PCSETTING_BIN)``: 由于 pc_setting.bin 问题无法进入在线模式
+        :raises ``UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.MAIN_MENU)``: 由于网络问题等原因被回退到主菜单 (仅限增强版)
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        """
+        logger.info("正在等待进入在线模式...")
+        start_time = time.monotonic()
+        has_triggered_single_session = False
+
+        while time.monotonic() - start_time < 300:  # 5分钟超时
+            # 每10秒检查一次
+            time.sleep(10)
+
+            # 获取一次当前屏幕状态
+            ocr_text = self.screen.ocr_game_window(0, 0, 1, 1)
+
+            # 检查各种错误/意外状态
+            if self.screen.is_on_bad_pcsetting_warning_page(ocr_text):
+                # 由于 pc_setting.bin 问题无法进线上
+                raise UnexpectedGameState(GameState.ONLINE_FREEMODE, GameState.BAD_PCSETTING_BIN)
+            elif self.handle_warning_page(ocr_text):
+                # 处理错误窗口，比如网络不好，R星发钱等情况
+                continue
+            elif self.screen.is_on_mainmenu(ocr_text):
+                # 由于网络不好或者被BE踢了，进入了主菜单
+                raise UnexpectedGameState(GameState.ONLINE_FREEMODE, GameState.MAIN_MENU)
+            elif self.handle_online_service_policy_page(ocr_text):
+                # 处理 RockStar Games 在线服务政策页面
+                continue
+
+            # 检查是否进入了在线模式
+            if self.check_if_in_onlinemode():
+                return
+
+            if not has_triggered_single_session and time.monotonic() - start_time > 120:
+                # 进入在线模式等待超过2分钟后，进行卡单以缓解卡云
+                logger.info("等待进入在线模式超过2分钟，尝试卡单人战局以缓解卡云...")
+                self.glitch_single_player_session()
+                has_triggered_single_session = True
+        else:
+            # 循环结束仍未加载成功
+            raise OperationTimeout(OperationTimeoutContext.JOIN_ONLINE_SESSION)
+
+    def handle_online_service_policy_page(self, ocr_text: Optional[str] = None) -> bool:
+        """
+        如果当前在"RockStar Games 在线服务政策"页面，则勾选"我已阅读"并提交。
+
+        :param ocr_text: 可选的 OCR 结果字符串，用于检查是否在在线服务政策页面。如果未提供则会自动获取当前屏幕的 OCR 结果
+        :return: 没有发现在线服务政策页面时返回 False，发现并确认在线服务政策页面时返回 True
+        :raises ``OperationTimeout(OperationTimeoutContext.DOWNLOAD_POLICY)``: 下载在线服务政策超时
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        """
+        # 不在在线服务政策页面，直接返回
+        if not self.screen.is_on_online_service_policy_page(ocr_text):
+            return False
+
+        logger.info("动作: 发现在线服务政策页面，正在确认...")
+        # 在线服务政策页面首先会下载各种政策，等待至多 60 秒来完成下载
+        if not self.wait_for_state(self.screen.is_online_service_policy_loaded, 60, 1):
+            raise OperationTimeout(OperationTimeoutContext.DOWNLOAD_POLICY)
+
+        # 目前有两条在线服务政策，第一条是隐私政策，第二条是服务条款
+        # 尝试点击确认键，看看是否还停留在在线服务政策页面
+        self.action.confirm()
+        # 如果不在在线服务政策页面，说明点到条款里了
+        ocr_result = self.screen.ocr_game_window(0, 0, 0.7, 0.3)
+        if not self.screen.is_on_online_service_policy_page(ocr_result):
+            # 如果在隐私政策中，返回并下移两次，选中"我已确认"
+            if self.screen.is_on_privacy_policy_page(ocr_result):
+                self.action.back()
+                self.action.down()
+                self.action.down()
+            # 如果在服务条款中，返回并下移一次，选中"我已确认"
+            elif self.screen.is_on_term_of_service_page(ocr_result):
+                self.action.back()
+                self.action.down()
+
+        # 以上步骤会选中"我已确认"选项，进行确认并提交
+        self.action.confirm()
+        self.action.down()
+        self.action.confirm()
+        time.sleep(0.2)  # 等待游戏响应页面关闭
+        logger.info("已确认在线服务政策页面。")
+        return True
+
+    def join_session_through_steam(self, steam_jvp: str):
+        """
+        通过 Steam 的"加入游戏"功能，加入一个战局。
+
+        该方法只能在游戏启动后才能运行，因为游戏未启动时使用 steam://rungame/ 会出现一个程序无法处理的弹窗。
+
+        :param steam_jvp: URL 编码后的 steam_jvp 参数
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动所以无法加入战局
+        :raises ``OperationTimeout(OperationTimeoutContext.ONLINE_SESSION_JOIN)``: 加入战局时超时
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        """
+        logger.info(f"动作: 正在加入战局: {steam_jvp}")
+
+        if not self.process.is_game_started():
+            raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
+
+        steam_url = f"steam://rungame/3240220/76561199074735990/-steamjvp={steam_jvp}"
+        exec_command_detached(["start", "", steam_url])
+        time.sleep(3)
+
+        # 等待加入战局
+        self.process_online_loading()
+
+        logger.info(f"成功加入战局: {steam_jvp}")

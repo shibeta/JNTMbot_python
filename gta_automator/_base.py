@@ -30,14 +30,24 @@ class _BaseWorkflow:
         self.config = config
 
     # --- 管理器的公用方法 ---
-    def ensure_pause_menu_is_open(self):
+    def open_pause_menu(self):
         """
-        确保暂停菜单是打开的，如果不是，则打开它。
+        打开暂停菜单（如果尚未打开的话）。
+        这个方法会自动处理警告页面等干扰。
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        :raises ``UIElementNotFound(UIElementNotFoundContext.PAUSE_MENU)``: 打开暂停菜单失败
         """
+        logger.info("动作: 正在打开暂停菜单...")
+        # 处理警告屏幕
+        self.handle_warning_page()
+        # 打开暂停菜单
         if not self.screen.is_on_pause_menu():
             self.action.open_or_close_pause_menu()
+        # 确认暂停菜单已打开
+        if not self.screen.is_on_pause_menu():
+            raise UIElementNotFound(UIElementNotFoundContext.PAUSE_MENU)
+        logger.info("成功打开暂停菜单。")
 
     def check_if_in_onlinemode(self, max_retries: int = 3) -> bool:
         """
@@ -95,48 +105,6 @@ class _BaseWorkflow:
         self.action.confirm()
         time.sleep(0.2)  # 等待游戏响应页面关闭
         logger.info("已确认警告页面。")
-        return True
-
-    def handle_online_service_policy_page(self, ocr_text: Optional[str] = None) -> bool:
-        """
-        如果当前在"RockStar Games 在线服务政策"页面，则勾选"我已阅读"并提交。
-
-        :param ocr_text: 可选的 OCR 结果字符串，用于检查是否在在线服务政策页面。如果未提供则会自动获取当前屏幕的 OCR 结果
-        :return: 没有发现在线服务政策页面时返回 False，发现并确认在线服务政策页面时返回 True
-        :raises ``OperationTimeout(OperationTimeoutContext.DOWNLOAD_POLICY)``: 下载在线服务政策超时
-        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
-        """
-        # 不在在线服务政策页面，直接返回
-        if not self.screen.is_on_online_service_policy_page(ocr_text):
-            return False
-
-        logger.info("动作: 发现在线服务政策页面，正在确认...")
-        # 在线服务政策页面首先会下载各种政策，等待至多 60 秒来完成下载
-        if not self.wait_for_state(self.screen.is_online_service_policy_loaded, 60, 1):
-            raise OperationTimeout(OperationTimeoutContext.DOWNLOAD_POLICY)
-
-        # 目前有两条在线服务政策，第一条是隐私政策，第二条是服务条款
-        # 尝试点击确认键，看看是否还停留在在线服务政策页面
-        self.action.confirm()
-        # 如果不在在线服务政策页面，说明点到条款里了
-        ocr_result = self.screen.ocr_game_window(0, 0, 0.7, 0.3)
-        if not self.screen.is_on_online_service_policy_page(ocr_result):
-            # 如果在隐私政策中，返回并下移两次，选中"我已确认"
-            if self.screen.is_on_privacy_policy_page(ocr_result):
-                self.action.back()
-                self.action.down()
-                self.action.down()
-            # 如果在服务条款中，返回并下移一次，选中"我已确认"
-            elif self.screen.is_on_term_of_service_page(ocr_result):
-                self.action.back()
-                self.action.down()
-
-        # 以上步骤会选中"我已确认"选项，进行确认并提交
-        self.action.confirm()
-        self.action.down()
-        self.action.confirm()
-        time.sleep(0.2)  # 等待游戏响应页面关闭
-        logger.info("已确认在线服务政策页面。")
         return True
 
     def wait_for_state(
@@ -286,51 +254,3 @@ class _BaseWorkflow:
             list_bot_steamjvp.append(jvp_id)
 
         return list_bot_steamjvp
-
-    def process_online_loading(self):
-        """
-        等待进入在线模式，并处理加载过程中的各种意外情况。
-        该方法被多个管理器共用，因此被放置在基类中。
-
-        :raises ``OperationTimeout(OperationTimeoutContext.JOIN_ONLINE_SESSION)``: 等待进入在线模式超时
-        :raises ``UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.BAD_PCSETTING_BIN)``: 由于 pc_setting.bin 问题无法进入在线模式
-        :raises ``UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.MAIN_MENU)``: 由于网络问题等原因被回退到主菜单 (仅限增强版)
-        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
-        """
-        logger.info("正在等待进入在线模式...")
-        start_time = time.monotonic()
-        has_triggered_single_session = False
-
-        while time.monotonic() - start_time < 300:  # 5分钟超时
-            # 每10秒检查一次
-            time.sleep(10)
-
-            # 获取一次当前屏幕状态
-            ocr_text = self.screen.ocr_game_window(0, 0, 1, 1)
-
-            # 检查各种错误/意外状态
-            if self.screen.is_on_bad_pcsetting_warning_page(ocr_text):
-                # 由于 pc_setting.bin 问题无法进线上
-                raise UnexpectedGameState(GameState.ONLINE_FREEMODE, GameState.BAD_PCSETTING_BIN)
-            elif self.handle_warning_page(ocr_text):
-                # 处理错误窗口，比如网络不好，R星发钱等情况
-                continue
-            elif self.screen.is_on_mainmenu(ocr_text):
-                # 由于网络不好或者被BE踢了，进入了主菜单
-                raise UnexpectedGameState(GameState.ONLINE_FREEMODE, GameState.MAIN_MENU)
-            elif self.handle_online_service_policy_page(ocr_text):
-                # 处理 RockStar Games 在线服务政策页面
-                continue
-
-            # 检查是否进入了在线模式
-            if self.check_if_in_onlinemode():
-                return
-
-            if not has_triggered_single_session and time.monotonic() - start_time > 120:
-                # 进入在线模式等待超过2分钟后，进行卡单以缓解卡云
-                logger.info("等待进入在线模式超过2分钟，尝试卡单人战局以缓解卡云...")
-                self.glitch_single_player_session()
-                has_triggered_single_session = True
-        else:
-            # 循环结束仍未加载成功
-            raise OperationTimeout(OperationTimeoutContext.JOIN_ONLINE_SESSION)

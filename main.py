@@ -131,6 +131,7 @@ def main():
 
     # 退出热键
     exit_lock = threading.Lock()
+
     def toggle_exit():
         with exit_lock:
             logger.warning("退出热键被按下，退出程序...")
@@ -182,6 +183,22 @@ def main():
             # 如果成功完成，重置连续错误计数器
             logger.info("本轮循环成功，重置连续错误计数。")
             main_loop_consecutive_error_count = 0
+
+        except UnexpectedGameState as e:
+            # 恶意玩家状态报错，直接退出程序
+            if e.actual_state == GameState.BAD_SPORT_LEVEL:
+                logger.error(f"检测到恶意等级过高，程序将退出以保护账号安全。")
+                # 启用了微信推送并且运行超过 wechatPushActivationDelay 分钟则推送消息
+                if config.enableWechatPush:
+                    if time.monotonic() - global_start_time > config.wechatPushActivationDelay * 60:
+                        wechat_push(
+                            config.pushplusToken,
+                            "检测到恶意等级过高，程序将退出以保护账号安全。",
+                            traceback.format_exc(),
+                        )
+                return  # 退出程序
+            else:
+                raise
 
         except Exception as e:
             # 捕获到异常则累加连续出错次数

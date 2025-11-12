@@ -42,6 +42,35 @@ class GTAAutomator:
             screen, player_input, process, config, steam_bot if steam_bot else SteamBotClient(config)
         )
 
+    def setup(self):
+        """
+        初始化游戏状态，确保 GTA V 已启动并进入在线模式，同时非恶意玩家状态。
+
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏意外关闭
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.UNKNOWN)``: 启动游戏失败
+        :raises ``UnexpectedGameState(expected=GameState.GOOD_SPORT_LEVEL, actual=GameState.BAD_SPORT_LEVEL)``: 恶意等级过高
+        :raises ``UIElementNotFound(UIElementNotFoundContext.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
+        """
+        logger.info("动作: 正在初始化 GTA V ...")
+
+        if self.lifecycle_workflow.is_game_ready():
+            logger.info("初始化 GTA V 完成。")
+            return
+        
+        # 如果游戏未就绪，重启游戏
+        logger.warning("游戏状态错误，将重启游戏。")
+        self.lifecycle_workflow.restart()
+        
+        # 重启游戏后，检查恶意值
+        bad_sport_level = self.online_workflow.get_bad_sport_level()
+        if bad_sport_level != "清白玩家":
+            logger.warning(f"当前恶意等级为 {bad_sport_level} ，恶意等级过高。")
+            raise UnexpectedGameState(GameState.GOOD_SPORT_LEVEL, GameState.BAD_SPORT_LEVEL)
+        else:
+            logger.info(f"当前恶意等级为 {bad_sport_level} ，恶意等级正常。")
+
+        logger.info("初始化 GTA V 完成。")
+
     def play_dre_job(self):
         """
         执行德瑞差事的任务流程。
@@ -61,7 +90,7 @@ class GTAAutomator:
         except OperationTimeout as e:
             # 等待差事面板打开超时
             logger.error("等待差事面板超时，为避免 RockStar 在线服务导致的故障，退出游戏。")
-            self.lifecycle_workflow.shutdown_gta()
+            self.lifecycle_workflow.shutdown()
             raise
 
         # 管理大厅并启动差事
@@ -109,26 +138,13 @@ class GTAAutomator:
                     ):
                         # 这种情况下要么不在任务中，要么游戏卡死了，只能退出游戏
                         logger.error(f"处理{timeout_context}超时时，切换战局失败次数过多，退出游戏。")
-                        self.lifecycle_workflow.shutdown_gta()
+                        self.lifecycle_workflow.shutdown()
                     raise
             else:
                 raise  # 其他超时是致命的，向上抛出
 
         # 检查最终状态
         self.job_workflow.verify_mission_status_after_glitch()
-
-    def reduce_malicious_value(self):
-        """
-        执行减少恶意值的任务流程。
-        """
-        logger.info("动作: 正在开始减少恶意值任务流程...")
-
-        # TODO: 实现减少恶意值的差事流程
-        # 目前认为，减少恶意值可以通过单纯挂机或完成多人差事来实现
-        # 但需要进一步研究恶意值增减的时机和数值，以高效清除恶意值
-        logger.info("减少恶意值任务流程尚未实现。")
-
-        logger.info("减少恶意值任务流程成功完成。")
 
     def run_dre_bot(self):
         """
@@ -143,11 +159,16 @@ class GTAAutomator:
         :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)``: 等待差事面板打开超时
         :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)``: 在等待玩家和启动差事阶段，意外离开了任务面板
         """
-        logger.info("动作: 正在开始新一轮循环...")
-        # 确保游戏就绪
-        self.lifecycle_workflow.setup_gta()
-
-        # TODO: 添加检测恶意值的逻辑，如果恶意值过高则先执行减少恶意值任务
+        logger.info("动作: 正在开始新一轮德瑞 Bot 任务...")
+        # 确保游戏就绪，即在在线模式中
+        try:
+            self.setup()
+        except UnexpectedGameState as e:
+            if e.actual_state == GameState.BAD_SPORT_LEVEL:
+                # 恶意等级过高，退出游戏
+                logger.error("初始化游戏时，检测到恶意等级过高，退出游戏。")
+                self.lifecycle_workflow.shutdown()
+            raise
 
         # 切换到新战局
         try:
@@ -159,7 +180,7 @@ class GTAAutomator:
             ):
                 # 开始新战局时，用尽全部恢复策略后仍无法切换战局
                 logger.error("初始化游戏时，切换战局失败次数过多，退出游戏。")
-                self.lifecycle_workflow.shutdown_gta()
+                self.lifecycle_workflow.shutdown()
             raise
 
         # 等待复活
@@ -168,4 +189,4 @@ class GTAAutomator:
         # 执行德瑞bot任务
         self.play_dre_job()
 
-        logger.info("本轮循环成功完成。")
+        logger.info("本轮德瑞 Bot 任务成功完成。")
