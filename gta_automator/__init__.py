@@ -12,7 +12,7 @@ from .game_process import GameProcess
 from .game_screen import GameScreen
 from .game_action import GameAction
 from .lifecycle_workflow import LifecycleWorkflow
-from .session_workflow import SessionWorkflow
+from .online_workflow import OnlineWorkflow
 from .job_workflow import JobWorkflow
 
 logger = get_logger(__name__)
@@ -37,7 +37,7 @@ class GTAAutomator:
 
         # 初始化工作流，注入依赖
         self.lifecycle_workflow = LifecycleWorkflow(screen, player_input, process, config)
-        self.session_workflow = SessionWorkflow(screen, player_input, process, config)
+        self.online_workflow = OnlineWorkflow(screen, player_input, process, config)
         self.job_workflow = JobWorkflow(
             screen, player_input, process, config, steam_bot if steam_bot else SteamBotClient(config)
         )
@@ -94,12 +94,12 @@ class GTAAutomator:
                 # 在差事中退出游戏可能导致恶意值增加，所以这里选择切换战局
                 logger.warning(f"{e.message}。卡单并切换战局。")
                 # 首先需要卡单，进入单人战局状态，因为在多人差事中切换战局会增加恶意值
-                self.session_workflow.glitch_single_player_session()
+                self.online_workflow.glitch_single_player_session()
                 time.sleep(2)  # 等待游戏状态稳定
 
                 # 切换战局
                 try:
-                    self.session_workflow.start_new_match()
+                    self.online_workflow.start_new_match()
                     return  # 切换战局成功，结束当前差事流程
 
                 except UnexpectedGameState as e:
@@ -151,7 +151,7 @@ class GTAAutomator:
 
         # 切换到新战局
         try:
-            self.session_workflow.start_new_match()
+            self.online_workflow.start_new_match()
         except UnexpectedGameState as e:
             if (
                 e.expected == {GameState.ONLINE_FREEMODE, GameState.IN_MISSION}

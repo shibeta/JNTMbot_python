@@ -1,4 +1,3 @@
-import os
 import time
 
 from logger import get_logger
@@ -6,39 +5,22 @@ from logger import get_logger
 from ._base import _BaseWorkflow
 from .exception import *
 
-logger = get_logger("session_workflow")
+logger = get_logger(__name__.split(".")[-1])
 
 
-class SessionWorkflow(_BaseWorkflow):
-    """在线战局相关的逻辑"""
+class OnlineWorkflow(_BaseWorkflow):
+    """在线战局相关的操作"""
 
-    def _try_to_switch_session(self) -> bool:
+    def _try_to_switch_session(self):
         """
         尝试执行一次切换到仅邀请战局的完整操作。
 
-        :return:
-        - True: 切换战局成功。
-        - False: 在菜单导航中失败。
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法切换战局
+        :raises ``UIElementNotFound(UIElementNotFoundContext.PAUSE_MENU)``: 打开暂停菜单失败
+        :raises ``UIElementNotFound(UIElementNotFoundContext.SWITCH_SESSION_TAB)``: 打开切换战局菜单失败
         """
-        logger.info("动作: 正在打开暂停菜单...")
-
-        # 检查游戏状态
-        if not self.process.is_game_started():
-            raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
-
-        # 处理警告屏幕
-        self.handle_warning_page()
-
         # 打开暂停菜单
-        self.ensure_pause_menu_is_open()
-
-        # 检查暂停菜单是否被打开
-        if not self.screen.is_on_pause_menu():
-            logger.warning("打开暂停菜单失败。")
-            return False
-
-        logger.info("成功打开暂停菜单。")
+        self.open_pause_menu()
 
         # 尝试打开切换战局菜单
         logger.info("动作: 正在打开切换战局菜单...")
@@ -47,14 +29,12 @@ class SessionWorkflow(_BaseWorkflow):
         # 检查切换战局菜单是否被打开
         if not self.screen.is_on_go_online_menu():
             logger.warning("打开切换战局菜单失败。")
-            return False
+            raise UIElementNotFound(UIElementNotFoundContext.SWITCH_SESSION_TAB)
 
         logger.info("成功打开切换战局菜单。")
 
         # 进入仅邀请战局
         self.action.enter_invite_only_session()
-
-        return True
 
     def _recover_by_do_nothing(self):
         """有的时候，什么都不做就是最好的"""
@@ -99,44 +79,59 @@ class SessionWorkflow(_BaseWorkflow):
         ]
 
         # 第一次尝试切换战局
-        if self._try_to_switch_session():
+        try:
+            self._try_to_switch_session()
             logger.info("成功进入新战局。")
             return
+        except UIElementNotFound:
+            # 捕获打开菜单失败的异常，执行恢复策略
+            pass
 
         # 首次尝试失败，开始执行恢复策略
         for strategy in recovery_strategies:
             strategy()
-
             # 再次尝试切换战局
-            if self._try_to_switch_session():
+            try:
+                self._try_to_switch_session()
                 logger.info(f"在执行恢复策略 {strategy.__name__} 后，成功进入新战局。")
                 return
+            except UIElementNotFound:
+                # 捕获打开菜单失败的异常，继续执行下一个恢复策略
+                pass
 
         # 如果所有策略用尽，抛出异常
         logger.error("切换新战局失败次数过多，认为游戏正处于未知状态。")
         raise UnexpectedGameState({GameState.ONLINE_FREEMODE, GameState.IN_MISSION}, GameState.UNKNOWN)
 
-    def join_session_through_steam(self, steam_jvp: str):
+    def get_bad_sport_level(self) -> str:
         """
-        通过 Steam 的"加入游戏"功能，加入一个战局。
+        在在线模式中，获取当前角色的恶意等级。
+        只能在单人战局中使用，因为该方法实际用于检查战局内第一个玩家的恶意等级。
 
-        该方法只能在游戏启动后才能运行，因为游戏未启动时使用 steam://rungame/ 会出现一个程序无法处理的弹窗。
-
-        :param steam_jvp: URL 编码后的 steam_jvp 参数
-        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动所以无法加入战局
-        :raises ``OperationTimeout(OperationTimeoutContext.ONLINE_SESSION_JOIN)``: 加入战局时超时
+        :return: 恶意等级字符串，如 "清白玩家", "可疑玩家", "恶意玩家"
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        :raises ``UIElementNotFound(UIElementNotFoundContext.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
         """
-        logger.info(f"动作: 正在加入战局: {steam_jvp}")
+        logger.info("动作: 正在获取当前角色的恶意值...")
+        # 打开暂停菜单并导航到玩家列表
+        self.open_pause_menu()
+        self.action.navigate_to_player_list_tab_in_onlinemode()
+        time.sleep(0.5)  # 等待玩家列表加载
+        # 读取恶意等级
+        bad_sport_level = self.screen.get_bad_sport_level_of_first_player_in_list()
+        if bad_sport_level == "未知等级":
+            # 重试最多三次
+            for _ in range(3):
+                logger.warning("读取恶意等级失败，正在重试...")
+                time.sleep(0.5)
+                bad_sport_level = self.screen.get_bad_sport_level_of_first_player_in_list()
+                if bad_sport_level != "未知等级":
+                    break
 
-        if not self.process.is_game_started():
-            raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
+        # 关闭暂停菜单
+        self.action.open_or_close_pause_menu()
+        if bad_sport_level == "未知等级":
+            raise UIElementNotFound(UIElementNotFoundContext.BAD_SPORT_LEVEL_INDICATOR)
 
-        steam_url = f"steam://rungame/3240220/76561199074735990/-steamjvp={steam_jvp}"
-        os.startfile(steam_url)
-        time.sleep(3)
-
-        # 等待加入战局
-        self.process_online_loading()
-
-        logger.info(f"成功加入战局: {steam_jvp}")
+        logger.info(f"当前角色的恶意等级为 {bad_sport_level} 。")
+        return bad_sport_level
