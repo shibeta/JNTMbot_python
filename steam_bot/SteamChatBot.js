@@ -343,24 +343,18 @@ class SteamChatBot {
 
         const chatId = targetChannel.chat_id;
 
-        // 处理发送信息超时，我们没有义务等待 Steam 的回执
-        const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => {
-                reject(new Error("发送操作超时，但消息可能已发出。"));
-            }, 12000); // 延迟被设置为 12 秒，因为 10 秒有点短
-        });
-
         // 发送消息
         try {
-            const result = await Promise.race([
-                this.#client.chat.sendChatMessage(groupId, chatId, message),
-                timeoutPromise,
-            ]);
+            const result = this.#client.chat.sendChatMessage(
+                groupId,
+                chatId,
+                message
+            );
             console.log(`✅ 成功发送消息到群组 ${groupId}。`);
             return result;
         } catch (error) {
-            if (error.message.includes("发送操作超时")) {
-                console.warn(`⚠️ 对群组 ${groupId} 的消息发送确认超时。`);
+            if (error.message === 'Request timed out') {
+                console.warn(`⚠️ 对群组 ${groupId} 的消息发送确认超时，但消息可能已发出。`);
             }
             throw error;
         }
