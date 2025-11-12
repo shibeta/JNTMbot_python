@@ -112,6 +112,7 @@ def main():
     pause_lock = threading.Lock()
     pause_event = threading.Event()
     pause_event.set()  # 初始状态为“已恢复”
+
     def toggle_pause():
         with pause_lock:
             if pause_event.is_set():
