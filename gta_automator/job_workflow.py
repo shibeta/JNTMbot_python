@@ -241,8 +241,8 @@ class JobWorkflow(_BaseWorkflow):
         except requests.RequestException:
             pass
 
-        time.sleep(1)  # 等待1秒以给其他玩家反应时间
-        self.action.confirm()  # 按A键启动
+        time.sleep(1)  # 等待 1 秒以给其他玩家反应时间
+        self.action.confirm()  # 按 A 键启动
         # 不能等太久，否则"启动中"状态可能被跳过
         time.sleep(0.5)  # 多等一会，让游戏响应差事启动
 
@@ -385,7 +385,7 @@ class JobWorkflow(_BaseWorkflow):
             logger.warning("未检测到在差事中，可能因其他玩家导致任务失败。正在检查计分板...")
             if self.wait_for_state(self.screen.is_on_scoreboard, timeout=15):
                 logger.info("检测到任务失败计分板。等待20秒以自动退出。")
-                # 小技巧: 发送消息也需要时间
+                # 略去发送消息的时间
                 wait_end_time = time.monotonic() + 20
                 try:
                     self.steam_bot.send_group_message(self.config.msgDetectedSB)
