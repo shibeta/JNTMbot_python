@@ -2,7 +2,7 @@ import requests
 
 from logger import get_logger
 
-logger = get_logger("push_utils")
+logger = get_logger(__name__)
 
 
 def wechat_push(token: str, title: str, msg: str):

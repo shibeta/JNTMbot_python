@@ -16,7 +16,7 @@ from gta_automator import GTAAutomator
 from health_check import HealthMonitor
 from gta_automator.exception import *
 
-logger = get_logger(name="main")
+logger = get_logger("main")
 
 
 # 用于处理退出的装饰器

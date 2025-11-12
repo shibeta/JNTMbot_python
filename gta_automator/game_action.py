@@ -4,7 +4,7 @@ from config import Config
 from gamepad_utils import Button, GamepadSimulator, JoystickDirection
 from logger import get_logger
 
-logger = get_logger(name="game_action")
+logger = get_logger(__name__.split(".")[-1])
 
 
 class GameAction:

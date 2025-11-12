@@ -19,7 +19,7 @@ from typing import Tuple, Optional
 
 from logger import get_logger
 
-logger = get_logger("windows_utils")
+logger = get_logger(__name__)
 
 
 def is_window_handler_exist(hwnd: int) -> bool:

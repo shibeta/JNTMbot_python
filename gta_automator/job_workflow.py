@@ -11,7 +11,7 @@ from .game_screen import GameScreen
 from .exception import *
 from .game_action import GameAction
 
-logger = get_logger("job_workflow")
+logger = get_logger(__name__.split(".")[-1])
 
 
 class LobbyStateTracker:

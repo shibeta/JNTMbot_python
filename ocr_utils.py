@@ -10,7 +10,7 @@ from RapidOCR_api import OcrAPI
 from windows_utils import is_window_handler_exist, set_top_window, unset_top_window
 from logger import get_logger
 
-logger = get_logger("ocr_engine")
+logger = get_logger(__name__)
 
 # 设置 RapidOCR-json.exe 的绝对或相对路径
 # 例如: r"C:\path\to\RapidOCR-json.exe"

@@ -15,7 +15,7 @@ from .lifecycle_workflow import LifecycleWorkflow
 from .session_workflow import SessionWorkflow
 from .job_workflow import JobWorkflow
 
-logger = get_logger("gta_automator")
+logger = get_logger(__name__)
 
 
 class GTAAutomator:

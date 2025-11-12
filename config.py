@@ -5,7 +5,7 @@ from ruamel.yaml.comments import CommentedMap
 
 from logger import get_logger
 
-logger = get_logger(name="config")
+logger = get_logger(__name__)
 
 
 class Config:

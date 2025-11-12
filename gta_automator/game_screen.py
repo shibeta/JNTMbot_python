@@ -9,7 +9,7 @@ from logger import get_logger
 from .exception import *
 from .game_process import GameProcess
 
-logger = get_logger(name="game_screen")
+logger = get_logger(__name__.split(".")[-1])
 
 
 class GameScreenTextPatterns:

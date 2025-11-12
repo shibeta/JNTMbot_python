@@ -12,7 +12,7 @@ from windows_utils import (
     suspend_process_for_duration,
 )
 
-logger = get_logger(name="game_process")
+logger = get_logger(__name__.split(".")[-1])
 
 
 class GameProcess:

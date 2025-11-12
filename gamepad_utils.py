@@ -11,7 +11,7 @@ import bisect
 
 from logger import get_logger
 
-logger = get_logger(name="gamepad_utils")
+logger = get_logger(__name__)
 
 try:
     import vgamepad as vg

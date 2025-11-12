@@ -13,7 +13,7 @@ from .game_screen import GameScreen
 from .game_action import GameAction
 from .game_process import GameProcess
 
-logger = get_logger("base_workflow")
+logger = get_logger(__name__.split(".")[-1])
 
 
 class _BaseWorkflow:

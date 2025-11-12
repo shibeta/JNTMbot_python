@@ -6,7 +6,7 @@ from logger import get_logger
 from .exception import *
 from ._base import _BaseWorkflow
 
-logger = get_logger("lifecycle_workflow")
+logger = get_logger(__name__.split(".")[-1])
 
 
 class LifecycleWorkflow(_BaseWorkflow):

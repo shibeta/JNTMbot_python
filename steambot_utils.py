@@ -11,7 +11,7 @@ from urllib.request import getproxies
 from config import Config
 from logger import get_logger
 
-logger = get_logger("steambot_utils")
+logger = get_logger(__name__)
 
 
 class _SupervisorThread(threading.Thread):
