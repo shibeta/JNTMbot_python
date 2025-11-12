@@ -1,8 +1,9 @@
 from pathlib import Path
 import ctypes.wintypes
 import time
-import winreg
 import psutil
+import subprocess
+import winreg
 import win32gui
 import win32process
 import win32con
@@ -248,6 +249,7 @@ def get_document_fold_path() -> Path:
 
     return documents_path
 
+
 def get_steam_exe_path() -> Optional[str]:
     """
     从 Windows 注册表中获取 steam.exe 的路径。
@@ -266,3 +268,24 @@ def get_steam_exe_path() -> Optional[str]:
     except Exception as e:
         logger.error(f"读取注册表时发生未知错误: {e}")
         return None
+
+
+def exec_command_detached(command: list[str]):
+    """
+    以分离模式执行一个命令行指令。
+
+    :param command: 要执行的命令行指令
+    :raises ``Exception``: 启动命令失败
+    """
+    try:
+        # subprocess.Popen 可以避免阻塞主进程
+        # CREATE_BREAKAWAY_FROM_JOB 使主程序退出时不会关闭子进程
+        subprocess.Popen(
+            command,
+            shell=True,
+            creationflags=subprocess.CREATE_BREAKAWAY_FROM_JOB,
+            close_fds=True,
+        )
+    except Exception as e:
+        # Nuitka 打包时会错误地对f-string中的引号报错，改为字符串拼接
+        raise Exception("执行命令 '" + " ".join(command) + "' 失败: " + str(e)) from e
