@@ -77,7 +77,7 @@ class LobbyStateTracker:
 
 
 class JobWorkflow(_BaseWorkflow):
-    """用于在游戏中进行差事的相关操作的封装"""
+    """差事相关的操作"""
 
     def __init__(
         self,
