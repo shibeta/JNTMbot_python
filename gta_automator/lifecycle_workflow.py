@@ -135,9 +135,10 @@ class LifecycleWorkflow(_BaseWorkflow):
             self.shutdown()
 
         logger.info("20秒后将重启 GTA V...")
-        time.sleep(20)  # 等待 20 秒钟用于 steam 客户端响应 GTA V 退出
+        time.sleep(10)  # 等待 10 秒钟用于 steam 客户端响应 GTA V 退出
         # 以防万一，再触发一次强制关闭
         self.force_shutdown()
+        time.sleep(10)  # 等待 10 秒钟用于 steam 客户端响应 GTA V 退出
 
         # 启动游戏并进入在线模式仅邀请战局
         # 从 config 获取最大尝试次数，至少 1 次
