@@ -317,7 +317,7 @@ class JobWorkflow(_BaseWorkflow):
 
     def exit_job_panel(self):
         """
-        从差事准备面板退出到自由模式，如果不在差事准备面板中则行为是未定义的。
+        从差事准备面板退出到自由模式，如果不在差事准备面板中则不做任何事。
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
@@ -328,9 +328,13 @@ class JobWorkflow(_BaseWorkflow):
         # 从差事准备面板退出
         ocr_result = self.screen.ocr_game_window(0, 0, 1, 1)
         if self.screen.is_on_second_job_setup_page(ocr_result):
+            logger.info("检测到在差事面板第二页，正在退出...")
             self.action.exit_job_panel_from_second_page()
         elif self.screen.is_on_first_job_setup_page(ocr_result):
+            logger.info("检测到在差事面板第一页，正在退出...")
             self.action.exit_job_panel_from_first_page()
+        else:
+            logger.warning("未检测到差事面板的任何一页，不做任何事。")
 
         logger.info("已退出差事面板。")
 
