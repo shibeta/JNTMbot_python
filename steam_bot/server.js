@@ -3,14 +3,14 @@ const SteamChatBot = require("./SteamChatBot");
 
 // 全局错误处理
 process.on("uncaughtException", (error) => {
-    console.error("Uncaught Exception:", error);
-    // 在记录日志后，通常建议退出进程，因为应用可能处于不稳定状态
-    // process.exit(1);
+    console.error("❌ 未捕获的异常:", error);
+    process.exit(1);
 });
 
 process.on("unhandledRejection", (reason, promise) => {
-    console.error("Unhandled Rejection at:", promise, "reason:", reason);
-    // process.exit(1);
+    console.error("❌ 未处理的 Promise 错误:", promise);
+    console.error("📌 原因:", reason);
+    process.exit(1);
 });
 
 // 解析启动参数
@@ -160,22 +160,28 @@ app.post("/send-message", async (req, res) => {
     } catch (error) {
         // 根据错误类型返回具体的状态码
         if (error.message.includes("找不到群组")) {
-            console.warn("⚠️ 找不到指定的群组:", error.message);
+            console.warn("⚠️ 提交发送任务时, 找不到指定的群组:", error.message);
             res.status(400).json({
-                error: "请求失败：找不到指定的群组。",
+                error: "找不到指定的群组。",
                 details: error.message,
             });
         } else if (error.message.includes("找不到频道")) {
-            console.warn("⚠️ 找不到指定的频道:", error.message);
+            console.warn("⚠️ 提交发送任务时, 找不到指定的频道:", error.message);
             res.status(400).json({
-                error: "请求失败：找不到指定的频道。",
+                error: "找不到指定的频道。",
+                details: error.message,
+            });
+        } else if (error.message.includes("获取群组信息超时")) {
+            console.warn("💥 提交发送任务时，获取群组信息超时。");
+            res.status(500).json({
+                error: "获取群组信息超时。",
                 details: error.message,
             });
         } else {
             // 其他在准备阶段可能发生的未知错误
-            console.error("💥 提交发送任务时发生内部错误:", error);
+            console.error("💥 提交发送任务时发生内部错误:", error.message);
             res.status(500).json({
-                error: "提交发送任务时发生内部错误。",
+                error: "提交发送任务时，发生内部错误。",
                 details: error.message,
             });
         }

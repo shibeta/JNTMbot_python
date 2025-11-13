@@ -339,6 +339,10 @@ class SteamChatBot {
 
             chatId = targetChannel.chat_id;
         } catch (error) {
+            // 获取群组信息超时
+            if (error.message === "Request timed out") {
+                error.message = "获取群组信息超时"
+            }
             console.error(
                 `💥 在准备向群组 ${groupId} 发送消息时出错:`,
                 error.message
@@ -362,7 +366,7 @@ class SteamChatBot {
                 } else {
                     // 其他类型的错误
                     console.error(
-                        `❌ 发送消息到群组 ${groupId} (频道: ${channelName}) 时发生未知错误:`,
+                        `💥 发送消息到群组 ${groupId} (频道: ${channelName}) 时发生未知错误:`,
                         error
                     );
                 }
@@ -378,8 +382,6 @@ class SteamChatBot {
      * 登出
      */
     logOff() {
-        // this.#client.logOff();
-        // console.log("👋 已从 Steam 登出。");
         // 返回一个 Promise，以便调用者可以等待登出操作完成
         return new Promise((resolve) => {
             // 监听 'disconnected' 事件，这是登出完成的明确信号
