@@ -27,6 +27,10 @@ def interrupt_decorator(func):
             return func(*args, **kwargs)
         except KeyboardInterrupt:
             logger.warning("程序被用户中断，正在退出。")
+        except Exception as e:
+            logger.error(
+                f"未捕获的异常: {e}", exc_info=e
+            )
         finally:
             trigger_atexit()
 
@@ -185,44 +189,39 @@ def main():
                 logger.info("本轮循环成功，重置连续错误计数。")
                 main_loop_consecutive_error_count = 0
 
-        except UnexpectedGameState as e:
-            # 恶意玩家状态报错，直接退出程序
-            if e.actual_state == GameState.BAD_SPORT_LEVEL:
-                logger.error(f"检测到恶意等级过高，程序将退出以保护账号安全。")
-                # 启用了微信推送并且运行超过 wechatPushActivationDelay 分钟则推送消息
-                if config.enableWechatPush:
-                    if time.monotonic() - global_start_time > config.wechatPushActivationDelay * 60:
-                        wechat_push(
-                            config.pushplusToken,
-                            "检测到恶意等级过高，程序将退出以保护账号安全。",
-                            traceback.format_exc(),
-                        )
-                return  # 退出程序
-            else:
-                raise
-
         except Exception as e:
             # 捕获到异常则累加连续出错次数
             main_loop_consecutive_error_count += 1
             # 出错后等待的时间, 随连续出错次数增大而指数增长, 最多等待 120 秒
             wait_before_restart_loop = min(2**main_loop_consecutive_error_count * 5, 120)
 
-            logger.error(f"主循环中发生错误: {e}", exc_info=True)
+            logger.error(f"主循环中发生错误: {e}", exc_info=e)
 
-            # 根据配置文件决定是重试还是退出
+            # 为保证账号安全，恶意状态玩家报错直接退出程序
+            if isinstance(e, UnexpectedGameState) and e.actual_state == GameState.BAD_SPORT_LEVEL:
+                logger.info(f"检测到恶意等级过高，程序将退出以保护账号安全。")
+                if config.enableWechatPush:
+                    wechat_push(
+                        config.pushplusToken,
+                        "检测到恶意等级过高，程序将退出以保护账号安全。",
+                        traceback.format_exc(),
+                    )
+                return  # 退出程序
+
+            # 其他异常则根据配置文件决定是重试还是退出
             logger.info(
                 f"当前连续失败次数 {main_loop_consecutive_error_count}，阈值 {config.mainLoopConsecutiveErrorThreshold}。"
             )
-            if main_loop_consecutive_error_count <= config.mainLoopConsecutiveErrorThreshold:
-                logger.info(f"未超过连续失败阈值，将在 {wait_before_restart_loop} 秒后重启循环...")
-                time.sleep(wait_before_restart_loop)
-            else:
+            if main_loop_consecutive_error_count > config.mainLoopConsecutiveErrorThreshold:
                 logger.error("超过连续失败阈值，程序将退出...")
                 # 启用了微信推送并且运行超过 wechatPushActivationDelay 分钟则推送消息
                 if config.enableWechatPush:
                     if time.monotonic() - global_start_time > config.wechatPushActivationDelay * 60:
                         wechat_push(config.pushplusToken, f"主循环中发生错误: {e}", traceback.format_exc())
                 return  # 退出程序
+
+            logger.info(f"未超过连续失败阈值，将在 {wait_before_restart_loop} 秒后重启循环...")
+            time.sleep(wait_before_restart_loop)
 
 
 if __name__ == "__main__":
