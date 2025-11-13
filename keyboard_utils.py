@@ -124,8 +124,7 @@ class KeyboardSimulator:
         """
         返回当前已按下按键集合的副本（线程安全）。
 
-        Returns:
-            一个包含当前按下按键的集合。
+        :return: 一个包含当前按下按键的集合。
         """
         with self._lock:
             return self._pressed_keys.copy()

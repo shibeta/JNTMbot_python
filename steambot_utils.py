@@ -112,6 +112,9 @@ class SteamBotClient:
     """
 
     def __init__(self, config: Config):
+        """
+        :raises ``TimeoutError``: 启动超时
+        """
         self.config = config
         self.process = None
         self.process_lock = threading.Lock()  # 用于操作子进程的锁
@@ -172,7 +175,7 @@ class SteamBotClient:
             ]
         )
 
-        proxy_url = self._get_http_proxy_string(self.config.steamBotProxy)
+        proxy_url = self._generate_proxy_string(self.config.steamBotProxy)
         if proxy_url:
             command.append(f"--proxy={proxy_url}")
 
@@ -218,6 +221,8 @@ class SteamBotClient:
         """
         一个包装器，用于执行需要认证的API请求。
         如果请求因401 Unauthorized失败，它会自动尝试重新登录并重试一次。
+
+        :raises ``requests.HTTPError``: 请求出错
         """
         try:
             # 第一次尝试
@@ -243,13 +248,13 @@ class SteamBotClient:
                 # 如果是其他HTTP错误，直接抛出
                 raise
 
-    def _get_http_proxy_string(self, raw_proxy_config: str) -> str:
+    def _generate_proxy_string(self, raw_proxy_config: str) -> str:
         """
-        将代理配置字符串翻译为具体的代理字符串。
+        将代理配置翻译为具体的代理字符串。
         目前将"system"翻译为具体的http代理字符串，其他时候直接返回原始值。
 
-        Args:
-            raw_proxy_config: 代理配置字符串
+        :param raw_proxy_config: 代理配置字符串
+        :return: 代理字符串。如果传入"system"并且未找到系统代理，返回空字符串
         """
         if raw_proxy_config == "system":
             system_proxies = getproxies().get("http", "")
@@ -266,11 +271,8 @@ class SteamBotClient:
         """
         阻塞当前线程，直到 Supervisor 线程报告后端首次进入健康状态，或达到超时。
 
-        Args:
-            timeout: 最长等待时间（秒）。
-
-        Returns:
-            True 如果后端在超时前就绪，否则 False。
+        :param timeout: 最长等待时间（秒）。
+        :return: True 如果后端在超时前就绪，否则 False。
         """
         logger.info(f"正在等待 Steam Bot 后端在 {timeout} 秒内准备就绪...")
         # Event.wait() 是一个高效的阻塞操作，它会等待直到事件被 set() 或超时
@@ -306,7 +308,11 @@ class SteamBotClient:
             return {"loggedIn": False, "error": str(e)}
 
     def login(self):
-        """调用 /login API，让 Bot 进行登录操作。"""
+        """
+        调用 /login API，让 Bot 进行登录操作。
+
+        :raises ``requests.RequestException``: 请求失败
+        """
         if self._is_login_in_progress:
             logger.info("检测到已有登录操作正在进行，将等待其完成...")
             # 简单地等待锁被释放
@@ -329,7 +335,11 @@ class SteamBotClient:
                 self._is_login_in_progress = False
 
     def get_userinfo(self) -> dict:
-        """调用 /userinfo API，获取Bot的用户名，SteamID，群组列表。"""
+        """
+        调用 /userinfo API，获取Bot的用户名，SteamID，群组列表。
+
+        :return: {"name": 用户名, "steamID": SteamID, "groups":[{"name": 群组名, "id": 群组ID},...]}
+        """
         try:
             # 将实际的 requests 调用包裹起来
             response = self._make_authenticated_request(
