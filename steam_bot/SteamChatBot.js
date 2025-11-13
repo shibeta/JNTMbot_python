@@ -32,11 +32,32 @@ class SteamChatBot {
     #refreshTokenPath = path.join(get_workdir(), "steam登录缓存请勿分享此文件"); // 登录token的文件位置
 
     constructor(proxy = null) {
-        this.#client = new SteamUser({
-            // 自动重连
+        const steamUserOptions = {
             autoRelogin: true,
-            httpProxy: proxy,
-        });
+        };
+        if (proxy) {
+            const proxy_lower = proxy.toLowerCase();
+            if (
+                proxy_lower.startsWith("http://") ||
+                proxy_lower.startsWith("https://")
+            ) {
+                steamUserOptions.httpProxy = proxy;
+                console.warn(
+                    "⚠️ 注意：HTTP代理无法代理消息发送，请优先使用SOCKS代理。"
+                );
+            } else if (
+                proxy_lower.startsWith("socks5://") ||
+                proxy_lower.startsWith("socks://")
+            ) {
+                steamUserOptions.socksProxy = proxy;
+            } else {
+                console.error(
+                    `❌ 不支持的代理格式或协议: "${proxy}"。请使用"http://..."或"socks5://..."等格式。`
+                );
+                console.warn("代理URL无效，不使用代理。")
+            }
+        }
+        this.#client = new SteamUser({ steamUserOptions });
 
         this.#setupEventHandlers();
     }
@@ -341,7 +362,8 @@ class SteamChatBot {
         } catch (error) {
             // 获取群组信息超时
             if (error.message === "Request timed out") {
-                error.message = "请求群组元数据超时，请检查网络连接和代理是否正常。"
+                error.message =
+                    "请求群组元数据超时，请检查网络连接和代理是否正常。";
             }
             console.error(
                 `💥 在准备向群组 ${groupId} 发送消息时出错:`,
