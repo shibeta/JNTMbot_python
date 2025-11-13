@@ -89,9 +89,15 @@ class GTAAutomator:
             self.job_workflow.enter_and_wait_for_job_panel()
         except OperationTimeout as e:
             # 等待差事面板打开超时
-            logger.error("等待差事面板超时，为避免 RockStar 在线服务导致的故障，退出游戏。")
-            self.lifecycle_workflow.shutdown()
-            raise
+            logger.warning("等待差事面板打开超时，尝试回到自由模式。")
+            self.job_workflow.exit_job_panel()
+            time.sleep(2)
+            if self.lifecycle_workflow.check_if_in_onlinemode():
+                return
+            else:
+                logger.error("无法回到自由模式，退出游戏。")
+                self.lifecycle_workflow.shutdown()
+                raise
 
         # 管理大厅并启动差事
         try:
