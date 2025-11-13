@@ -171,10 +171,10 @@ app.post("/send-message", async (req, res) => {
                 error: "找不到指定的频道。",
                 details: error.message,
             });
-        } else if (error.message.includes("获取群组信息超时")) {
-            console.warn("💥 提交发送任务时，获取群组信息超时。");
+        } else if (error.message.includes("请求群组元数据超时")) {
+            console.warn("💥 提交发送任务时，请求群组元数据超时。");
             res.status(500).json({
-                error: "获取群组信息超时。",
+                error: "请求超时。",
                 details: error.message,
             });
         } else {

@@ -341,7 +341,7 @@ class SteamChatBot {
         } catch (error) {
             // 获取群组信息超时
             if (error.message === "Request timed out") {
-                error.message = "获取群组信息超时"
+                error.message = "请求群组元数据超时，请检查网络连接和代理是否正常。"
             }
             console.error(
                 `💥 在准备向群组 ${groupId} 发送消息时出错:`,
