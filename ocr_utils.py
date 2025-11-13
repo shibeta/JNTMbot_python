@@ -161,10 +161,11 @@ class OCREngine:
         :param height: 截图区域的相对高度 (0.0 to 1.0)。
         :param include_title_bar: 是否将标题栏和边框计算在内。(True: 基于完整窗口截图 False: 基于客户区截图 (排除标题栏和边框))
         :return: 识别出的所有文本拼接成的字符串。
+        :raises ``ValueError``: 提供的窗口句柄无效。
         """
         if not is_window_handler_exist(hwnd):
             logger.error(f"要截图的窗口 {hwnd} 是一个无效的窗口句柄。")
-            return ""
+            raise ValueError(f"无效的窗口句柄: {hwnd}")
 
         try:
             # 截图
