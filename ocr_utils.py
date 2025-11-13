@@ -212,7 +212,7 @@ if __name__ == "__main__":
         print(f"成功找到记事本窗口，句柄: {hwnd}")
 
         # 在第一次调用时，会启动 C++ 子进程并初始化模型
-        ocr_engine = OCREngine(r'--models=".\models" --det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx --keys=dict_chinese.txt --padding=70 --maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 --mostAngle=0 --numThread=1')
+        my_ocr_engine = OCREngine(r'--models=".\models" --det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx --keys=dict_chinese.txt --padding=70 --maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 --mostAngle=0 --numThread=1')
 
         print("\n--- OCR 功能演示 ---")
         print("将在3秒后对记事本窗口的左上角 50% x 50% 区域进行识别...")
@@ -221,7 +221,7 @@ if __name__ == "__main__":
         time.sleep(3)
 
         # 对记事本窗口的左上角一半区域进行 OCR
-        text = ocr_engine.ocr_window(hwnd, left=0, top=0, width=0.5, height=0.5)
+        text = my_ocr_engine.ocr_window(hwnd, left=0, top=0, width=0.5, height=0.5)
 
         print("-" * 20)
         print(f"识别结果: {text}")
