@@ -216,8 +216,8 @@ class LifecycleWorkflow(_BaseWorkflow):
 
         """
         logger.info("动作: 正在等待主菜单加载...")
-        start_time = time.monotonic()
-        while time.monotonic() - start_time < 180:  # 3分钟加载超时，有时需要等待预编译管线
+        end_time = time.monotonic() + 180  # 3分钟加载超时，有时需要等待预编译管线
+        while time.monotonic() < end_time:
             # 每5秒检查一次
             time.sleep(5)
 
@@ -353,9 +353,10 @@ class LifecycleWorkflow(_BaseWorkflow):
         """
         logger.info("正在等待进入在线模式...")
         start_time = time.monotonic()
+        end_time = start_time + 300  # 5分钟超时
         has_triggered_single_session = False
 
-        while time.monotonic() - start_time < 300:  # 5分钟超时
+        while time.monotonic() < end_time:
             # 每10秒检查一次
             time.sleep(10)
 

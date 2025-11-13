@@ -120,8 +120,8 @@ class _BaseWorkflow:
         :return: 如果在超时前状态达成则返回 True，否则返回 False
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        start_time = time.monotonic()
-        while time.monotonic() - start_time < timeout:
+        end_time = time.monotonic() + timeout
+        while time.monotonic() < end_time:
             # 确保游戏启动
             if game_has_started and not self.process.is_pid_vaild():
                 raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)

@@ -84,8 +84,8 @@ class _SupervisorThread(threading.Thread):
 
     def _wait_for_health(self, timeout) -> bool:
         """轮询 /health 端点，直到服务就绪或超时。"""
-        start_time = time.monotonic()
-        while time.monotonic() - start_time < timeout:
+        end_time = time.monotonic() + timeout
+        while time.monotonic() < end_time:
             try:
                 response = requests.get(f"{self.client.base_url}/health", headers=self.headers, timeout=5)
                 if response.status_code == 200:
