@@ -56,11 +56,11 @@ class GTAAutomator:
         if self.lifecycle_workflow.is_game_ready():
             logger.info("初始化 GTA V 完成。")
             return
-        
+
         # 如果游戏未就绪，重启游戏
         logger.warning("游戏状态错误，将重启游戏。")
         self.lifecycle_workflow.restart()
-        
+
         # 重启游戏后，检查恶意值
         bad_sport_level = self.online_workflow.get_bad_sport_level()
         if bad_sport_level != "清白玩家":
@@ -126,7 +126,7 @@ class GTAAutomator:
                 e.context == OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR
                 or OperationTimeoutContext.CHARACTER_LAND
             ):
-                timeout_context = e.context
+                timeout_context = e.context.value
                 # 在差事中检查状态超时，尝试更换战局
                 # 在差事中退出游戏可能导致恶意值增加，所以这里选择切换战局
                 logger.warning(f"{e.message}。卡单并切换战局。")
@@ -137,6 +137,7 @@ class GTAAutomator:
                 # 切换战局
                 try:
                     self.online_workflow.start_new_match()
+                    self.job_workflow.wait_for_respawn()
                     return  # 切换战局成功，结束当前差事流程
 
                 except UnexpectedGameState as e:
@@ -146,6 +147,12 @@ class GTAAutomator:
                     ):
                         # 这种情况下要么不在任务中，要么游戏卡死了，只能退出游戏
                         logger.error(f"处理{timeout_context}超时时，切换战局失败次数过多，退出游戏。")
+                        self.lifecycle_workflow.shutdown()
+                    raise
+                except OperationTimeout as e:
+                    if e.context == OperationTimeoutContext.RESPAWN_IN_AGENCY:
+                        # 等待复活超时，退出游戏
+                        logger.error(f"处理{timeout_context}超时时，切换战局等待复活超时，退出游戏。")
                         self.lifecycle_workflow.shutdown()
                     raise
             else:
