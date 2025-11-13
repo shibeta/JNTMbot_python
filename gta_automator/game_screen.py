@@ -86,7 +86,10 @@ class GameScreen:
         if not self.process.hwnd:
             raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
 
-        return self.ocr.ocr_window(self.process.hwnd, left, top, width, height)
+        try:
+            return self.ocr.ocr_window(self.process.hwnd, left, top, width, height)
+        except ValueError as e:
+            raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF) from e
 
     def _search_text_in_text(
         self,
