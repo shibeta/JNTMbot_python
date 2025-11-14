@@ -3,7 +3,7 @@ import requests
 
 from logger import get_logger
 from config import Config
-from steambot_utils import SteamBotClient
+from steambot_utils import SteamBot
 
 from ._base_workflow import _BaseWorkflow
 from .game_process import GameProcess
@@ -85,7 +85,7 @@ class JobWorkflow(_BaseWorkflow):
         input: GameAction,
         process: GameProcess,
         config: Config,
-        steam_bot: SteamBotClient,
+        steam_bot: SteamBot,
     ):
         super(JobWorkflow, self).__init__(screen, input, process, config)
         self.steam_bot = steam_bot

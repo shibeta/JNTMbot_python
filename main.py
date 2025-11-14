@@ -10,7 +10,7 @@ from logger import setup_logging, get_logger
 from config import Config
 
 from ocr_utils import OCREngine
-from steambot_utils import SteamBotClient
+from steambot_utils import SteamBot
 from push_utils import wechat_push
 from gta_automator import GTAAutomator
 from health_check import HealthMonitor
@@ -84,8 +84,8 @@ def main():
     # 初始化 Steam Bot
     steam_bot = None
     try:
-        logger.info("正在初始化 Steam Bot 客户端...")
-        steam_bot = SteamBotClient(config)
+        logger.info("正在初始化 Steam Bot ...")
+        steam_bot = SteamBot(config)
     except Exception as e:
         logger.error(f"初始化 Steam Bot 客户端失败: {e}")
         return

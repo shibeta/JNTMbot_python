@@ -19,7 +19,7 @@ class _SupervisorThread(threading.Thread):
     一个专用的后台线程，负责监控和维护 Steam Bot 子进程的健康。
     """
 
-    def __init__(self, client: SteamBotClient, headers, stop_event, initial_health_event, check_interval=30):
+    def __init__(self, client: SteamBot, headers, stop_event, initial_health_event, check_interval=30):
         super().__init__(daemon=True)
         self.client = client
         self.headers = headers
@@ -105,10 +105,10 @@ class _SupervisorThread(threading.Thread):
         return False
 
 
-class SteamBotClient:
+class SteamBot:
     """
-    一个用于管理和与 Node.js Steam Bot 后端交互的客户端。
-    采用 Supervisor 线程模式，将进程管理与业务逻辑解耦。
+    一个基于 Node.js 实现的 Steam 客户端。
+    运行 Node.js 后端并通过 HTTP 与其交互。
     """
 
     def __init__(self, config: Config):
