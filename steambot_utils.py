@@ -3,6 +3,7 @@ import subprocess
 import threading
 from signal import CTRL_BREAK_EVENT
 import time
+from typing import Optional
 import requests
 import atexit
 import os
@@ -175,9 +176,18 @@ class SteamBot:
             ]
         )
 
-        proxy_url = self._generate_proxy_string(self.config.steamBotProxy)
-        if proxy_url:
-            command.append(f"--proxy={proxy_url}")
+        # 代理参数
+        if self.config.steamBotProxy:
+            if self.config.steamBotProxy == "system":
+                system_proxy = self._get_system_proxy()
+                if system_proxy:
+                    command.append(f"--proxy={system_proxy}")
+                else:
+                    logger.warning(
+                        "配置了使用系统代理，但未获取到系统代理。请注意程序不支持 PAC 模式的代理。"
+                    )
+            else:
+                command.append(f"--proxy={self.config.steamBotProxy}")
 
         logger.info(f"正在启动 Steam Bot 后端: {' '.join(command)}")
         try:
