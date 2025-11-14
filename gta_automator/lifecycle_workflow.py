@@ -144,7 +144,7 @@ class LifecycleWorkflow(_BaseWorkflow):
             # 每次重试前确保游戏已关闭
             self.force_shutdown()
             time.sleep(10)  # 等待 10 秒钟用于 steam 客户端响应 GTA V 退出
-            logger.info(f"GTA V 重启尝试第 {retry_times + 1} 次...")
+            logger.info(f"GTA V 重启尝试第 {retry_times + 1} 次。")
             self.launch()
             if self.process.is_game_started():
                 # 游戏成功启动

@@ -108,7 +108,7 @@ class _SupervisorThread(threading.Thread):
 
 class SteamBot:
     """
-    一个基于 Node.js 实现的 Steam 客户端。
+    一个基于 JS 实现的 Steam 客户端。
     运行 Node.js 后端并通过 HTTP 与其交互。
     """
 
@@ -126,7 +126,7 @@ class SteamBot:
         self.login_lock = threading.Lock()  # 为登录操作创建一个专用的锁
         self._is_login_in_progress = False  # 一个辅助标志
 
-        # 为 Supervisor 线程创建停止事件
+        # 初始化 Supervisor
         self.supervisor_stop_event = threading.Event()
         self.initial_health_event = threading.Event()
         self.supervisor = _SupervisorThread(
@@ -136,7 +136,7 @@ class SteamBot:
         # 注册退出处理函数
         atexit.register(self.shutdown)
 
-        # 启动 supervisor 线程，它将在后台处理所有事情
+        # 启动 Supervisor 线程，在后台启动 Steam Bot
         self.supervisor.start()
 
         # 等待后端启动
@@ -147,7 +147,7 @@ class SteamBot:
         while self.get_login_status()["loggedIn"] != True:
             time.sleep(5)
 
-        logger.warning("Steam Bot 客户端初始化完成。")
+        logger.warning("Steam Bot 后端初始化完成。")
 
     def _launch_process_internal_unsafe(self):
         """
@@ -164,7 +164,7 @@ class SteamBot:
         elif os.path.exists(script_path):
             command = [node_executable, script_path]
         else:
-            logger.error(f'Steam Bot 启动失败: 未找到 "{executable_path}" 或 "{script_path}"。')
+            logger.error(f'Steam Bot 后端启动失败: 未找到 "{executable_path}" 或 "{script_path}"。')
             self.process = None
             return
 
@@ -195,7 +195,9 @@ class SteamBot:
             self.process = subprocess.Popen(command, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
             logger.warning(f"Steam Bot 后端已启动，进程ID: {self.process.pid}")
         except FileNotFoundError:
-            logger.error('启动失败: 未找到 "node" 可执行文件。')
+            logger.error(
+                f"Steam Bot 后端启动失败: 未找到 {node_executable} 可执行文件，请将 Node.js 添加到环境变量中。"
+            )
             self.process = None
         except Exception as e:
             logger.error(f"启动 Steam Bot 后端时发生未知错误: {e}")
@@ -258,24 +260,21 @@ class SteamBot:
                 # 如果是其他HTTP错误，直接抛出
                 raise
 
-    def _generate_proxy_string(self, raw_proxy_config: str) -> str:
+    @staticmethod
+    def _get_system_proxy() -> Optional[str]:
         """
-        将代理配置翻译为具体的代理字符串。
-        目前将"system"翻译为具体的http代理字符串，其他时候直接返回原始值。
+        使用 urllib3 获取系统代理。优先获取socks代理，其次是http代理。如果均未配置，返回None
 
-        :param raw_proxy_config: 代理配置字符串
-        :return: 代理字符串。如果传入"system"并且未找到系统代理，返回空字符串
+        :return: 代理字符串
         """
-        if raw_proxy_config == "system":
-            system_proxies = getproxies().get("http", "")
-            if system_proxies == "":
-                logger.warning("配置了使用系统代理，但未获取到系统代理。请注意程序不支持 PAC 模式的代理。")
-                return ""
-            else:
-                logger.info(f"发现系统代理: {system_proxies}")
-                return system_proxies
+        socks_proxy = getproxies().get("socks", None)
+        http_proxy = getproxies().get("http", None)
+        if socks_proxy:
+            return socks_proxy
+        elif http_proxy:
+            return http_proxy
         else:
-            return raw_proxy_config
+            return None
 
     def _wait_for_ready(self, timeout: int) -> bool:
         """
@@ -446,4 +445,4 @@ class SteamBot:
         # 终止 Steam Bot 进程
         self._terminate_process(proc_to_shutdown)
 
-        logger.info("成功关闭 Steam Bot。")
+        logger.info("成功关闭 Steam Bot 后端。")

@@ -87,7 +87,7 @@ def main():
         logger.info("正在初始化 Steam Bot ...")
         steam_bot = SteamBot(config)
     except Exception as e:
-        logger.error(f"初始化 Steam Bot 客户端失败: {e}")
+        logger.error(f"初始化 Steam Bot 失败: {e}")
         return
 
     # 验证 Steam Bot 能否访问配置中的群组ID
