@@ -28,9 +28,7 @@ def interrupt_decorator(func):
         except KeyboardInterrupt:
             logger.warning("程序被用户中断，正在退出。")
         except Exception as e:
-            logger.error(
-                f"未捕获的异常: {e}", exc_info=e
-            )
+            logger.error(f"未捕获的异常: {e}", exc_info=e)
         finally:
             trigger_atexit()
 
@@ -91,23 +89,25 @@ def main():
         return
 
     # 验证 Steam Bot 能否访问配置中的群组ID
-    bot_userinfo = steam_bot.get_userinfo()
-    if bot_userinfo.get("error"):
-        logger.warning(f"获取群组列表失败。错误: {bot_userinfo.get('error', '未知原因')}")
+    try:
+        bot_userinfo = steam_bot.get_userinfo()
+    except Exception as e:
+        logger.error(f"获取 Steam 群组信息失败: {e}", exc_info=e)
+        return
+
+    logger.info(f"登录的 Steam 用户名: {bot_userinfo['name']}")
+    for group in bot_userinfo["groups"]:
+        if config.steamGroupId == group["id"]:
+            logger.info(f"Bot发车信息将发送到{group['name']} ({group['id']})群组。")
+            break
     else:
-        logger.info(f"登录的 Steam 用户名: {bot_userinfo['name']}")
+        logger.error(f"配置中的 Steam 群组 ID ({config.steamGroupId})无效，或者 Bot 不在该群组中。")
+        logger.error("================Bot 所在的群组列表=================")
         for group in bot_userinfo["groups"]:
-            if config.steamGroupId == group["id"]:
-                logger.info(f"Bot发车信息将发送到{group['name']} ({group['id']})群组。")
-                break
-        else:
-            logger.error(f"配置中的 Steam 群组 ID ({config.steamGroupId})无效，或者 Bot 不在该群组中。")
-            logger.error("================Bot 所在的群组列表=================")
-            for group in bot_userinfo["groups"]:
-                logger.error(f"  - {group['name']} (ID: {group['id']})")
-            logger.error("=================================================")
-            logger.error(f"请将正确的群组ID填入 {config_file_path} 。")
-            return
+            logger.error(f"  - {group['name']} (ID: {group['id']})")
+        logger.error("=================================================")
+        logger.error(f"请将正确的群组ID填入 {config_file_path} 。")
+        return
 
     # 初始化热键
     hotkey = HotKeyManager()

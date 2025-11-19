@@ -40,14 +40,11 @@ class HealthMonitor(threading.Thread):
         self._stop_event = threading.Event()  # 用于停止线程
 
         logger.info(f"健康检查已配置：每 {self.check_interval} 分钟检查一次。")
-        logger.info(
-            f"不健康阈值：连续 {self.steam_chat_timeout_threshold} 分钟未发送消息。"
-        )
+        logger.info(f"不健康阈值：连续 {self.steam_chat_timeout_threshold} 分钟未发送消息。")
         if self.enable_exit_on_unhealthy:
             logger.warning("不健康时自动退出程序功能：已启用。")
         else:
             logger.info("不健康时自动退出程序功能：已禁用。")
-
 
     def run(self):
         """线程的主执行逻辑。"""
@@ -103,7 +100,9 @@ class HealthMonitor(threading.Thread):
         if not self.enable_wechat_push:
             return
 
-        bot_name = self.steam_bot.get_login_status().get("name", "N/A")
+        bot_name = self.steam_bot.get_login_status().get("name", "")
+        if not bot_name:
+            bot_name = "N/A"
         title = f"Bot: {bot_name} 状态变为不健康"
 
         if reason == "SteamChatTimeout":
@@ -121,8 +120,13 @@ class HealthMonitor(threading.Thread):
         if not self.enable_wechat_push:
             return
 
-        title = f"Bot: {self.steam_bot.get_login_status().get('name', 'N/A')} 状态恢复健康"
+        bot_name = self.steam_bot.get_login_status().get("name", "")
+        if not bot_name:
+            bot_name = "N/A"
+        title = f"Bot: {bot_name} 状态恢复健康"
+
         msg = "现在一切正常。"
+
         logger.info(f"正在发送微信通知: {title}: {msg}")
         wechat_push(self.wechat_push_token, title, msg)
 

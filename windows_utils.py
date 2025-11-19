@@ -1,6 +1,7 @@
 from pathlib import Path
 import ctypes.wintypes
 import time
+from urllib.request import getproxies
 import psutil
 import subprocess
 import winreg
@@ -269,6 +270,20 @@ def get_steam_exe_path() -> Optional[str]:
         logger.error(f"读取注册表时发生未知错误: {e}")
         return None
 
+def get_system_proxy() -> Optional[str]:
+    """
+    使用 urllib3 获取系统代理。优先获取socks代理，其次是http代理。
+
+    :return: 代理字符串。如果未找到，返回 None
+    """
+    socks_proxy = getproxies().get("socks", None)
+    http_proxy = getproxies().get("http", None)
+    if socks_proxy:
+        return socks_proxy
+    elif http_proxy:
+        return http_proxy
+    else:
+        return None
 
 def exec_command_detached(command: list[str]):
     """
