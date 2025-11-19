@@ -32,8 +32,9 @@ class SteamChatBot {
     #refreshTokenPath = path.join(get_workdir(), "steam登录缓存请勿分享此文件"); // 登录token的文件位置
 
     constructor(proxy = null) {
-        const steamUserOptions = {
+        var steamUserOptions = {
             autoRelogin: true,
+            protocol: "TCP",
         };
         if (proxy) {
             const proxy_lower = proxy.toLowerCase();
@@ -54,9 +55,13 @@ class SteamChatBot {
                 console.error(
                     `❌ 不支持的代理格式或协议: "${proxy}"。请使用"http://..."或"socks5://..."等格式。`
                 );
-                console.warn("代理URL无效，不使用代理。")
+                console.warn("代理URL无效，不使用代理。");
             }
         }
+        // console.log("启动参数: ")
+        // for(var key in steamUserOptions) {
+        //     console.log(`${key}: ${steamUserOptions[key]}`)
+        // }
         this.#client = new SteamUser({ steamUserOptions });
 
         this.#setupEventHandlers();
