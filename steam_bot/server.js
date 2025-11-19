@@ -48,10 +48,14 @@ const authenticateToken = (req, res, next) => {
     const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
 
     if (token == null) {
-        return res.status(401).json({ error: "未提供认证 Token。" });
+        return res
+            .status(401)
+            .json({ error: "未提供认证 Token。", details: "无" });
     }
     if (token !== AUTH_TOKEN) {
-        return res.status(403).json({ error: "无效的认证 Token。" });
+        return res
+            .status(403)
+            .json({ error: "无效的认证 Token。", details: "无" });
     }
     next();
 };
@@ -80,6 +84,7 @@ app.get("/status", (req, res) => {
     } else {
         res.status(401).json({
             error: "操作失败: Bot 尚未登录。",
+            details: "无",
         });
     }
 });
@@ -97,9 +102,9 @@ app.post("/login", async (req, res) => {
     try {
         console.log("⚙️ 收到 API 请求，正在触发登录流程...");
         await bot.smartLogOn();
-        res.status(200).json({
+        res.status(202).json({
             success: true,
-            message: "登录流程已成功触发并完成。",
+            message: "已成功触发登录流程。",
         });
     } catch (error) {
         console.error("💥 API 触发的登录失败:", error);
@@ -115,7 +120,9 @@ app.post("/login", async (req, res) => {
  */
 app.get("/userinfo", async (req, res) => {
     if (!bot.isLoggedIn().loggedIn) {
-        return res.status(401).json({ error: "操作失败: Bot 尚未登录。" });
+        return res
+            .status(401)
+            .json({ error: "操作失败: Bot 尚未登录。", details: "无" });
     }
 
     try {
@@ -134,7 +141,9 @@ app.get("/userinfo", async (req, res) => {
  */
 app.post("/send-message", async (req, res) => {
     if (!bot.isLoggedIn().loggedIn) {
-        return res.status(401).json({ error: "操作失败: Bot尚未登录。" });
+        return res
+            .status(401)
+            .json({ error: "操作失败: Bot尚未登录。", details: "无" });
     }
 
     console.log("原始请求体 (解析后):", req.body);
@@ -143,7 +152,8 @@ app.post("/send-message", async (req, res) => {
     // 参数校验
     if (!groupId || !channelName || !message) {
         return res.status(400).json({
-            error: "请求体无效，必须包含 'groupId', 'channelName', 和 'message'。",
+            error: "请求体无效。",
+            details: "必须包含 'groupId', 'channelName', 和 'message'。",
         });
     }
 
