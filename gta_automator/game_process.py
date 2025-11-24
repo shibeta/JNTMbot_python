@@ -88,8 +88,10 @@ class GameProcess:
         if self.pid:
             try:
                 resume_process_from_suspend(self.pid)
+            except ValueError:
+                # pid无效通常说明进程被关闭了，这是好事，再也不用担心无法恢复了
+                pass
             except Exception as e:
-                # 所有异常都不做处理
                 logger.error(f"恢复 GTA V 进程时，发生异常: {e}")
 
     def kill(self):
