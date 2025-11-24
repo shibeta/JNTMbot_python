@@ -26,7 +26,7 @@ class ProcessManager:
         """检查子进程当前是否正在运行。"""
         with self.lock:
             return self.process is not None and self.process.poll() is None
-        
+
     def is_running_unsafe(self) -> bool:
         """
         检查子进程当前是否正在运行。
@@ -104,7 +104,6 @@ class SteamBotApiClient:
                 try:
                     self.login()
                 except Exception as login_e:
-                    logger.error(f"重新登录失败: {login_e}")
                     # 抛出重新登录时的错误
                     raise
 
@@ -126,9 +125,15 @@ class SteamBotApiClient:
             if e.response is not None:
                 try:
                     error_info = e.response.json()
-                    raise type(e)(f"{error_info['error']} 错误详情: {error_info['details']}") from e
+                    error_message = f"{error_info['error']} 错误详情: {error_info['details']}"
                 except:
-                    raise type(e)(str(e.response.text)) from e
+                    # 未能生成错误信息则使用响应体作为异常信息
+                    e.args = (e.response.text,) + e.args[1:]
+                    raise
+                else:
+                    # 成功生成错误信息则使用错误信息作为异常信息
+                    e.args = (error_message,) + e.args[1:]
+                    raise
             else:
                 # 没有响应体时抛出原始异常
                 raise
@@ -354,7 +359,7 @@ class SteamBot:
         """
         发送消息到群组。
         请求出错时，将抛出异常。
-        
+
         :param message: 消息字符串
         """
         logger.info(f'正在向Steam群组 "{self.config.steamGroupId}" 发送消息...')
