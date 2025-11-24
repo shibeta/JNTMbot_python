@@ -98,7 +98,7 @@ def main():
     logger.info(f"登录的 Steam 用户名: {bot_userinfo['name']}")
     for group in bot_userinfo["groups"]:
         if config.steamGroupId == group["id"]:
-            logger.info(f"Bot发车信息将发送到{group['name']} ({group['id']})群组。")
+            logger.info(f"Bot发车信息将发送到 {group['name']} ({group['id']}) 群组。")
             break
     else:
         logger.error(f"配置中的 Steam 群组 ID ({config.steamGroupId})无效，或者 Bot 不在该群组中。")
@@ -201,9 +201,12 @@ def main():
             if isinstance(e, UnexpectedGameState) and e.actual_state == GameState.BAD_SPORT_LEVEL:
                 logger.info(f"检测到恶意等级过高，程序将退出以保护账号安全。")
                 if config.enableWechatPush:
+                    bot_name = steam_bot.get_login_status().get("name", "")
+                    if not bot_name:
+                        bot_name = "N/A"
                     wechat_push(
                         config.pushplusToken,
-                        "检测到恶意等级过高，程序将退出以保护账号安全。",
+                        f"Bot: {bot_name} 恶意等级过高，程序将退出以保护账号安全。",
                         traceback.format_exc(),
                     )
                 return  # 退出程序
