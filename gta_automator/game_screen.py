@@ -188,14 +188,14 @@ class GameScreen:
         """
         读取玩家列表中第一个玩家的恶意等级。
 
-        :return: 恶意等级字符串，如 "清白玩家", "可疑玩家", "恶意玩家", "未知等级"
+        :return: 恶意等级字符串，如 "清白玩家", "问题玩家", "恶意玩家", "未知等级"
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         ocr_result = self.ocr_game_window(0.75, 0.2, 0.25, 0.3)
         if "清白" in ocr_result:
             return "清白玩家"
-        elif "可疑" in ocr_result:
-            return "可疑玩家"
+        elif "问题" in ocr_result:
+            return "问题玩家"
         elif "恶意" in ocr_result:
             return "恶意玩家"
         else:

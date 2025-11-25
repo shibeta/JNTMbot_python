@@ -108,7 +108,7 @@ class OnlineWorkflow(_BaseWorkflow):
         在在线模式中，获取当前角色的恶意等级。
         只能在单人战局中使用，因为该方法实际用于检查战局内第一个玩家的恶意等级。
 
-        :return: 恶意等级字符串，如 "清白玩家", "可疑玩家", "恶意玩家"
+        :return: 恶意等级字符串，如 "清白玩家", "问题玩家", "恶意玩家"
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         :raises ``UIElementNotFound(UIElementNotFoundContext.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
         """
