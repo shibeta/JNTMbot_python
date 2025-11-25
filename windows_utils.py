@@ -146,14 +146,30 @@ def kill_processes(process_names: list[str]):
     强制终止所有符合名称的进程。
 
     :param process_names: 进程名称列表
+    :raises ``Exception("`taskkill` 命令未找到，请确保脚本在Windows环境中运行。")``: 未找到taskkill命令
     """
-    for proc in psutil.process_iter(["pid", "name"]):
-        if proc.info["name"] in process_names:
-            try:
-                proc.kill()
-                logger.info(f"已强制终止进程: {proc.info['name']} (PID: {proc.pid})")
-            except Exception as e:
-                logger.warning(f"无法强制终止进程 {proc.info['name']}: {e}")
+    for proc_name in process_names:
+        try:
+            # 构建 taskkill 命令
+            # /F: 强制终止
+            # /IM: 指定进程名
+            # /T: 终止指定进程及其所有子进程
+            command = ["taskkill", "/F", "/IM", proc_name, "/T"]
+
+            # 使用 subprocess.run 来执行命令，并抑制输出
+            result = subprocess.run(command, check=True, capture_output=True, text=True)
+            logger.info(f"已发送终止命令给所有名为 '{proc_name}' 的进程。")
+
+        except subprocess.CalledProcessError as e:
+            # 如果进程不存在，taskkill 会返回错误码，这通常是可以接受的
+            if "not found" in e.stderr:
+                logger.info(f"没有找到名为 '{proc_name}' 的正在运行的进程。")
+            else:
+                logger.warning(f"无法终止进程 '{proc_name}': {e.stderr}")
+        except FileNotFoundError as e:
+            raise Exception("`taskkill` 命令未找到，请确保脚本在Windows环境中运行。") from e
+        except Exception as e:
+            logger.error(f"执行 taskkill 时发生未知错误: {e}")
 
 
 def close_window(hwnd: int):
