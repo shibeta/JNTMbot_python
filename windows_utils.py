@@ -24,6 +24,18 @@ from logger import get_logger
 logger = get_logger(__name__)
 
 
+class SuspendException(Exception):
+    """挂起进程或线程时，触发的异常"""
+
+    pass
+
+
+class ResumeException(Exception):
+    """恢复进程或线程时，触发的异常"""
+
+    pass
+
+
 def is_window_handler_exist(hwnd: int) -> bool:
     """
     检查窗口句柄是否有效
@@ -97,7 +109,8 @@ def suspend_process_for_duration(pid: int, duration_seconds: float):
     :param pid: 要挂起的进程的 PID
     :param duration_seconds: 要挂起的时间(秒)
     :raises ``ValueError``: 提供的 PID 无效或不存在
-    :raises ``Exception``: 挂起或恢复进程时失败
+    :raises ``SuspendException``: 挂起进程时失败
+    :raises ``ResumeException``: 恢复进程时失败
     """
     try:
         proc = psutil.Process(pid)
@@ -107,38 +120,68 @@ def suspend_process_for_duration(pid: int, duration_seconds: float):
     except psutil.NoSuchProcess:
         raise ValueError(f"无法挂起：未找到 PID 为 {pid} 的进程")
     except Exception as e:
-        raise Exception(f"挂起进程({pid})时发生异常: {e}") from e
+        raise SuspendException(f"挂起进程 {pid} 时发生异常: {e}") from e
     finally:
-        # 恢复进程
-        try:
-            # 确保进程总是被恢复
-            resume_process_from_suspend(pid)
-        except Exception as e:
-            raise
+        # 无论如何总是恢复进程
+        resume_process(pid)
 
 
-def resume_process_from_suspend(pid: int):
+def resume_process(pid: int, max_retries: int = 5):
     """
-    将一个挂起的进程恢复。如果进程未被挂起，将不做任何事。
+    将一个挂起的进程恢复。如果进程未被挂起则没有副作用。
 
     :param pid: 要恢复的进程的 PID
+    :param max_retries: 恢复进程的最大尝试次数
     :raises ``ValueError``: 提供的 PID 无效或不存在
-    :raises ``Exception``: 恢复进程失败
+    :raises ``ResumeException``: 恢复进程失败
     """
     try:
         proc = psutil.Process(pid)
-        try:
-            if proc.status() == psutil.STATUS_STOPPED:
-                proc.resume()
-                logger.info(f"已恢复进程 {pid}。")
-            else:
-                pass  # 进程未被挂起，不需要恢复
-        except psutil.NoSuchProcess:
-            pass  # 进程可能在操作期间关闭了
     except psutil.NoSuchProcess:
         raise ValueError(f"无法从挂起恢复：未找到 PID 为 {pid} 的进程")
+
+    try:
+        proc.resume()
+    except psutil.NoSuchProcess:
+        return  # 进程可能在操作期间关闭了
     except Exception as e:
-        raise Exception(f"恢复进程 {pid} 时出错: {e}") from e
+        logger.error(f"恢复进程 {pid} 时出错: {e}")
+
+    # 检查进程是否仍处于挂起状态
+    for retries in range(max_retries - 1):
+        # 稍微等待一下，因为 NtResumeProcess 是异步触发的
+        time.sleep(0.1)
+        try:
+            # 注意：如果进程卡死在内核态，status 可能不准，但这是唯一的非侵入式检查手段
+            current_status = proc.status()
+            if current_status in {
+                psutil.STATUS_RUNNING,
+                psutil.STATUS_SLEEPING,
+                psutil.STATUS_DISK_SLEEP,
+            }:
+                logger.info(f"已恢复进程 {pid}。")
+                return
+            elif current_status == psutil.STATUS_STOPPED:
+                logger.warning(f"进程 {pid} 仍处于挂起状态，正在尝试第 {retries + 1} 次额外恢复...")
+                proc.resume()
+            elif current_status in {
+                psutil.STATUS_ZOMBIE,
+                psutil.STATUS_DEAD,
+            }:
+                raise ResumeException(f"无法从挂起恢复：进程 {pid} 已变成僵尸或死亡进程")
+            else:
+                # 其他状态假设进程已恢复
+                logger.info(f"进程 {pid} 处于非挂起状态 ({current_status})，视为已恢复。")
+                return
+
+        except psutil.NoSuchProcess:
+            return  # 进程可能在操作期间关闭了
+        except ResumeException:
+            raise
+        except Exception as e:
+            logger.error(f"恢复进程 {pid} 时出错: {e}")
+
+    raise ResumeException(f"尝试了 {max_retries} 次仍无法恢复进程 {pid} ，进程可能被外部调试器挂起或锁死")
 
 
 def kill_processes(process_names: list[str]):

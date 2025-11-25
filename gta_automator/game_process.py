@@ -3,12 +3,14 @@ from typing import Optional
 
 from logger import get_logger
 from windows_utils import (
+    SuspendException,
+    ResumeException,
     find_window,
     get_process_name,
     get_window_title,
     close_window,
     kill_processes,
-    resume_process_from_suspend,
+    resume_process,
     suspend_process_for_duration,
 )
 
@@ -80,19 +82,25 @@ class GameProcess:
             except ValueError:
                 logger.error(f"挂起 GTA V 进程失败，GTA V 进程 PID({self.pid}) 无效。")
                 self.update_info()
-            except Exception as e:
+            except SuspendException as e:
                 logger.error(f"挂起 GTA V 进程时，发生异常: {e}")
+            except ResumeException as e:
+                logger.error(f"恢复 GTA V 进程时，发生异常: {e}")
+                # 恢复进程失败时，尝试直接杀死游戏
+                self.kill()
 
     def resume(self):
         """将 GTA V 进程从挂起中恢复。如果 GTA V 未启动，则不做任何事。"""
         if self.pid:
             try:
-                resume_process_from_suspend(self.pid)
+                resume_process(self.pid)
             except ValueError:
                 # pid无效通常说明进程被关闭了，这是好事，再也不用担心无法恢复了
                 pass
-            except Exception as e:
+            except ResumeException as e:
                 logger.error(f"恢复 GTA V 进程时，发生异常: {e}")
+                # 恢复进程失败时，尝试直接杀死游戏
+                self.kill()
 
     def kill(self):
         """杀死 GTA V 所有相关进程，并且清除窗口句柄和 PID 。"""
