@@ -7,6 +7,7 @@ import subprocess
 import winreg
 import win32gui
 import win32process
+import win32api
 import win32con
 from win32con import (
     SW_RESTORE,
@@ -81,6 +82,27 @@ def get_process_name(pid: int) -> Optional[str]:
         return None
 
 
+def get_main_thread_id(hwnd: int) -> Optional[int]:
+    """
+    获取一个窗口的主线程ID
+
+    :param hwnd: 窗口句柄 (整数)
+    :return: 线程ID。如果未找到窗口，或者未找到主线程，会返回 None
+    """
+    if not is_window_handler_exist(hwnd):
+        return None
+    try:
+        thread_id, _ = win32process.GetWindowThreadProcessId(hwnd)
+        if thread_id == 0:
+            logger.error(f"无法找到与 hwnd {hwnd} 关联的线程ID。")
+            return None
+        else:
+            return thread_id
+    except Exception as e:
+        logger.error(f"获取线程ID时出错: {e} (可能窗口已关闭)")
+        return None
+
+
 def find_window(window_class: str, window_title: str, process_name: str) -> Optional[Tuple[int, int]]:
     """
     通过窗口类名, 窗口标题和进程名查找窗口，返回窗口句柄和进程ID。
@@ -106,6 +128,76 @@ def find_window(window_class: str, window_title: str, process_name: str) -> Opti
         return None
 
     return hwnd, pid
+
+
+def suspend_thread(tid: int):
+    """
+    挂起一个线程。
+
+    :param tid: 要挂起的线程的 TID
+    :raises ``SuspendException``: 挂起线程失败
+    """
+    thread_handle = None
+    try:
+        thread_handle = win32api.OpenThread(win32con.THREAD_SUSPEND_RESUME, False, tid)
+        if not thread_handle:
+            raise ValueError(f"打开线程 {tid} 失败")
+        result = win32process.SuspendThread(thread_handle)
+        return result >= 0
+    except ValueError as e:
+        raise SuspendException(f"无法挂起：打开线程 {tid} 失败")
+    except Exception as e:
+        raise SuspendException(f"挂起线程 {tid} 时发生异常: {e}") from e
+    finally:
+        if thread_handle is not None:
+            win32api.CloseHandle(thread_handle)
+
+
+def resume_thread(tid: int):
+    """
+    从挂起中恢复一个线程。如果线程未挂起则没有副作用。
+
+    :param tid: 要挂起的线程的 TID
+    :raises ``ResumeException``: 恢复线程失败
+    """
+    thread_handle = None
+    try:
+        thread_handle = win32api.OpenThread(win32con.THREAD_SUSPEND_RESUME, False, tid)
+        if not thread_handle:
+            raise ValueError(f"打开线程 {tid} 失败")
+        result = win32process.ResumeThread(thread_handle)
+        return result >= 0
+    except ValueError as e:
+        raise ValueError(f"无法从挂起恢复: 打开线程 {tid} 失败")
+    except Exception as e:
+        raise SuspendException(f"恢复线程 {tid} 时发生异常: {e}") from e
+    finally:
+        if thread_handle is not None:
+            win32api.CloseHandle(thread_handle)
+
+
+def suspend_main_thread_for_duration(hwnd: int, duration_seconds: float):
+    """
+    将一个窗口的主线程挂起指定的时长，然后恢复它。
+
+    :param hwnd: 要挂起的窗口的句柄
+    :param duration_seconds: 要挂起的时间(秒)
+    :raises ``ValueError``: 提供的 hwnd 无效，或未找到其主线程
+    :raises ``SuspendException``: 挂起进程时失败
+    :raises ``ResumeException``: 恢复进程时失败
+    """
+    thread_id = get_main_thread_id(hwnd)
+    if thread_id is None or thread_id == 0:
+        raise ValueError(f"无法挂起：未找到窗口 {hwnd} 的主线程")
+
+    try:
+        logger.info(f"正在挂起线程 {thread_id}，持续 {duration_seconds} 秒。")
+        suspend_thread(thread_id)
+        time.sleep(duration_seconds)
+    except:
+        raise
+    finally:
+        resume_thread(thread_id)
 
 
 def suspend_process_for_duration(pid: int, duration_seconds: float):
