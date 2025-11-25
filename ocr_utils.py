@@ -102,13 +102,18 @@ class OCREngine:
         :raises ``Exception``: 截图失败
         """
         try:
+            logger.debug(f"将窗口 {hwnd} 设置为置顶。")
             set_top_window(hwnd)
+            logger.debug(f"窗口 {hwnd} 置顶完成。")
             time.sleep(0.1)
 
+            logger.debug(f"获取窗口 {hwnd} 的绝对坐标。")
             rect = self._get_physical_rect(hwnd, include_title_bar)
             if not rect:
                 raise Exception("获取窗口物理坐标失败")
+            logger.debug(f"获取窗口 {hwnd} 绝对坐标完成。")
 
+            logger.debug("开始计算截图绝对坐标。")
             phys_left, phys_top, phys_right, phys_bottom = rect
             phys_width = phys_right - phys_left
             phys_height = phys_bottom - phys_top
@@ -123,13 +128,20 @@ class OCREngine:
                 return None
 
             grab_area = {"top": grab_top, "left": grab_left, "width": grab_width, "height": grab_height}
+            logger.debug(
+                f"截图坐标: 上{grab_top}，下{grab_top+grab_height}，左{grab_left}，右{grab_left+grab_width}。"
+            )
 
+            logger.debug("开始获取截图引擎锁。")
             with mss_lock:
+                logger.debug("获取锁成功，开始截图。")
                 sct_img = self.sct.grab(grab_area)
+                logger.debug("截图完成。")
 
             # debug: 保存截图以便排查问题
             # tools.to_png(sct_img.rgb, sct_img.size, output="debug_screenshot.png")
 
+            logger.debug("将截图转化为PNG。")
             return tools.to_png(sct_img.rgb, sct_img.size)
 
         except Exception as e:
@@ -169,15 +181,20 @@ class OCREngine:
 
         try:
             # 截图
+            logger.debug(
+                f"开始对窗口 {hwnd} 截图，{'不' if not include_title_bar else ''}包括标题栏，截图范围 {left}, {top}, {width}, {height} 。"
+            )
             screenshot_png = self._capture_window_area_mss(hwnd, left, top, width, height, include_title_bar)
             if screenshot_png is None:
+                logger.debug(f"截图失败，返回空的 OCR 结果。")
                 return ""
+            logger.debug(f"截图完成。")
 
             # 调用 OcrAPI 的 runBytes 方法进行识别
-            # logger.debug("将截图字节流发送到 C++ 引擎进行 OCR。")
+            logger.debug("将截图字节流发送到 C++ 引擎进行 OCR。")
             with rapidocr_lock:
                 result = self.api.runBytes(screenshot_png)
-            # logger.debug("从 C++ 引擎收到 OCR 结果。")
+            logger.debug("从 C++ 引擎收到 OCR 结果。")
 
             # 解析返回的 JSON 结果
             if result and result.get("code") == 100:
