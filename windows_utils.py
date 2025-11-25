@@ -43,6 +43,8 @@ def is_window_handler_exist(hwnd: int) -> bool:
     :param hwnd: 窗口句柄 (整数)
     :return: True表示窗口存在，False表示不存在
     """
+    if hwnd == 0:
+        return False
     try:
         return bool(win32gui.IsWindow(hwnd))
     except:
@@ -56,6 +58,8 @@ def get_window_title(hwnd: int) -> Optional[str]:
     :param hwnd: 窗口句柄 (整数)
     :return: 标题字符串。如果未找到窗口，会返回 None
     """
+    if hwnd == 0:
+        return None
     try:
         return win32gui.GetWindowText(hwnd)
     except:
@@ -69,6 +73,8 @@ def get_process_name(pid: int) -> Optional[str]:
     :param pid: 进程 PID (整数)
     :return: 进程名字符串。如果未找到进程，返回 None
     """
+    if pid == 0:
+        return None
     try:
         return psutil.Process(pid).name()
     except:
@@ -329,6 +335,7 @@ def get_steam_exe_path() -> Optional[str]:
         logger.error(f"读取注册表时发生未知错误: {e}")
         return None
 
+
 def get_system_proxy() -> Optional[str]:
     """
     使用 urllib3 获取系统代理。优先获取socks代理，其次是http代理。
@@ -343,6 +350,7 @@ def get_system_proxy() -> Optional[str]:
         return http_proxy
     else:
         return None
+
 
 def exec_command_detached(command: list[str]):
     """
@@ -361,5 +369,5 @@ def exec_command_detached(command: list[str]):
             close_fds=True,
         )
     except Exception as e:
-        # Nuitka 打包时会错误地对f-string中的引号报错，改为字符串拼接
-        raise Exception("执行命令 '" + " ".join(command) + "' 失败: " + str(e)) from e
+        command_string = " ".join(command)
+        raise Exception(f"执行命令 '{command_string}' 失败: {e}") from e
