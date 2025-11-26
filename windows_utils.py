@@ -1,5 +1,6 @@
 from pathlib import Path
 import ctypes.wintypes
+import sys
 import time
 from urllib.request import getproxies
 import psutil
@@ -18,7 +19,7 @@ from win32con import (
     SWP_NOACTIVATE,
     SWP_SHOWWINDOW,
 )
-from typing import Tuple, Optional
+from typing import Optional
 
 from logger import get_logger
 
@@ -103,11 +104,64 @@ def get_main_thread_id(hwnd: int) -> Optional[int]:
         return None
 
 
+def enable_dpi_aware():
+    """
+    将当前进程设置为 DPI Aware，以在不同缩放比例的显示器上获得真实的 DPI 缩放值。
+    """
+    version = sys.getwindowsversion()[:2]
+    try:
+        if version >= (6, 3):
+            # Windows 8.1+
+            ctypes.windll.shcore.SetProcessDpiAwareness(2)
+        elif (6, 0) <= version < (6, 3):
+            # Windows Vista, 7, 8, Server 2012
+            ctypes.windll.user32.SetProcessDPIAware()
+        return True
+    except Exception as e:
+        logger.error(f"设置 DPI Awareness 失败: {e}")
+        return False
+
+
+def get_window_dpi_scale(hwnd: int):
+    """
+    获取指定窗口所在显示器的 DPI 缩放比例。
+    必须设置 Python 进程为 DPI Aware，才能获取缩放比例。
+
+    :param hwnd: 目标窗口的句柄。
+    :return: DPI缩放比例 (例如 1.0, 1.25, 1.5)。
+    """
+    try:
+        # 调用 Shcore.dll 的 GetDpiForMonitor 函数获取 DPI 缩放
+        # 函数签名: HRESULT GetDpiForMonitor(HMONITOR hmonitor, int dpiType, UINT *dpiX, UINT *dpiY)
+        shcore = ctypes.windll.shcore
+        monitor = win32api.MonitorFromWindow(hwnd)  # 从窗口句柄获取显示器句柄
+        dpi_x = ctypes.c_uint()
+        dpi_y = ctypes.c_uint()
+
+        # MONITOR_DPI_TYPE 0: MDT_EFFECTIVE_DPI
+        # 我们关心的是有效DPI，它考虑了用户的缩放设置
+        result = shcore.GetDpiForMonitor(int(monitor), 0, ctypes.byref(dpi_x), ctypes.byref(dpi_y))
+
+        if result != 0:
+            # 如果调用失败，返回默认值
+            return 1.0
+
+        # 标准DPI是96，计算缩放比例
+        # 通常 dpi_x 和 dpi_y 是相等的
+        return dpi_x.value / 96.0
+
+    except Exception as e:
+        logger.error(f"获取DPI缩放比例时发生异常: {e}", exc_info=e)
+        # 在一些非常老的系统上, Shcore.dll 不可用，返回默认值
+        return 1.0
+
+
 def find_window(
     window_class: Optional[str] = None, window_title: Optional[str] = None, process_name: Optional[str] = None
-) -> Optional[Tuple[int, int]]:
+):
     """
     通过窗口类名, 窗口标题和进程名查找窗口，返回窗口句柄和进程ID。
+
     :param window_class: 窗口类名，可选，与 window_title 至少要提供一个
     :param window_title: 窗口标题，可选，与 window_class 至少要提供一个
     :param process_name: 进程名称，可选，不提供时将跳过进程名称验证
@@ -129,7 +183,7 @@ def find_window(
         # 检查进程标题
         if process_name is not None:
             proc = psutil.Process(pid)
-            if proc.name() != process_name:
+            if proc.name().lower() != process_name.lower():
                 return None
     except (psutil.NoSuchProcess, psutil.AccessDenied):
         return None
