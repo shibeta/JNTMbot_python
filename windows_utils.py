@@ -103,27 +103,34 @@ def get_main_thread_id(hwnd: int) -> Optional[int]:
         return None
 
 
-def find_window(window_class: str, window_title: str, process_name: str) -> Optional[Tuple[int, int]]:
+def find_window(
+    window_class: Optional[str] = None, window_title: Optional[str] = None, process_name: Optional[str] = None
+) -> Optional[Tuple[int, int]]:
     """
     通过窗口类名, 窗口标题和进程名查找窗口，返回窗口句柄和进程ID。
-    :param window_class: 窗口类名
-    :param window_title: 窗口标题
-    :param process_name: 进程名称
+    :param window_class: 窗口类名，可选，与 window_title 至少要提供一个
+    :param window_title: 窗口标题，可选，与 window_class 至少要提供一个
+    :param process_name: 进程名称，可选，不提供时将跳过进程名称验证
     :return: 如果找到符合条件的窗口，返回 (hwnd, pid) 元组，否则返回 None
     """
+    if window_class is None and window_title is None:
+        logger.warning("查找窗口必须要提供窗口类名或窗口标题。")
+        return None
+
     # 使用 FindWindow 直接查找窗口
     hwnd = win32gui.FindWindow(window_class, window_title)
 
     if hwnd == 0:
         return None
 
-    # 验证进程名称
+    # 获取窗口对应进程的 PID
     try:
         _, pid = win32process.GetWindowThreadProcessId(hwnd)
-        proc = psutil.Process(pid)
-        if proc.name() != process_name:
-            # 这种情况极少发生，但可能存在伪装窗口
-            return None
+        # 检查进程标题
+        if process_name is not None:
+            proc = psutil.Process(pid)
+            if proc.name() != process_name:
+                return None
     except (psutil.NoSuchProcess, psutil.AccessDenied):
         return None
 
@@ -304,7 +311,7 @@ def kill_processes(process_names: list[str]):
         except subprocess.CalledProcessError as e:
             # 如果进程不存在，taskkill 会返回错误码，这通常是可以接受的
             if "not found" in e.stderr:
-                logger.info(f"没有找到名为 '{proc_name}' 的正在运行的进程。")
+                logger.debug(f"没有找到名为 '{proc_name}' 的正在运行的进程。")
             else:
                 logger.warning(f"无法终止进程 '{proc_name}': {e.stderr}")
         except FileNotFoundError as e:
