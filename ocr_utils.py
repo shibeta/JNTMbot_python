@@ -1,13 +1,21 @@
 import os
+import sys
 import threading
 import time
-from typing import Optional
-import mss
-from mss import tools
+from PIL import Image
+import io
 import win32gui
+import win32ui
+import numpy as np
+from ctypes import windll
 
 from RapidOCR_api import OcrAPI
-from windows_utils import is_window_handler_exist, set_top_window, unset_top_window
+from windows_utils import (
+    is_window_handler_exist,
+    restore_minimized_window,
+    enable_dpi_awareness,
+    get_primary_monitor_dpi_scale,
+)
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -16,11 +24,178 @@ logger = get_logger(__name__)
 # 例如: r"C:\path\to\RapidOCR-json.exe"
 OCR_EXECUTABLE_PATH = os.path.join(os.getcwd(), "RapidOCR-json.exe")
 
-# python-mss 截图锁，防止多线程时出现问题
-mss_lock = threading.Lock()
-
 # RapidOCR 进程锁，防止多线程时出现问题
 rapidocr_lock = threading.Lock()
+
+
+class WindowCapturer:
+    """
+    基于 PrintWindow 捕获窗口内容，支持被遮挡窗口和高DPI环境。
+    """
+
+    def __init__(self):
+        """
+        初始化 PrintWindow 必须的一些配置。
+        """
+        # 启用 DPI Aware 以用于在截图时自动计算 DPI 缩放
+        if enable_dpi_awareness():
+            self.dpi_awareness = True
+        else:
+            logger.warning("设置 DPI Awareness 失败，将使用传统方式计算 DPI 缩放")
+            self.dpi_awareness = False
+
+        # 检查系统版本以确定是否支持 PW_RENDERFULLCONTENT
+        version = sys.getwindowsversion()[:2]
+        if version >= (6, 3):
+            # Windows 8.1+
+            self.printwindow_support_hw_acceleration = True
+        else:
+            self.printwindow_support_hw_acceleration = False
+
+    def capture_window(self, hwnd: int, include_title_bar: bool = False):
+        """
+        使用 Windows User32.dll 的 PrintWindow 捕获一个窗口，返回 numpy 数组。
+
+        :param hwnd: 要捕获的窗口句柄
+        :type hwnd: int
+        :param include_title_bar: 是否包含标题栏
+        :type include_title_bar: bool
+        :return: numpy 数组格式的图片
+        :raises ``Exception``: 截图失败
+        """
+        hwindc = None
+        srcdc = None
+        memdc = None
+        bmp = None
+        old_bmp = None
+        try:
+            # 将窗口取消最小化
+            if restore_minimized_window(hwnd):
+                time.sleep(0.2)
+
+            if include_title_bar:
+                window_rect = win32gui.GetWindowRect(hwnd)
+                if self.printwindow_support_hw_acceleration:
+                    print_flags = 2  # PW_RENDERFULLCONTENT
+                else:
+                    print_flags = None  # no flags
+            else:
+                window_rect = win32gui.GetClientRect(hwnd)
+                if self.printwindow_support_hw_acceleration:
+                    print_flags = 3  # PW_CLIENTONLY | PW_RENDERFULLCONTENT
+                else:
+                    print_flags = 1  # PW_CLIENTONLY
+
+            if self.dpi_awareness:
+                # 启用 DPI 感知时，获取的分辨率就是实际分辨率
+                window_width = window_rect[2] - window_rect[0]
+                window_height = window_rect[3] - window_rect[1]
+            else:
+                # 未启用时，需要手动乘上缩放比
+                proportion = get_primary_monitor_dpi_scale()
+                window_width = (window_rect[2] - window_rect[0]) * proportion
+                window_height = (window_rect[3] - window_rect[1]) * proportion
+
+            if window_width <= 0 or window_height <= 0:
+                raise Exception("窗口物理尺寸无效，无法截图。")
+
+            hwindc = win32gui.GetWindowDC(hwnd)
+            srcdc = win32ui.CreateDCFromHandle(hwindc)
+            memdc = srcdc.CreateCompatibleDC()
+            bmp = win32ui.CreateBitmap()
+            bmp.CreateCompatibleBitmap(srcdc, window_width, window_height)
+            old_bmp = memdc.SelectObject(bmp)
+
+            if windll.user32.PrintWindow(hwnd, memdc.GetSafeHdc(), print_flags) == 0:
+                raise Exception("PrintWindow API 调用失败。")
+
+            bmp_bits = bmp.GetBitmapBits(True)
+            # 从位图初始化numpy数组
+            # 将 1D 数组重塑为 4通道 图像 (RGBA)
+            screenshot_img_np = np.frombuffer(bmp_bits, dtype="uint8").reshape(
+                window_height, window_width, 4
+            )[:, :, [2, 1, 0, 3]]
+            # 丢弃不需要的 alpha/padding 通道，仅保留 RGB
+            # 用 np.ascontiguousarray 确保内存是连续的，避免出现 bug
+            return np.ascontiguousarray(screenshot_img_np[:, :, :3])
+        finally:
+            # 释放 GDI 资源
+            if memdc is not None:
+                if old_bmp is not None:
+                    memdc.SelectObject(old_bmp)
+                memdc.DeleteDC()
+            if bmp is not None:
+                win32gui.DeleteObject(bmp.GetHandle())
+            if srcdc is not None:
+                srcdc.DeleteDC()
+            if hwindc is not None:
+                win32gui.ReleaseDC(hwnd, hwindc)
+
+    def capture_window_area(
+        self, hwnd: int, left: float, top: float, width: float, height: float, include_title_bar: bool = False
+    ):
+        """
+        使用 Windows User32.dll 的 PrintWindow 对一个窗口进行区域截图，返回 numpy 数组。
+
+        :param hwnd: 要截图的窗口句柄
+        :type hwnd: int
+        :param left: 截图区域左上角的相对横坐标 (0.0 to 1.0)。
+        :type left: float
+        :param top: 截图区域左上角的相对纵坐标 (0.0 to 1.0)。
+        :type top: float
+        :param width: 截图区域的相对宽度 (0.0 to 1.0)。超过
+        :type width: float
+        :param height: 截图区域的相对高度 (0.0 to 1.0)。
+        :type height: float
+        :param include_title_bar: 是否包含标题栏
+        :type include_title_bar: bool
+        :return: numpy 数组格式的图片
+        :rtype: numpy.ndarray
+        :raises ``ValueError``: 传入的坐标或长宽有误
+        :raises ``Exception``: 截图失败
+        """
+        if not all(0.0 <= val <= 1.0 for val in [left, top, width, height]):
+            raise ValueError("相对坐标和尺寸必须在 0.0 到 1.0 之间。")
+        if left + width > 1.0:
+            raise ValueError(f"参数 'left' ({left}) + 'width' ({width}) 的和不能超过 1.0")
+        if top + height > 1.0:
+            raise ValueError(f"参数 'top' ({top}) + 'height' ({height}) 的和不能超过 1.0")
+
+        full_image_np = self.capture_window(hwnd, include_title_bar)
+        base_height, base_width, _ = full_image_np.shape
+
+        pixel_left = int(left * base_width)
+        pixel_top = int(top * base_height)
+        pixel_width = int(width * base_width)
+        pixel_height = int(height * base_height)
+        if pixel_width <= 0 or pixel_height <= 0:
+            raise ValueError("计算出的截图区域尺寸无效。")
+
+        cropped_image_np = full_image_np[
+            pixel_top : pixel_top + pixel_height, pixel_left : pixel_left + pixel_width
+        ]
+
+        # debug: 保存截图以便排查问题
+        # pil_image = Image.fromarray(cropped_image_np)
+        # pil_image.save("debug_screenshot.png")
+
+        return cropped_image_np
+
+    @staticmethod
+    def to_png(image_np: np.ndarray) -> bytes:
+        """
+        将 RGB 的 numpy 数组转换为 PNG 字节对象。
+
+        :param image_np: numpy 数组格式的图片，格式为 RGB
+        :type image_np: np.ndarray
+        :return: 字节对象存储的 PNG 图片
+        :rtype: bytes
+        """
+        pil_image = Image.fromarray(image_np)
+        byte_stream = io.BytesIO()
+        pil_image.save(byte_stream, format="PNG")
+
+        return byte_stream.getvalue()
 
 
 class OCREngine:
@@ -28,29 +203,24 @@ class OCREngine:
     使用 RapidOCR_api.py 与 C++ 可执行程序通信，以实现高性能OCR功能。
     """
 
-    def __init__(self, args: Optional[str] = None):
+    def __init__(self, args: str):
         """
         初始化 OcrAPI，它会启动并管理一个 RapidOCR-json.exe 子进程。
         """
         logger.info("正在初始化 OCR 引擎...")
-        # 检查 OCR_EXECUTABLE_PATH 是否存在
+        # 检查 OCR 引擎可执行文件是否存在
         if not os.path.exists(OCR_EXECUTABLE_PATH):
             logger.error(f"OCR 引擎可执行文件不存在，请检查路径配置: {OCR_EXECUTABLE_PATH}")
             raise FileNotFoundError(f"未找到OCR引擎: {OCR_EXECUTABLE_PATH}")
 
-        if args is None:
-            logger.warning("未提供启动参数，不使用参数启动 OCR 引擎。")
-        else:
-            logger.info(f"使用以下参数启动 OCR 引擎: {args}")
-        
-        # 初始化 mss 截图器
-        with mss_lock:
-            self.sct = mss.mss()
+        logger.info(f"使用以下参数启动 OCR 引擎: {args}")
 
-        # 初始化 RapidOCR
         with rapidocr_lock:
-            self.api = OcrAPI(OCR_EXECUTABLE_PATH, argsStr=args if args else "")
-        
+            self.api = OcrAPI(OCR_EXECUTABLE_PATH, argsStr=args)
+
+        # 初始化截图引擎
+        self.screen_capturer = WindowCapturer()
+
         logger.warning("OCR 引擎初始化完成。")
 
     def __del__(self):
@@ -58,7 +228,7 @@ class OCREngine:
         在对象销毁时，确保子进程被关闭。
         """
         logger.info("正在关闭 OCR 引擎...")
-        if self.api:
+        if hasattr(self, "api") and self.api:
             with rapidocr_lock:
                 self.api.stop()
         logger.info("成功关闭 OCR 引擎。")
@@ -85,74 +255,6 @@ class OCREngine:
             return left, top, right, bottom
         except Exception as e:
             raise Exception(f"获取物理坐标失败: {e}") from e
-
-    def _capture_window_area_mss(
-        self, hwnd: int, left: float, top: float, width: float, height: float, include_title_bar: bool = False
-    ) -> Optional[bytes]:
-        """
-        使用 python-mss 截取指定窗口的特定区域。
-
-        :param hwnd: 目标窗口的句柄。
-        :param left: 截图区域左上角的相对横坐标 (0.0 to 1.0)。
-        :param top: 截图区域左上角的相对纵坐标 (0.0 to 1.0)。
-        :param width: 截图区域的相对宽度 (0.0 to 1.0)。
-        :param height: 截图区域的相对高度 (0.0 to 1.0)。
-        :param include_title_bar: 是否将标题栏和边框计算在内。(True: 基于完整窗口截图 False: 基于客户区截图 (排除标题栏和边框))
-        :return: 返回截图的 PNG 字节流。
-        :raises ``Exception``: 截图失败
-        """
-        try:
-            logger.debug(f"将窗口 {hwnd} 设置为置顶。")
-            set_top_window(hwnd)
-            logger.debug(f"窗口 {hwnd} 置顶完成。")
-            time.sleep(0.1)
-
-            logger.debug(f"获取窗口 {hwnd} 的绝对坐标。")
-            rect = self._get_physical_rect(hwnd, include_title_bar)
-            if not rect:
-                raise Exception("获取窗口物理坐标失败")
-            logger.debug(f"获取窗口 {hwnd} 绝对坐标完成。")
-
-            logger.debug("开始计算截图绝对坐标。")
-            phys_left, phys_top, phys_right, phys_bottom = rect
-            phys_width = phys_right - phys_left
-            phys_height = phys_bottom - phys_top
-
-            grab_left = phys_left + int(left * phys_width)
-            grab_top = phys_top + int(top * phys_height)
-            grab_width = int(width * phys_width)
-            grab_height = int(height * phys_height)
-
-            if grab_width <= 0 or grab_height <= 0:
-                logger.warning(f"计算出的截图尺寸无效: w={grab_width}, h={grab_height}")
-                return None
-
-            grab_area = {"top": grab_top, "left": grab_left, "width": grab_width, "height": grab_height}
-            logger.debug(
-                f"截图坐标: 上{grab_top}，下{grab_top+grab_height}，左{grab_left}，右{grab_left+grab_width}。"
-            )
-
-            logger.debug("开始获取截图引擎锁。")
-            with mss_lock:
-                logger.debug("获取锁成功，开始截图。")
-                sct_img = self.sct.grab(grab_area)
-                logger.debug("截图完成。")
-
-            # debug: 保存截图以便排查问题
-            # tools.to_png(sct_img.rgb, sct_img.size, output="debug_screenshot.png")
-
-            logger.debug("将截图转化为PNG。")
-            return tools.to_png(sct_img.rgb, sct_img.size)
-
-        except Exception as e:
-            raise Exception(f"截图失败: {e}") from e
-
-        finally:
-            # 取消置顶窗口
-            try:
-                unset_top_window(hwnd)
-            except Exception:
-                pass
 
     def ocr_window(
         self,
@@ -184,11 +286,11 @@ class OCREngine:
             logger.debug(
                 f"开始对窗口 {hwnd} 截图，{'不' if not include_title_bar else ''}包括标题栏，截图范围 {left}, {top}, {width}, {height} 。"
             )
-            screenshot_png = self._capture_window_area_mss(hwnd, left, top, width, height, include_title_bar)
-            if screenshot_png is None:
-                logger.debug(f"截图失败，返回空的 OCR 结果。")
-                return ""
+            screenshot_np = self.screen_capturer.capture_window_area(
+                hwnd, left, top, width, height, include_title_bar
+            )
             logger.debug(f"截图完成。")
+            screenshot_png = self.screen_capturer.to_png(screenshot_np)
 
             # 调用 OcrAPI 的 runBytes 方法进行识别
             logger.debug("将截图字节流发送到 C++ 引擎进行 OCR。")
@@ -221,7 +323,7 @@ class OCREngine:
 # --- 使用示例 (与您原文件中的 main 部分相同) ---
 if __name__ == "__main__":
     # 找一个窗口来测试，例如记事本。请先手动打开一个记事本窗口。
-    hwnd = win32gui.FindWindow("Notepad", None)
+    hwnd = win32gui.FindWindow("notepad", None)
 
     if not hwnd:
         print("错误: 未找到记事本窗口。请打开一个记事本窗口并输入一些中英文文字以进行测试。")
@@ -229,7 +331,9 @@ if __name__ == "__main__":
         print(f"成功找到记事本窗口，句柄: {hwnd}")
 
         # 在第一次调用时，会启动 C++ 子进程并初始化模型
-        my_ocr_engine = OCREngine(r'--models=".\models" --det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx --keys=dict_chinese.txt --padding=70 --maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 --mostAngle=0 --numThread=1')
+        my_ocr_engine = OCREngine(
+            r'--models=".\models" --det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx --keys=dict_chinese.txt --padding=70 --maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 --mostAngle=0 --numThread=1'
+        )
 
         print("\n--- OCR 功能演示 ---")
         print("将在3秒后对记事本窗口的左上角 50% x 50% 区域进行识别...")
