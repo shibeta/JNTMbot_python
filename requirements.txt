@@ -1,7 +1,9 @@
 colorlog
+numpy
+Pillow
 psutil
-requests
-vgamepad
 pynput
 pywin32
+requests
 ruamel.yaml
+vgamepad
