@@ -156,6 +156,19 @@ def get_window_dpi_scale(hwnd: int):
         return 1.0
 
 
+def get_primary_monitor_dpi_scale():
+    """
+    获取主显示器的 DPI 缩放比例。
+    必须设置 Python 进程为不支持 DPI Awareness，才能获取缩放比例。
+
+    :return: DPI缩放比例 (例如 1.0, 1.25, 1.5)。
+    """
+    return round(
+        win32print.GetDeviceCaps(win32gui.GetDC(0), DESKTOPHORZRES) / win32api.GetSystemMetrics(0),
+        2,
+    )
+
+
 def find_window(
     window_class: Optional[str] = None, window_title: Optional[str] = None, process_name: Optional[str] = None
 ):
