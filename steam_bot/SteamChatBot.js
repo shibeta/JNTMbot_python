@@ -43,14 +43,14 @@ class SteamChatBot {
                 proxy_lower.startsWith("https://")
             ) {
                 steamUserOptions.httpProxy = proxy;
-                console.warn(
-                    "⚠️ 注意：HTTP代理无法代理消息发送，请优先使用SOCKS代理。"
-                );
             } else if (
                 proxy_lower.startsWith("socks5://") ||
                 proxy_lower.startsWith("socks://")
             ) {
                 steamUserOptions.socksProxy = proxy;
+                console.warn(
+                    "⚠️ 注意：SOCKS代理无法代理域名解析，请优先使用HTTP代理。"
+                );
             } else {
                 console.error(
                     `❌ 不支持的代理格式或协议: "${proxy}"。请使用"http://..."或"socks5://..."等格式。`
