@@ -49,7 +49,7 @@ class GTAAutomator:
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏意外关闭
         :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.UNKNOWN)``: 启动游戏失败
         :raises ``UnexpectedGameState(expected=GameState.GOOD_SPORT_LEVEL, actual=GameState.BAD_SPORT_LEVEL)``: 恶意等级过高
-        :raises ``UIElementNotFound(UIElementNotFoundContext.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
+        :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
         """
         logger.info("动作: 正在初始化 GTA V ...")
 
@@ -77,9 +77,9 @@ class GTAAutomator:
 
         :raises ``UnexpectedGameState(actual=GameState.OFF)``: 在自动化任务中，游戏意外关闭
         :raises ``OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)``: 等待在事务所床上复活超时
-        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)``: 无法找到任务触发点
+        :raises ``UIElementNotFound(UIElement.JOB_TRIGGER_POINT)``: 无法找到任务触发点
         :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)``: 等待差事面板打开超时
-        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)``: 在等待玩家和启动差事阶段，意外离开了任务面板
+        :raises ``UIElementNotFound(UIElement.JOB_SETUP_PANEL)``: 在等待玩家和启动差事阶段，意外离开了任务面板
         """
         # 导航至任务点
         self.job_workflow.navigate_from_bed_to_job_point()
@@ -117,7 +117,7 @@ class GTAAutomator:
                 raise  # 其他异常向上抛出
         except UIElementNotFound as e:
             # 意外离开差事面板，退出差事
-            if e.context == UIElementNotFoundContext.JOB_SETUP_PANEL:
+            if e.element_not_found == UIElement.JOB_SETUP_PANEL:
                 logger.warning(f"不知为何离开了面板。退出差事。")
                 self.job_workflow.exit_job_panel()
                 return
@@ -173,12 +173,14 @@ class GTAAutomator:
         1. 启动游戏并确保进入在线模式。
         2. 执行一轮德瑞差事。
 
+        :raises ``UnexpectedGameState(expected=GameState.GOOD_SPORT_LEVEL, actual=GameState.BAD_SPORT_LEVEL)``: 恶意等级过高
+        :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
         :raises ``UnexpectedGameState(expected={GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, actual=GameState.UNKNOWN)``: 切换战局时失败
         :raises ``UnexpectedGameState(actual=GameState.OFF)``: 在自动化任务中，游戏意外关闭
         :raises ``OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)``: 等待在事务所床上复活超时
-        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)``: 无法找到任务触发点
+        :raises ``UIElementNotFound(UIElement.JOB_TRIGGER_POINT)``: 无法找到任务触发点
         :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)``: 等待差事面板打开超时
-        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)``: 在等待玩家和启动差事阶段，意外离开了任务面板
+        :raises ``UIElementNotFound(UIElement.JOB_SETUP_PANEL)``: 在等待玩家和启动差事阶段，意外离开了任务面板
         """
         logger.info("动作: 正在开始新一轮德瑞 Bot 任务...")
         # 确保游戏就绪，即在在线模式中

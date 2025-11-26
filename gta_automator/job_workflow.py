@@ -107,7 +107,7 @@ class JobWorkflow(_BaseWorkflow):
         """
         检查是否到达任务触发点。如果没有，会螺旋形遍历周围空间。
 
-        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)``: 未找到任务触发点
+        :raises ``UIElementNotFound(UIElement.JOB_TRIGGER_POINT)``: 未找到任务触发点
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         logger.info("动作：正在寻找差事触发点...")
@@ -139,13 +139,13 @@ class JobWorkflow(_BaseWorkflow):
 
         # 如果遍历完所有搜索模式仍未找到
         logger.error("执行完所有搜索步骤后仍未找到差事触发点。")
-        raise UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)
+        raise UIElementNotFound(UIElement.JOB_TRIGGER_POINT)
 
     def navigate_from_bed_to_job_point(self):
         """
         执行从床边导航到任务点并确认找到的完整流程。
 
-        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)``: 未找到任务触发点
+        :raises ``UIElementNotFound(UIElement.JOB_TRIGGER_POINT)``: 未找到任务触发点
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         self.action.go_job_point_from_bed()
@@ -184,11 +184,11 @@ class JobWorkflow(_BaseWorkflow):
         """
         检查大厅状态是否有效，如果无效则抛出异常。
 
-        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)``: 意外离开了任务面板
+        :raises ``UIElementNotFound(UIElement.JOB_SETUP_PANEL)``: 意外离开了任务面板
         :raises ``UnexpectedGameState(expected=GameState.JOB_PANEL_2, actual=GameState.BAD_JOB_PANEL_STANDBY_PLAYER)``: 发现"待命"状态的玩家
         """
         if not is_on_job_panel:
-            raise UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)
+            raise UIElementNotFound(UIElement.JOB_SETUP_PANEL)
         if standby_count > 0:
             raise UnexpectedGameState(GameState.JOB_PANEL_2, GameState.BAD_JOB_PANEL_STANDBY_PLAYER)
 
@@ -232,7 +232,7 @@ class JobWorkflow(_BaseWorkflow):
         尝试启动差事。启动失败时会尝试回到差事面板，无法回到面板会抛出异常。
 
         :return: True: 差事成功启动。False: 启动失败
-        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)``: 启动差事时意外离开了任务面板
+        :raises ``UIElementNotFound(UIElement.JOB_SETUP_PANEL)``: 启动差事时意外离开了任务面板
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         logger.info("动作: 正在启动差事...")
@@ -258,7 +258,7 @@ class JobWorkflow(_BaseWorkflow):
             self.handle_warning_page()  # 处理可能出现的警告弹窗
             if not self.screen.is_on_job_panel():
                 logger.error("启动失败且已离开差事面板，无法恢复。")
-                raise UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)
+                raise UIElementNotFound(UIElement.JOB_SETUP_PANEL)
             logger.info("仍在差事面板中，将继续等待。")
             return False  # 启动失败
 
@@ -266,7 +266,7 @@ class JobWorkflow(_BaseWorkflow):
         """
         初始化差事准备页面，等待队友，然后开始差事。
 
-        :raises ``UIElementNotFound(UIElementNotFoundContext.JOB_SETUP_PANEL)``: 意外离开了任务面板
+        :raises ``UIElementNotFound(UIElement.JOB_SETUP_PANEL)``: 意外离开了任务面板
         :raises ``OperationTimeout(OperationTimeoutContext.WAIT_TEAMMATE)``: 长时间没有玩家加入，超时
         :raises ``OperationTimeout(OperationTimeoutContext.PLAYER_JOIN)``: 玩家长期卡在"正在加入"状态，超时
         :raises ``UnexpectedGameState(expected=GameState.JOB_PANEL_2, actual=GameState.BAD_JOB_PANEL_STANDBY_PLAYER)``: 发现"待命"状态的玩家

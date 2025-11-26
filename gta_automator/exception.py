@@ -18,7 +18,7 @@ class OperationTimeoutContext(enum.Enum):
 
 
 class GameState(enum.Enum):
-    """定义了游戏中所有可被程序识别的高级状态。"""
+    """抛出 UnexpectedGameState 异常时，游戏可能处于的状态"""
 
     ON = "游戏运行中的任意状态"  # 仅用于expected
     UNKNOWN = "游戏运行中的未识别的状态"  # 仅用于actual
@@ -42,8 +42,8 @@ class GameState(enum.Enum):
     GOOD_SPORT_LEVEL = "恶意等级正常"
 
 
-class UIElementNotFoundContext(enum.Enum):
-    """抛出 UIElementNotFound 异常时，可能处于的上下文"""
+class UIElement(enum.Enum):
+    """抛出 UIElementNotFound 异常时，未能找到的 UI 元素"""
 
     STORY_MODE_MENU = "故事模式菜单"
     ONLINE_MODE_TAB = "在线模式选项卡"
@@ -111,14 +111,14 @@ class UnexpectedGameState(GameAutomatorException):
 class UIElementNotFound(GameAutomatorException):
     """在屏幕上找不到预期的UI元素的错误。"""
 
-    def __init__(self, context: UIElementNotFoundContext):
-        self.context = context
-        self.message = f"找不到{self.context.value}"
+    def __init__(self, element_not_found: UIElement):
+        self.element_not_found = element_not_found
+        self.message = f"找不到{self.element_not_found.value}"
         super().__init__(self.message)
 
 
 class NetworkError(GameAutomatorException):
-    """在线会话相关的错误。"""
+    """网络相关的错误。"""
 
     def __init__(self, context: NetworkErrorContext):
         self.context = context
@@ -161,7 +161,7 @@ if __name__ == "__main__":
     # 3. 测试 UIElementNotFound
     try:
         print("\n测试: UIElementNotFound")
-        raise UIElementNotFound(UIElementNotFoundContext.JOB_TRIGGER_POINT)
+        raise UIElementNotFound(UIElement.JOB_TRIGGER_POINT)
     except UIElementNotFound as e:
         print(f"成功捕获异常: {e}")
         assert e.message == "找不到任务触发点"

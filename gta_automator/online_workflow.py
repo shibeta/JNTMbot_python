@@ -16,8 +16,8 @@ class OnlineWorkflow(_BaseWorkflow):
         尝试执行一次切换到仅邀请战局的完整操作。
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法切换战局
-        :raises ``UIElementNotFound(UIElementNotFoundContext.PAUSE_MENU)``: 打开暂停菜单失败
-        :raises ``UIElementNotFound(UIElementNotFoundContext.SWITCH_SESSION_TAB)``: 打开切换战局菜单失败
+        :raises ``UIElementNotFound(UIElement.PAUSE_MENU)``: 打开暂停菜单失败
+        :raises ``UIElementNotFound(UIElement.SWITCH_SESSION_TAB)``: 打开切换战局菜单失败
         """
         # 打开暂停菜单
         self.open_pause_menu()
@@ -29,7 +29,7 @@ class OnlineWorkflow(_BaseWorkflow):
         # 检查切换战局菜单是否被打开
         if not self.screen.is_on_go_online_menu():
             logger.warning("打开切换战局菜单失败。")
-            raise UIElementNotFound(UIElementNotFoundContext.SWITCH_SESSION_TAB)
+            raise UIElementNotFound(UIElement.SWITCH_SESSION_TAB)
 
         logger.info("成功打开切换战局菜单。")
 
@@ -110,7 +110,7 @@ class OnlineWorkflow(_BaseWorkflow):
 
         :return: 恶意等级字符串，如 "清白玩家", "问题玩家", "恶意玩家"
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
-        :raises ``UIElementNotFound(UIElementNotFoundContext.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
+        :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
         """
         logger.info("动作: 正在获取当前角色的恶意值...")
         # 打开暂停菜单并导航到玩家列表
@@ -131,7 +131,7 @@ class OnlineWorkflow(_BaseWorkflow):
         # 关闭暂停菜单
         self.action.open_or_close_pause_menu()
         if bad_sport_level == "未知等级":
-            raise UIElementNotFound(UIElementNotFoundContext.BAD_SPORT_LEVEL_INDICATOR)
+            raise UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)
 
         logger.info(f"当前角色的恶意等级为 {bad_sport_level} 。")
         return bad_sport_level

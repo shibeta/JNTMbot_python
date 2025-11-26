@@ -36,7 +36,7 @@ class _BaseWorkflow:
         这个方法会自动处理警告页面等干扰。
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
-        :raises ``UIElementNotFound(UIElementNotFoundContext.PAUSE_MENU)``: 打开暂停菜单失败
+        :raises ``UIElementNotFound(UIElement.PAUSE_MENU)``: 打开暂停菜单失败
         """
         logger.info("动作: 正在打开暂停菜单...")
         # 处理警告屏幕
@@ -46,7 +46,7 @@ class _BaseWorkflow:
             self.action.open_or_close_pause_menu()
         # 确认暂停菜单已打开
         if not self.screen.is_on_pause_menu():
-            raise UIElementNotFound(UIElementNotFoundContext.PAUSE_MENU)
+            raise UIElementNotFound(UIElement.PAUSE_MENU)
         logger.info("成功打开暂停菜单。")
 
     def check_if_in_onlinemode(self, max_retries: int = 3) -> bool:

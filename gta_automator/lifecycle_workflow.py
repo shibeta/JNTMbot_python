@@ -249,7 +249,7 @@ class LifecycleWorkflow(_BaseWorkflow):
 
         如果不在菜单中，其行为是未定义的。
 
-        :raises ``UIElementNotFound(UIElementNotFoundContext.FINDING_STORY_MODE_MENU)``: 无法找到故事模式菜单。
+        :raises ``UIElementNotFound(UIElement.FINDING_STORY_MODE_MENU)``: 无法找到故事模式菜单。
         :raises ``OperationTimeout(OperationTimeoutContext.STORY_MODE_LOAD)``: 等待故事模式加载超时
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         :raises ``UnexpectedGameState(expected=GameState.MAIN_MENU, actual=GameState.OFFLINE)``: 未登录 Social Club，无法进入在线模式
@@ -267,7 +267,7 @@ class LifecycleWorkflow(_BaseWorkflow):
 
         # 检查是否在故事模式页面
         if not self.screen.is_on_mainmenu_storymode_page():
-            raise UIElementNotFound(UIElementNotFoundContext.STORY_MODE_MENU)
+            raise UIElementNotFound(UIElement.STORY_MODE_MENU)
 
         # 进入故事模式
         self.action.confirm()
@@ -294,7 +294,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         """
         从暂停菜单导航至'进入在线模式'的菜单。
 
-        :raises ``UIElementNotFound(UIElementNotFoundContext.ONLINE_MODE_TAB)``: 找不到在线模式选择卡
+        :raises ``UIElementNotFound(UIElement.ONLINE_MODE_TAB)``: 找不到在线模式选择卡
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         logger.info("动作: 正在导航至在线模式菜单...")
@@ -313,14 +313,14 @@ class LifecycleWorkflow(_BaseWorkflow):
             self.open_pause_menu()
         else:
             # 三次尝试均失败，抛出异常
-            raise UIElementNotFound(UIElementNotFoundContext.ONLINE_MODE_TAB)
+            raise UIElementNotFound(UIElement.ONLINE_MODE_TAB)
 
     def enter_onlinemode_from_storymode(self):
         """
         从故事模式进入在线模式的仅邀请战局。
         如果不在菜单中，其行为是未定义的。
 
-        :raises ``UIElementNotFound(UIElementNotFoundContext.ONLINE_MODE_TAB)``: 找不到在线模式选择卡
+        :raises ``UIElementNotFound(UIElement.ONLINE_MODE_TAB)``: 找不到在线模式选择卡
         :raises ``UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.BAD_PCSETTING_BIN)``: 无法进入在线模式，因为pcsetting.bin故障
         :raises ``UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.MAIN_MENU)``: 无法进入在线模式，因为被回退到主菜单
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
