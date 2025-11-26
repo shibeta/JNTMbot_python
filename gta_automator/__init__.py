@@ -192,6 +192,12 @@ class GTAAutomator:
                 logger.error("初始化游戏时，检测到恶意等级过高，退出游戏。")
                 self.lifecycle_workflow.shutdown()
             raise
+        except UIElementNotFound as e:
+            if e.element_not_found == UIElement.BAD_SPORT_LEVEL_INDICATOR:
+                # 无法检查恶意等级，为避免恶意等级过高，退出游戏以再次触发恶意等级检查
+                logger.error("初始化游戏时，检测恶意等级失败，退出游戏。")
+                self.lifecycle_workflow.shutdown()
+            raise
 
         # 切换到新战局
         try:
