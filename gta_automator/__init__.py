@@ -73,7 +73,12 @@ class GTAAutomator:
 
     def play_dre_job(self):
         """
-        执行德瑞差事的任务流程。
+        执行德瑞差事的任务流程:
+        1. 移动到任务触发点，进入别惹德瑞
+        2. 发送消息，等待玩家加入
+        3. 启动差事，然后卡单
+        4. 落地后，再卡单
+        5. 检查是否在任务中
 
         :raises ``UnexpectedGameState(actual=GameState.OFF)``: 在自动化任务中，游戏意外关闭
         :raises ``OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)``: 等待在事务所床上复活超时
@@ -81,7 +86,7 @@ class GTAAutomator:
         :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)``: 等待差事面板打开超时
         :raises ``UIElementNotFound(UIElement.JOB_SETUP_PANEL)``: 在等待玩家和启动差事阶段，意外离开了任务面板
         """
-        # 导航至任务点
+        # 移动到任务触发点
         self.job_workflow.navigate_from_bed_to_job_point()
 
         # 进入差事准备面板
