@@ -9,15 +9,18 @@ import winreg
 import win32gui
 import win32process
 import win32api
-import win32con
+import win32print
 from win32con import (
+    DESKTOPHORZRES,
     SW_RESTORE,
     HWND_TOPMOST,
     HWND_NOTOPMOST,
+    THREAD_SUSPEND_RESUME,
     SWP_NOMOVE,
     SWP_NOSIZE,
     SWP_NOACTIVATE,
     SWP_SHOWWINDOW,
+    WM_CLOSE,
 )
 from typing import Optional
 
@@ -104,17 +107,25 @@ def get_main_thread_id(hwnd: int) -> Optional[int]:
         return None
 
 
-def enable_dpi_aware():
+def enable_dpi_awareness():
     """
-    将当前进程设置为 DPI Aware，以在不同缩放比例的显示器上获得真实的 DPI 缩放值。
+    启用 Python 进程的 DPI Awareness。
+    在 Windows 8.1+ 上可以获取实时的 DPI 值，在低版本系统仅能获取应用程序启动时的系统 DPI。
+    可能与部分截图或屏幕录制库冲突。
+
+    :return:
+        - True: 成功启用了 DPI Awareness
+        - False: 失败
     """
     version = sys.getwindowsversion()[:2]
     try:
         if version >= (6, 3):
             # Windows 8.1+
+            # PROCESS_PER_MONITOR_DPI_AWARE = 2
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
         elif (6, 0) <= version < (6, 3):
             # Windows Vista, 7, 8, Server 2012
+            # 早期的系统版本仅能配置为 PROCESS_SYSTEM_DPI_AWARE
             ctypes.windll.user32.SetProcessDPIAware()
         return True
     except Exception as e:
@@ -125,7 +136,7 @@ def enable_dpi_aware():
 def get_window_dpi_scale(hwnd: int):
     """
     获取指定窗口所在显示器的 DPI 缩放比例。
-    必须设置 Python 进程为 DPI Aware，才能获取缩放比例。
+    必须设置 Python 进程为 DPI Awareness，才能获取缩放比例。
 
     :param hwnd: 目标窗口的句柄。
     :return: DPI缩放比例 (例如 1.0, 1.25, 1.5)。
@@ -213,7 +224,7 @@ def suspend_thread(tid: int):
     """
     thread_handle = None
     try:
-        thread_handle = win32api.OpenThread(win32con.THREAD_SUSPEND_RESUME, False, tid)
+        thread_handle = win32api.OpenThread(THREAD_SUSPEND_RESUME, False, tid)
         if not thread_handle:
             raise ValueError(f"打开线程 {tid} 失败")
         result = win32process.SuspendThread(thread_handle)
@@ -236,7 +247,7 @@ def resume_thread(tid: int):
     """
     thread_handle = None
     try:
-        thread_handle = win32api.OpenThread(win32con.THREAD_SUSPEND_RESUME, False, tid)
+        thread_handle = win32api.OpenThread(THREAD_SUSPEND_RESUME, False, tid)
         if not thread_handle:
             raise ValueError(f"打开线程 {tid} 失败")
         result = win32process.ResumeThread(thread_handle)
@@ -397,7 +408,7 @@ def close_window(hwnd: int):
     """
     if not is_window_handler_exist(hwnd):
         raise ValueError(f"未找到句柄为 {hwnd} 的窗口。")
-    win32gui.PostMessage(hwnd, win32con.WM_CLOSE, 0, 0)
+    win32gui.PostMessage(hwnd, WM_CLOSE, 0, 0)
 
 
 def set_active_window(hwnd: int):
@@ -426,16 +437,16 @@ def restore_minimized_window(hwnd: int):
     """
     将传入的窗口句柄从最小化还原。
     传入的句柄无效或未被最小化则不做任何事。
-    
+
     :param hwnd: 窗口句柄
     :type hwnd: int
-    :return: 
+    :return:
         - True: 窗口存在且被最小化，已从最小化中恢复
         - False: 窗口不存在，或窗口未被最小化
     """
     if not is_window_handler_exist(hwnd):
         return False
-    
+
     try:
         if win32gui.IsIconic(hwnd):
             win32gui.ShowWindow(hwnd, SW_RESTORE)
@@ -444,6 +455,7 @@ def restore_minimized_window(hwnd: int):
             return False
     except Exception as e:
         raise Exception(f"恢复窗口 {hwnd} 时出错: {e}") from e
+
 
 def set_top_window(hwnd: int):
     """
