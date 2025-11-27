@@ -1,4 +1,5 @@
 from pathlib import Path
+from contextlib import contextmanager
 import ctypes.wintypes
 import sys
 import time
@@ -39,6 +40,23 @@ class ResumeException(Exception):
     """恢复进程或线程时，触发的异常"""
 
     pass
+
+
+@contextmanager
+def open_thread_handle(tid: int):
+    """一个用于安全打开和关闭线程句柄的上下文管理器。"""
+    thread_handle = None
+    try:
+        thread_handle = win32api.OpenThread(THREAD_SUSPEND_RESUME, False, tid)
+        if not thread_handle:
+            # 如果打开失败，OpenThread 返回 None 或 0
+            raise ValueError(f"打开线程 {tid} 失败，可能线程不存在或权限不足。")
+
+        yield thread_handle  # 将句柄交给 with 块使用
+
+    finally:
+        if thread_handle:
+            win32api.CloseHandle(thread_handle)
 
 
 def is_window_handler_exist(hwnd: int) -> bool:
@@ -86,19 +104,25 @@ def get_process_name(pid: int) -> Optional[str]:
         return None
 
 
-def get_main_thread_id(hwnd: int) -> Optional[int]:
+def get_window_thread_id(hwnd: int) -> Optional[int]:
     """
-    获取一个窗口的主线程ID
+    获取一个窗口的线程ID
 
     :param hwnd: 窗口句柄 (整数)
-    :return: 线程ID。如果未找到窗口，或者未找到主线程，会返回 None
+    :return: 线程ID。如果未找到窗口，或者未找到窗口线程，会返回 None
+    :raises TypeError: hwnd 类型错误
     """
-    if not is_window_handler_exist(hwnd):
+    if not isinstance(hwnd, int):
+        logger.error(f"参数 hwnd 类型错误，期望为 int，实际为 {type(hwnd).__name__}。")
+        raise TypeError("窗口句柄必须是一个整数")
+
+    if hwnd == 0:
         return None
+
     try:
         thread_id, _ = win32process.GetWindowThreadProcessId(hwnd)
         if thread_id == 0:
-            logger.error(f"无法找到与 hwnd {hwnd} 关联的线程ID。")
+            logger.error(f"无法找到与窗口句柄 {hwnd} 关联的线程ID。")
             return None
         else:
             return thread_id
@@ -135,12 +159,15 @@ def enable_dpi_awareness():
 
 def get_window_dpi_scale(hwnd: int):
     """
-    获取指定窗口所在显示器的 DPI 缩放比例。
+    获取指定窗口所在显示器的 DPI 缩放比例。获取失败将返回 1.0 。
     必须设置 Python 进程为 DPI Awareness，才能获取缩放比例。
 
     :param hwnd: 目标窗口的句柄。
     :return: DPI缩放比例 (例如 1.0, 1.25, 1.5)。
     """
+    if not isinstance(hwnd, int) or hwnd == 0:
+        logger.warning(f"窗口句柄 '{hwnd}' 不是一个有效的非零整数。")
+        return 1.0
     try:
         # 调用 Shcore.dll 的 GetDpiForMonitor 函数获取 DPI 缩放
         # 函数签名: HRESULT GetDpiForMonitor(HMONITOR hmonitor, int dpiType, UINT *dpiX, UINT *dpiY)
@@ -220,69 +247,107 @@ def suspend_thread(tid: int):
     挂起一个线程。
 
     :param tid: 要挂起的线程的 TID
+    :return: 线程之前的挂起计数 (>=0)。
     :raises ``SuspendException``: 挂起线程失败
     """
-    thread_handle = None
     try:
-        thread_handle = win32api.OpenThread(THREAD_SUSPEND_RESUME, False, tid)
-        if not thread_handle:
-            raise ValueError(f"打开线程 {tid} 失败")
-        result = win32process.SuspendThread(thread_handle)
-        return result >= 0
-    except ValueError as e:
-        raise SuspendException(f"无法挂起：打开线程 {tid} 失败")
-    except Exception as e:
+        with open_thread_handle(tid) as thread_handle:
+            result = win32process.SuspendThread(thread_handle)
+            if result < 0:
+                raise SuspendException(f"调用 SuspendThread API 失败，线程TID: {tid}")
+            return result
+    except (IOError, Exception) as e:
         raise SuspendException(f"挂起线程 {tid} 时发生异常: {e}") from e
-    finally:
-        if thread_handle is not None:
-            win32api.CloseHandle(thread_handle)
 
 
-def resume_thread(tid: int):
+def resume_thread(tid: int) -> int:
     """
     从挂起中恢复一个线程。如果线程未挂起则没有副作用。
 
-    :param tid: 要挂起的线程的 TID
-    :raises ``ResumeException``: 恢复线程失败
+    :param tid: 要恢复的线程的 TID
+    :return: 线程之前的挂起计数 (>=0)。
+    :raises ResumeException: 恢复线程失败
     """
-    thread_handle = None
     try:
-        thread_handle = win32api.OpenThread(THREAD_SUSPEND_RESUME, False, tid)
-        if not thread_handle:
-            raise ValueError(f"打开线程 {tid} 失败")
-        result = win32process.ResumeThread(thread_handle)
-        return result >= 0
-    except ValueError as e:
-        raise ValueError(f"无法从挂起恢复: 打开线程 {tid} 失败")
-    except Exception as e:
-        raise SuspendException(f"恢复线程 {tid} 时发生异常: {e}") from e
-    finally:
-        if thread_handle is not None:
-            win32api.CloseHandle(thread_handle)
+        with open_thread_handle(tid) as thread_handle:
+            result = win32process.ResumeThread(thread_handle)
+            if result < 0:
+                raise ResumeException(f"调用 ResumeThread API 失败，线程TID: {tid}")
+            return result
+    except (IOError, Exception) as e:
+        raise ResumeException(f"恢复线程 {tid} 时发生异常: {e}") from e
 
 
-def suspend_main_thread_for_duration(hwnd: int, duration_seconds: float):
+def suspend_window_thread_for_duration(hwnd: int, duration_seconds: float):
     """
-    将一个窗口的主线程挂起指定的时长，然后恢复它。
+    将一个窗口的线程挂起指定的时长，然后恢复它。
 
     :param hwnd: 要挂起的窗口的句柄
     :param duration_seconds: 要挂起的时间(秒)
-    :raises ``ValueError``: 提供的 hwnd 无效，或未找到其主线程
+    :raises ``ValueError``: 提供的 hwnd 无效，或未找到其窗口线程
     :raises ``SuspendException``: 挂起进程时失败
-    :raises ``ResumeException``: 恢复进程时失败
+    :raises ``ResumeException``: 恢复进程时失败 (严重错误，可能导致线程永久挂起)
     """
-    thread_id = get_main_thread_id(hwnd)
+    thread_id = get_window_thread_id(hwnd)
     if thread_id is None or thread_id == 0:
         raise ValueError(f"无法挂起：未找到窗口 {hwnd} 的主线程")
 
     try:
         logger.info(f"正在挂起线程 {thread_id}，持续 {duration_seconds} 秒。")
         suspend_thread(thread_id)
-        time.sleep(duration_seconds)
     except:
+        logger.error(f"挂起线程 {thread_id} 失败，操作中止。")
         raise
+
+    try:
+        time.sleep(duration_seconds)
     finally:
-        resume_thread(thread_id)
+        logger.info(f"正在恢复线程 {thread_id}...")
+        try:
+            resume_thread(thread_id)
+            logger.info(f"线程 {thread_id} 已恢复。")
+        except ResumeException as e:
+            # 记录严重错误并重新抛出，让上层调用者知道发生了重大问题
+            logger.critical(f"恢复线程 {thread_id} 失败！该线程可能被永久挂起，导致关联的窗口无响应。")
+            raise e
+
+
+def ensure_window_thread_resumed(hwnd: int):
+    """
+    确保一个窗口的线程恢复运行。
+
+    此函数会持续调用 resume_thread，直到线程的挂起计数为0。
+
+    :param hwnd: 目标窗口的句柄
+    :raises ValueError: 提供的 hwnd 无效，或未找到其关联的线程
+    :raises ResumeException: 在最大尝试次数后线程仍未恢复，或者在尝试恢复过程中发生不可恢复的错误。
+    """
+    thread_id = get_window_thread_id(hwnd)
+    if thread_id is None:
+        raise ValueError(f"无法操作：未找到窗口 {hwnd} 的线程ID")
+
+    MAX_RESUME_ATTEMPTS = 5
+    logger.info(f"正在尝试恢复线程 {thread_id} (窗口 {hwnd}) 运行...")
+
+    for _ in range( MAX_RESUME_ATTEMPTS):
+        try:
+            previous_suspend_count = resume_thread(thread_id)
+
+            if previous_suspend_count == 0:
+                # 如果之前的挂起计数0，那么现在肯定是0。
+                logger.info(
+                    f"线程 {thread_id} 已确认恢复运行。"
+                )
+                return
+
+        except ResumeException as e:
+            # 如果 resume_thread 内部失败 (例如 OpenThread 失败)，
+            # 那么继续尝试没有意义。
+            logger.error(f"在尝试恢复线程 {thread_id} 时发生错误，操作中止。")
+            raise ResumeException(f"无法恢复线程 {thread_id}，底层API调用失败。") from e
+
+    # 如果循环正常结束（即从未成功返回），则意味着达到了最大尝试次数
+    raise ResumeException(f"在 {MAX_RESUME_ATTEMPTS} 次尝试后未能恢复线程 {thread_id}")
 
 
 def suspend_process_for_duration(pid: int, duration_seconds: float):
