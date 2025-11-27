@@ -3,7 +3,9 @@ numpy
 Pillow
 psutil
 pynput
+pyperclip
 pywin32
 requests
 ruamel.yaml
+uiautomation
 vgamepad
