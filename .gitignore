@@ -9,6 +9,7 @@ config.yaml
 
 ### 日志 ###
 logs/
+@AutomationLog.txt
 
 ### DEBUG文件 ###
 debug_screenshot.png

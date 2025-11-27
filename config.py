@@ -29,6 +29,8 @@ class Config:
         },
         "steamGroupId": {"value": "37660928", "comment": "要发送消息的Steam群组ID，程序启动时可以读取到"},
         "steamChannelName": {"value": "BOT候车室", "comment": "要发送消息的Steam群组频道名称"},
+        "useAlterMessagingMethod": {"value": False, "comment": "是否改用备用方法发送Steam群组消息，该方法通过与Steam客户端GUI交互以发送消息"},
+        "AlterMessagingMethodWindowTitle": {"value": "蠢人帮", "comment": "用备用方法发送群组消息时，群聊窗口标题关键字，支持正则"},
         "enableHealthCheck": {
             "value": True,
             "comment": "启用健康检查，每间隔一段时间检查Bot上次向Steam发送信息的时间",
@@ -123,6 +125,8 @@ class Config:
         steamBotProxy: str
         steamGroupId: str
         steamChannelName: str
+        useAlterMessagingMethod: bool
+        AlterMessagingMethodWindowTitle: str
         enableHealthCheck: bool
         healthCheckInterval: int
         healthCheckSteamChatTimeoutThreshold: int

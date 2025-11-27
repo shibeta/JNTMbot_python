@@ -7,6 +7,7 @@ from config import Config
 from logger import get_logger
 from push_utils import wechat_push
 from steambot_utils import SteamBot
+from steamgui_automation import SteamAutomation
 
 logger = get_logger(__name__)
 
@@ -18,7 +19,7 @@ class HealthMonitor(threading.Thread):
     """
 
     def __init__(
-        self, steam_bot: SteamBot, pause_event: threading.Event, exit_func: Callable, config: Config
+        self, steam_bot: SteamBot | SteamAutomation, pause_event: threading.Event, exit_func: Callable, config: Config
     ):
         # 将线程设置为守护线程，并为其命名以方便调试
         super().__init__(daemon=True, name="HealthMonitorThread")

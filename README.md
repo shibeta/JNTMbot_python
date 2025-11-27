@@ -46,10 +46,10 @@
 ## 🔧 环境要求
 
 -   **运行发行版**:
-    -   Windows 10 Build 18362 (即19H1) 或更高版本
+    -   Windows 10 Build 18362 (即 19H1) 或更高版本
     -   GTA5 增强版 (不支持传承版)
 -   **从源码运行**:
-    -   Windows 10 Build 18362 (即19H1) 或更高版本
+    -   Windows 10 Build 18362 (即 19H1) 或更高版本
     -   GTA5 增强版 (不支持传承版)
     -   Python >= 3.11
     -   Node.js >= v22.0
@@ -214,17 +214,21 @@
 
 -   `steamBotProxy`
 
-    > 访问 Steam 的代理。默认为 `"system"`，表示使用系统代理。如果您的网络环境特殊，可以配置为使用 HTTP 代理或 SOCKS 代理。
+    > `steam_bot` 后端服务访问 Steam 的代理。默认为 `"system"`，表示使用系统代理。也可以配置为使用 HTTP 代理或 SOCKS 代理。
 
--   `steamGroupId`
+-   `steamGroupId` 和 `steamChannelName`
 
-    > Bot 状态信息将发送到此 ID 的 Steam 群组。
+    > 通过 `steam_bot` 发送消息时，将发送到该 ID 的 Steam 群组中的该频道。
     >
     > > **如何获取群组 ID？** 将此项改为空字符串 (`steamGroupId: ''`)，然后启动程序并登录 Steam。程序会在控制台中打印出您所在的所有群组及其 ID。复制所需 ID 并填回此处即可。
 
--   `steamChannelName`
+-   `useAlterMessagingMethod` 和 `AlterMessagingMethodWindowTitle`
 
-    > Bot 状态信息将发送到群组中的该频道。
+    > 是否使用备用的 Steam 消息发送方式。启用后，将禁用 `steam_bot` 服务，改为通过 Steam GUI 发送消息。
+    >
+    > > -   将 `useAlterMessagingMethod` 设置为 `true` 以启用。
+    > > -   启用后，必须**手动打开对应的 Steam 群组的聊天窗口，并切换至对应的频道**。
+    > > -   启用后，必须在 `AlterMessagingMethodWindowTitle` 填入对应聊天窗口的窗口标题。不需要完整的标题，只要能唯一搜索到该窗口即可。
 
 -   `enableWechatPush` 和 `pushplusToken`
     > 是否启用微信推送警报。启用后，当程序运行一段时间后发生报错退出，或健康状态发生变化时，会向微信推送错误信息。
@@ -270,6 +274,7 @@
 -   `logger.py`: 简单的日志格式化工具。
 -   `gta_automator`: 封装了所有对 GTA5 的自动化操作。
 -   `steambot_utils.py`: 用于管理 `steam_bot` 后端并调用其 API 发送消息。
+-   `steamgui_automation.py`: 使用 UIAutomation 通过窗口发送 Steam 群组消息。
 -   `steam_bot`: 基于 `node-steam-user` 的 Node.js 后端，将 Steam 功能封装为 HTTP API。
 
 ## 🤝 贡献指南

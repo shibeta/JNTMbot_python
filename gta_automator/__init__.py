@@ -6,6 +6,7 @@ from gamepad_utils import GamepadSimulator
 from logger import get_logger
 from ocr_utils import OCREngine
 from steambot_utils import SteamBot
+from steamgui_automation import SteamAutomation
 
 from .exception import *
 from .game_process import GameProcess
@@ -26,20 +27,21 @@ class GTAAutomator:
     def __init__(
         self,
         config: Config,
-        ocr_engine: Optional[OCREngine] = None,
-        steam_bot: Optional[SteamBot] = None,
+        ocr_engine: OCREngine,
+        steam_bot: SteamBot | SteamAutomation,
         gamepad: Optional[GamepadSimulator] = None,
     ):
         # 初始化底层模块
         process = GameProcess()
-        screen = GameScreen(ocr_engine if ocr_engine else OCREngine(config.ocrArgs), process)
+        screen = GameScreen(ocr_engine, process)
         player_input = GameAction(gamepad if gamepad else GamepadSimulator(), config)
+
 
         # 初始化工作流，注入依赖
         self.lifecycle_workflow = LifecycleWorkflow(screen, player_input, process, config)
         self.online_workflow = OnlineWorkflow(screen, player_input, process, config)
         self.job_workflow = JobWorkflow(
-            screen, player_input, process, config, steam_bot if steam_bot else SteamBot(config)
+            screen, player_input, process, config, steam_bot
         )
 
     def setup(self):

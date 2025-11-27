@@ -16,6 +16,7 @@ except ImportError:
 DEFAULT_LOGGING_CONFIG = {
     "version": 1,
     "disable_existing_loggers": False,  # 保持为 False 以避免清除掉其他软件包添加的 logger
+    "filters": {"silence_uiautomation_less_than_info": {"()": "logger.UIautomationFilter"}},
     "formatters": {
         "default": {
             "format": "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
@@ -43,6 +44,7 @@ DEFAULT_LOGGING_CONFIG = {
             "class": "logging.StreamHandler",
             "formatter": "color" if colorlog else "default",
             "level": "DEBUG",
+            "filters": ["silence_uiautomation_less_than_info"],
         },
         "file": {
             "class": "logging.handlers.RotatingFileHandler",
@@ -52,6 +54,7 @@ DEFAULT_LOGGING_CONFIG = {
             "backupCount": 5,
             "encoding": "utf8",
             "level": "DEBUG",
+            "filters": ["silence_uiautomation_less_than_info"],
         },
     },
     "root": {
@@ -60,6 +63,14 @@ DEFAULT_LOGGING_CONFIG = {
     },
 }
 
+class UIautomationFilter(logging.Filter):
+    """
+    过滤 uiautomation 的低于 INFO 等级的日志
+    """
+    def filter(self, record: logging.LogRecord) -> bool | logging.LogRecord:
+        if "comtypes" in record.name:
+            return record.levelno >= logging.INFO
+        return True
 
 def setup_logging(log_level: Optional[str] = None):
     """

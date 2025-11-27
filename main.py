@@ -11,6 +11,7 @@ from config import Config
 
 from ocr_utils import OCREngine
 from steambot_utils import SteamBot
+from steamgui_automation import SteamAutomation
 from push_utils import wechat_push
 from gta_automator import GTAAutomator
 from health_check import HealthMonitor
@@ -80,34 +81,37 @@ def main():
         return
 
     # 初始化 Steam Bot
-    steam_bot = None
-    try:
-        logger.info("正在初始化 Steam Bot ...")
-        steam_bot = SteamBot(config)
-    except Exception as e:
-        logger.error(f"初始化 Steam Bot 失败: {e}")
-        return
+    if not config.useAlterMessagingMethod:
+        try:
+            logger.info("正在初始化 Steam Bot ...")
+            steam_bot = SteamBot(config)
+        except Exception as e:
+            logger.error(f"初始化 Steam Bot 失败: {e}")
+            return
 
-    # 验证 Steam Bot 能否访问配置中的群组ID
-    try:
-        bot_userinfo = steam_bot.get_userinfo()
-    except Exception as e:
-        logger.error(f"获取 Steam 群组信息失败: {e}", exc_info=e)
-        return
+        # 验证 Steam Bot 能否访问配置中的群组ID
+        try:
+            bot_userinfo = steam_bot.get_userinfo()
+        except Exception as e:
+            logger.error(f"获取 Steam 群组信息失败: {e}", exc_info=e)
+            return
 
-    logger.info(f"登录的 Steam 用户名: {bot_userinfo['name']}")
-    for group in bot_userinfo["groups"]:
-        if config.steamGroupId == group["id"]:
-            logger.info(f"Bot发车信息将发送到 {group['name']} ({group['id']}) 群组。")
-            break
-    else:
-        logger.error(f"配置中的 Steam 群组 ID ({config.steamGroupId})无效，或者 Bot 不在该群组中。")
-        logger.error("================Bot 所在的群组列表=================")
+        logger.info(f"登录的 Steam 用户名: {bot_userinfo['name']}")
         for group in bot_userinfo["groups"]:
-            logger.error(f"  - {group['name']} (ID: {group['id']})")
-        logger.error("=================================================")
-        logger.error(f"请将正确的群组ID填入 {config_file_path} 。")
-        return
+            if config.steamGroupId == group["id"]:
+                logger.info(f"Bot发车信息将发送到 {group['name']} ({group['id']}) 群组。")
+                break
+        else:
+            logger.error(f"配置中的 Steam 群组 ID ({config.steamGroupId})无效，或者 Bot 不在该群组中。")
+            logger.error("================Bot 所在的群组列表=================")
+            for group in bot_userinfo["groups"]:
+                logger.error(f"  - {group['name']} (ID: {group['id']})")
+            logger.error("=================================================")
+            logger.error(f"请将正确的群组ID填入 {config_file_path} 。")
+            return
+    else:
+        logger.info("正在初始化 Steam Automation ...")
+        steam_bot = SteamAutomation(config.AlterMessagingMethodWindowTitle)
 
     # 初始化热键
     hotkey = HotKeyManager()
