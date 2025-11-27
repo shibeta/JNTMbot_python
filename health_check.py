@@ -8,7 +8,7 @@ from logger import get_logger
 from push_utils import wechat_push
 from steambot_utils import SteamBot
 
-logger = get_logger(name="health_check")
+logger = get_logger(__name__)
 
 
 class HealthMonitor(threading.Thread):
