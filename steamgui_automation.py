@@ -1,3 +1,4 @@
+import comtypes
 import uiautomation as auto
 import time
 
