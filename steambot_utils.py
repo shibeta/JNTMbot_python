@@ -288,6 +288,9 @@ class SteamBot:
         self.last_send_monotonic_time = time.monotonic()  # 上次向 Steam 发送消息的相对时间
         self.last_send_system_time = time.time()  # 上次向 Steam 发送消息的系统时间，仅作参考
 
+        # 程序退出时自动关闭所有组件
+        atexit.register(self.shutdown)
+
         # ProcessManager 管理 Steam Bot 进程启停
         command = self._build_command()
         self.process_manager = ProcessManager(command)
@@ -300,9 +303,6 @@ class SteamBot:
         # Supervisor 监控并自动重启 Steam Bot
         self.supervisor = Supervisor(self.process_manager, self.api_client)
         self.supervisor.start()
-
-        # 程序退出时自动关闭所有组件
-        atexit.register(self.shutdown)
 
         # 等待 Steam Bot 启动
         if not self.supervisor.initial_health_event.wait(timeout=30):
@@ -415,14 +415,17 @@ class SteamBot:
         """关闭所有组件。"""
         logger.info("正在关闭 Steam Bot...")
         # 停止 Supervisor，避免再次重启进程
-        self.supervisor.stop()
+        if hasattr(self, "supervisor") and self.supervisor is not None:
+            self.supervisor.stop()
 
         # 通过API请求登出
         try:
-            self.api_client.logout()
+            if hasattr(self, "api_client") and self.api_client is not None:
+                self.api_client.logout()
         except Exception:
             pass  # 失败也无所谓
 
         # 停止子进程
-        self.process_manager.stop()
+        if hasattr(self, "process_manager") and self.process_manager is not None:
+            self.process_manager.stop()
         logger.info("Steam Bot 已成功关闭。")
