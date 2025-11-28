@@ -65,6 +65,7 @@ class SteamAutomation:
                 raise Exception("未找到文本输入框")
 
             # 由于文本输入框不是 EditControl，只能手动输入内容
+            input_field.SetFocus()
             input_field.SendKeys(message)
             time.sleep(0.1)
 
