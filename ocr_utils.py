@@ -2,7 +2,7 @@ import os
 import sys
 import threading
 import time
-from PIL import Image
+import matplotlib.image as mpimg
 import io
 import win32gui
 import win32ui
@@ -191,9 +191,15 @@ class WindowCapturer:
         :return: 字节对象存储的 PNG 图片
         :rtype: bytes
         """
-        pil_image = Image.fromarray(image_np)
+        # pil_image = Image.fromarray(image_np)
+        # byte_stream = io.BytesIO()
+        # pil_image.save(byte_stream, format="PNG")
+
         byte_stream = io.BytesIO()
-        pil_image.save(byte_stream, format="PNG")
+        mpimg.imsave(byte_stream, image_np, format="png")
+
+        # debug: 保存截图以便排查问题
+        # mpimg.imsave("./debug_screenshot.png", image_np, format="png")
 
         return byte_stream.getvalue()
 

@@ -1,6 +1,6 @@
 colorlog
 numpy
-Pillow
+matplotlib
 psutil
 pynput
 pyperclip
