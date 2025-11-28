@@ -102,12 +102,6 @@ jobs:
 
         shell: pwsh
 
-      # # Nuitka 打包需要 MSVC 环境
-      # - name: Setup MSVC Developer Command Prompt
-      #   uses: TheMrMilchmann/setup-msvc-dev@v4
-      #   with:
-      #     arch: x64
-
       - name: Package with Nuitka
         run: |
           nuitka --mingw64 --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter --follow-imports `
@@ -116,7 +110,6 @@ jobs:
           --include-data-file="${{ env.VIGEM_DLL64_PATH }}=vgamepad\win\vigem\client\x64\ViGEmClient.dll" `
           --include-data-file="${{ env.VIGEM_DLL86_PATH }}=vgamepad\win\vigem\client\x86\ViGEmClient.dll" `
           --include-package=comtypes `
-          --include-package=comtypes.gen `
           --windows-icon-from-ico=./assets/johnny_guns.ico `
           --product-name=德瑞Bot --product-version=0.1 --file-description=德瑞Bot自动开车脚本 main.py
 
