@@ -65,11 +65,11 @@ DEFAULT_LOGGING_CONFIG = {
 
 class UIautomationFilter(logging.Filter):
     """
-    过滤 uiautomation 的低于 INFO 等级的日志
+    过滤 comtypes 的低于 WARNING 等级的日志。
     """
     def filter(self, record: logging.LogRecord) -> bool | logging.LogRecord:
         if "comtypes" in record.name:
-            return record.levelno >= logging.INFO
+            return record.levelno >= logging.WARNING
         return True
 
 def setup_logging(log_level: Optional[str] = None):
