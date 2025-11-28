@@ -1,5 +1,4 @@
 import uiautomation as auto
-import pyperclip
 import time
 
 from logger import get_logger
@@ -48,6 +47,7 @@ class SteamAutomation:
         try:
             # 记录发送消息前激活的控件，发送消息后切换回该控件
             original_focused_control = auto.GetFocusedControl()
+            # 记录剪贴板
         except:
             original_focused_control = None
         try:
@@ -65,10 +65,7 @@ class SteamAutomation:
                 raise Exception("未找到文本输入框")
 
             # 由于文本输入框不是 EditControl，只能手动输入内容
-            # 复制粘贴对非 ASCII 字符兼容性更好
-            pyperclip.copy(message)
-            input_field.SetFocus()
-            input_field.SendKeys("{Ctrl}v")
+            input_field.SendKeys(message)
             time.sleep(0.1)
 
             # 按下回车以发送消息
