@@ -104,7 +104,7 @@ jobs:
 
       - name: Package with Nuitka
         run: |
-          nuitka --mingw64 --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter --follow-imports `
+          nuitka --mingw64 --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter `
           --output-dir=dist `
           --include-data-dir="${{ env.VGAMEPAD_VIGEM_PATH }}=vgamepad\win\vigem" `
           --include-data-file="${{ env.VIGEM_DLL64_PATH }}=vgamepad\win\vigem\client\x64\ViGEmClient.dll" `
