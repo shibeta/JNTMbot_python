@@ -141,7 +141,7 @@ class GameAction:
 
     def go_job_point_from_bed_by_bot_owner(self):
         """Bot拥有者接管游戏，手动从事务所的床移动到任务点附近。"""
-        logger.info("动作：请 Bot Owner 接管游戏，手动移动到差事点附近 ... (60s)")
+        logger.info("动作：请Bot拥有者接管游戏，在60秒内手动移动到差事点附近 ...")
         time.sleep(60)  # 等待移动结束
         return
 
