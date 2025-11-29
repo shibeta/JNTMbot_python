@@ -186,27 +186,30 @@ jobs:
 
           New-Item -ItemType Directory -Force -Path $publishDir
           New-Item -ItemType Directory -Force -Path $releaseSubDir
-          
+
           # 从下载的 artifacts 中复制构建好的文件
           Copy-Item -Path "./build_output/python-artifact/*" -Destination $releaseSubDir -Recurse -Force
           Copy-Item -Path "./build_output/node-artifact/steam_bot.exe" -Destination $releaseSubDir -Force
-          
-          # 重命名主程序
-          Rename-Item -Path "$releaseSubDir/main.exe" -NewName "德瑞Bot.exe" -Force
 
-          # 复制仓库根目录下的配置文件
+          # 复制配置文件
           Copy-Item -Path "./config.yaml.example" -Destination "$releaseSubDir/config.yaml" -Force
 
-          # 复制仓库根目录下的 install_vigembus.bat
+          # 复制 VigemBus 驱动安装脚本
           Copy-Item -Path "./install_vigembus.bat" -Destination "$releaseSubDir/install_vigembus.bat" -Force
 
           # 复制 RapidOCR 的可执行文件和模型文件
           Copy-Item -Path "./RapidOCR-json.exe" -Destination "$releaseSubDir/RapidOCR-json.exe" -Force
           Copy-Item -Path "./models" -Destination "$releaseSubDir/models" -Recurse -Force
-          
+
+          # 复制 README 文件
+          Copy-Item -Path "./README.md" -Destination "$releaseSubDir/帮助文档.md" -Force
+
+          # 重命名主程序
+          Rename-Item -Path "$releaseSubDir/main.exe" -NewName "德瑞Bot.exe" -Force
+
           # 打包为 zip
           Compress-Archive -Path "$releaseSubDir/*" -DestinationPath $zipPath -Force
-          
+
           echo "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
         shell: pwsh
 
