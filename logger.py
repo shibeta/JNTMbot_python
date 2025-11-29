@@ -88,7 +88,6 @@ def setup_logging(log_level: Optional[str] = None):
         # 如果目录非空且不存在，则创建它
         if log_dir and not os.path.exists(log_dir):
             os.makedirs(log_dir)
-            logging.getLogger(__name__).error(f"日志目录 {log_dir} 已创建。")
 
     # 根据每个参数修改日志设置
     if log_level:
