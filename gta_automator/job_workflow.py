@@ -1,3 +1,4 @@
+import argparse
 import time
 import requests
 
@@ -13,6 +14,15 @@ from .exception import *
 from .game_action import GameAction
 
 logger = get_logger(__name__.split(".")[-1])
+
+class JobWorkflowArgParser(argparse.ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.add_argument(
+            "-mp", "--manual-move-to-point", action="store_true", help="Bot拥有者手动移动到任务点"
+        )
+        self.args, _ = self.parse_known_args()
+
 
 
 class LobbyStateTracker:
@@ -90,6 +100,7 @@ class JobWorkflow(_BaseWorkflow):
     ):
         super(JobWorkflow, self).__init__(screen, input, process, config)
         self.steam_bot = steam_bot
+        self.args = JobWorkflowArgParser().args
 
     def wait_for_respawn(self):
         """
@@ -149,7 +160,11 @@ class JobWorkflow(_BaseWorkflow):
         :raises ``UIElementNotFound(UIElement.JOB_TRIGGER_POINT)``: 未找到任务触发点
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        self.action.go_job_point_from_bed()
+        # TODO: 目前的摇杆“背板”操作经常会卡住，后续将实现根据画面自动寻路的算法
+        if self.args.manual_move_to_point:
+            self.action.go_job_point_from_bed_by_bot_owner()
+        else:
+            self.action.go_job_point_from_bed()
         time.sleep(0.5)  # 等待移动结束
         self._find_job_point()
 
