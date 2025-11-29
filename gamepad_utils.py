@@ -303,7 +303,7 @@ class GamepadSimulator:
         """程序退出时调用的清理函数。"""
         if self.pad:
             try:
-                logger.info("程序退出，正在重置虚拟手柄状态...")
+                logger.info("正在重置虚拟手柄状态...")
                 self.pad.reset()
                 self.pad.update()
                 logger.info("虚拟手柄状态已重置。")
