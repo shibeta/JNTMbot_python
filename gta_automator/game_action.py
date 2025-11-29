@@ -139,6 +139,12 @@ class GameAction:
         time.sleep(1)  # 多等一会
         self.confirm()  # 确认进入战局
 
+    def go_job_point_from_bed_by_bot_owner(self):
+        """Bot拥有者接管游戏，手动从事务所的床移动到任务点附近。"""
+        logger.info("动作：请 Bot Owner 接管游戏，手动移动到差事点附近 ... (60s)")
+        time.sleep(60)  # 等待移动结束
+        return
+
     def go_job_point_from_bed(self):
         """从事务所的床出发，下到一楼，移动到任务点附近。"""
         logger.info("动作：正在从事务所个人空间走到楼梯间...")

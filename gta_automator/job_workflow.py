@@ -149,7 +149,9 @@ class JobWorkflow(_BaseWorkflow):
         :raises ``UIElementNotFound(UIElement.JOB_TRIGGER_POINT)``: 未找到任务触发点
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        self.action.go_job_point_from_bed()
+        # self.action.go_job_point_from_bed()
+        # TODO: 目前的摇杆“背板”操作经常会卡主，后续将实现根据画面自动寻路的算法
+        self.action.go_job_point_from_bed_by_bot_owner()
         time.sleep(0.5)  # 等待移动结束
         self._find_job_point()
 
