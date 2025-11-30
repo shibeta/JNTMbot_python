@@ -60,16 +60,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Nuitka 打包依赖于 MinGW
-      - name: Setup MinGW GCC
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          update: true
-          pacboy: >-
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-make
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -112,10 +102,10 @@ jobs:
 
         shell: pwsh
 
-      # Nuitka 打包失败时，Job并没有以错误状态退出。添加显式检查以终止Job
+      # Nuitka 打包失败时，Job不会以错误状态退出。添加显式检查以终止Job
       - name: Package with Nuitka
         run: |
-          nuitka --mingw64 --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter `
+          python -m nuitka --mingw64 --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter `
           --output-dir=dist `
           --include-data-dir="${{ env.VGAMEPAD_VIGEM_PATH }}=vgamepad\win\vigem" `
           --include-data-file="${{ env.VIGEM_DLL64_PATH }}=vgamepad\win\vigem\client\x64\ViGEmClient.dll" `
