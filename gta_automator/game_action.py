@@ -149,23 +149,26 @@ class GameAction:
         """从事务所的床出发，下到一楼，移动到任务点附近。"""
         # TODO: 该方法鲁棒性有待提升
         logger.info("动作：正在从事务所个人空间走到楼梯间...")
-        # 走到柱子上卡住
-        self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFTUP, 1500)
+        # 走到床头柱子前卡住
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFTUP, self.config.walkToPillarTime)
         # 走到个人空间门口
-        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHT, 5500)
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHT, self.config.walkToBedroomEntranceTime)
         # 走出个人空间的门
-        self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTDOWN, 1500)
-        self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTUP, 1000)
+        self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTDOWN, self.config.exitBedroomDoorBackTime)
+        self.gamepad.hold_left_joystick(JoystickDirection.HALF_RIGHTUP, self.config.exitBedroomDoorForwardTime)
+        # 走到楼梯门口
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHT, self.config.walkToStairwellTime)
         # 走进楼梯门
-        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHT, 700)
-        self.gamepad.hold_left_joystick(JoystickDirection.FULL_UP, 2300)
-        # 走下楼梯
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_UP, self.config.enterStairwellTime)
         logger.info("动作：正在下楼...")
-        self.gamepad.hold_left_joystick(JoystickDirection.FULL_DOWN, 4000)
-        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHTUP, 1500)
-        self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFT, 4500)
+        # 走前半截楼梯
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_DOWN, self.config.goDownFirstStairFlightTime)
+        # 穿过楼梯中间的平台
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_RIGHTUP, self.config.crossStairLandingTime)
+        # 走后半截楼梯
+        self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFT, self.config.goDownSecondStairFlightTime)
         # 走出楼梯间
-        self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFTDOWN, 1000)
+        self.gamepad.hold_left_joystick(JoystickDirection.HALF_LEFTDOWN, self.config.exitStairwellTime)
         # 穿过走廊
         logger.info("动作：正在穿过差事层走廊...")
         self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFTDOWN, self.config.crossAisleTime)

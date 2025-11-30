@@ -42,10 +42,30 @@ delaySuspendTime: 5
 manualMoveToPoint: false
 # 全部玩家已加入时立即开始差事而不等待 (绕过 "startMatchDelay" 时间)
 startOnAllJoined: true
-# 差事层进行"穿过走廊"动作持续时间 (毫秒)
+# 生活层进行"走到床头柱子前卡住"动作的持续时间 (毫秒)
+walkToPillarTime: 1500
+# 生活层进行"走到个人空间门口"动作的持续时间 (毫秒)
+walkToBedroomEntranceTime: 5500
+# 生活层进行"走出个人空间的门"动作时，向右后方移动的持续时间 (毫秒)
+exitBedroomDoorBackTime: 1500
+# 生活层进行"走出个人空间的门"动作时，向右前方移动的持续时间 (毫秒)
+exitBedroomDoorForwardTime: 1000
+# 生活层进行"走到楼梯门口"动作的持续时间 (毫秒)
+walkToStairwellTime: 700
+# 生活层进行"走进楼梯门"动作的持续时间 (毫秒)
+enterStairwellTime: 2300
+# 楼梯间进行"走前半截楼梯"动作的持续时间 (毫秒)
+goDownFirstStairFlightTime: 4000
+# 楼梯间进行"穿过楼梯中间的平台"动作的持续时间 (毫秒)
+crossStairLandingTime: 1500
+# 楼梯间进行"走后半截楼梯"动作的持续时间 (毫秒)
+goDownSecondStairFlightTime: 4500
+# 差事层进行"走出楼梯间"动作的持续时间 (毫秒)
+exitStairwellTime: 1000
+# 差事层进行"穿过走廊"动作的持续时间 (毫秒)
 crossAisleTime: 4200
 # 差事层进行"寻找差事黄圈"动作时 每次移动的持续时间 (毫秒)
-walkTimeFindJob: 350
+moveTimeFindJob: 350
 # 差事面板玩家加入状态检测间隔时间 (秒)
 lobbyCheckLoopTime: 1
 # 面板无人加入时重开时间 (秒)

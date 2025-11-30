@@ -81,8 +81,45 @@ class Config:
             "value": True,
             "comment": '全部玩家已加入时立即开始差事而不等待 (绕过 "startMatchDelay" 时间)',
         },
-        "crossAisleTime": {"value": 4200, "comment": '差事层进行"穿过走廊"动作持续时间 (毫秒)'},
-        "walkTimeFindJob": {
+        "walkToPillarTime": {"value": 1500, "comment": '生活层进行"走到床头柱子前卡住"动作的持续时间 (毫秒)'},
+        "walkToBedroomEntranceTime": {
+            "value": 5500,
+            "comment": '生活层进行"走到个人空间门口"动作的持续时间 (毫秒)',
+        },
+        "exitBedroomDoorBackTime": {
+            "value": 1500,
+            "comment": '生活层进行"走出个人空间的门"动作时，向右后方移动的持续时间 (毫秒)',
+        },
+        "exitBedroomDoorForwardTime": {
+            "value": 1000,
+            "comment": '生活层进行"走出个人空间的门"动作时，向右前方移动的持续时间 (毫秒)',
+        },
+        "walkToStairwellTime": {
+            "value": 700,
+            "comment": '生活层进行"走到楼梯门口"动作的持续时间 (毫秒)',
+        },
+        "enterStairwellTime": {
+            "value": 2300,
+            "comment": '生活层进行"走进楼梯门"动作的持续时间 (毫秒)',
+        },
+        "goDownFirstStairFlightTime": {
+            "value": 4000,
+            "comment": '楼梯间进行"走前半截楼梯"动作的持续时间 (毫秒)',
+        },
+        "crossStairLandingTime": {
+            "value": 1500,
+            "comment": '楼梯间进行"穿过楼梯中间的平台"动作的持续时间 (毫秒)',
+        },
+        "goDownSecondStairFlightTime": {
+            "value": 4500,
+            "comment": '楼梯间进行"走后半截楼梯"动作的持续时间 (毫秒)',
+        },
+        "exitStairwellTime": {
+            "value": 1000,
+            "comment": '差事层进行"走出楼梯间"动作的持续时间 (毫秒)',
+        },
+        "crossAisleTime": {"value": 4200, "comment": '差事层进行"穿过走廊"动作的持续时间 (毫秒)'},
+        "moveTimeFindJob": {
             "value": 350,
             "comment": '差事层进行"寻找差事黄圈"动作时 每次移动的持续时间 (毫秒)',
         },
@@ -151,8 +188,18 @@ class Config:
         delaySuspendTime: int
         manualMoveToPoint: bool
         startOnAllJoined: bool
+        walkToPillarTime: int
+        walkToBedroomEntranceTime: int
+        exitBedroomDoorBackTime: int
+        exitBedroomDoorForwardTime: int
+        walkToStairwellTime: int
+        enterStairwellTime: int
+        goDownFirstStairFlightTime: int
+        crossStairLandingTime: int
+        goDownSecondStairFlightTime: int
+        exitStairwellTime: int
         crossAisleTime: int
-        walkTimeFindJob: int
+        moveTimeFindJob: int
         lobbyCheckLoopTime: int
         matchPanelTimeout: int
         playerJoiningTimeout: int

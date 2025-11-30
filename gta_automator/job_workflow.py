@@ -133,7 +133,7 @@ class JobWorkflow(_BaseWorkflow):
         for action, repetitions in search_pattern:
             for _ in range(repetitions):
                 # 每走一步都检查一次
-                action(self.config.walkTimeFindJob)
+                action(self.config.moveTimeFindJob)
                 time.sleep(0.3)  # 等待移动结束
                 if self.screen.is_job_marker_found():
                     logger.info("成功找到差事触发点。")
