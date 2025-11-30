@@ -147,6 +147,7 @@ class GameAction:
 
     def go_job_point_from_bed(self):
         """从事务所的床出发，下到一楼，移动到任务点附近。"""
+        # TODO: 该方法鲁棒性有待提升
         logger.info("动作：正在从事务所个人空间走到楼梯间...")
         # 走到柱子上卡住
         self.gamepad.hold_left_joystick(JoystickDirection.FULL_LEFTUP, 1500)

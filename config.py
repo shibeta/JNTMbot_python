@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 from typing import Any, Dict, TYPE_CHECKING
 from ruamel.yaml import YAML
 from ruamel.yaml.comments import CommentedMap
@@ -29,8 +30,14 @@ class Config:
         },
         "steamGroupId": {"value": "37660928", "comment": "要发送消息的Steam群组ID，程序启动时可以读取到"},
         "steamChannelName": {"value": "BOT候车室", "comment": "要发送消息的Steam群组频道名称"},
-        "useAlterMessagingMethod": {"value": False, "comment": "是否改用备用方法发送Steam群组消息，该方法通过与Steam客户端GUI交互以发送消息"},
-        "AlterMessagingMethodWindowTitle": {"value": "蠢人帮", "comment": "用备用方法发送群组消息时，群聊窗口标题关键字，支持正则"},
+        "useAlterMessagingMethod": {
+            "value": False,
+            "comment": "是否改用备用方法发送Steam群组消息，该方法通过与Steam客户端GUI交互以发送消息",
+        },
+        "AlterMessagingMethodWindowTitle": {
+            "value": "蠢人帮",
+            "comment": "用备用方法发送群组消息时，群聊窗口标题关键字，支持正则",
+        },
         "enableHealthCheck": {
             "value": True,
             "comment": "启用健康检查，每间隔一段时间检查Bot上次向Steam发送信息的时间",
@@ -66,20 +73,24 @@ class Config:
             "value": 5,
             "comment": "卡单延迟时间 (秒)",
         },
-        "lobbyCheckLoopTime": {"value": 1, "comment": "差事面板玩家加入状态检测间隔时间 (秒)"},
-        "matchPanelTimeout": {"value": 180, "comment": "面板无人加入时重开时间 (秒)"},
-        "playerJoiningTimeout": {"value": 120, "comment": "等待正在加入玩家超时重开时间 (秒)"},
-        "startMatchDelay": {"value": 15, "comment": "开始差事等待延迟 (秒)"},
+        "manualMoveToPoint": {
+            "value": False,
+            "comment": "禁用在事务所内起床后自动移动到任务触发点，改为要求用户手动将角色移动到任务触发点",
+        },
         "startOnAllJoined": {
             "value": True,
             "comment": '全部玩家已加入时立即开始差事而不等待 (绕过 "startMatchDelay" 时间)',
         },
-        "exitMatchTimeout": {"value": 120, "comment": "等待差事启动落地超时时间 (秒)(防止卡在启动战局中)"},
         "crossAisleTime": {"value": 4200, "comment": '差事层进行"穿过走廊"动作持续时间 (毫秒)'},
         "walkTimeFindJob": {
             "value": 350,
             "comment": '差事层进行"寻找差事黄圈"动作时 每次移动的持续时间 (毫秒)',
         },
+        "lobbyCheckLoopTime": {"value": 1, "comment": "差事面板玩家加入状态检测间隔时间 (秒)"},
+        "matchPanelTimeout": {"value": 180, "comment": "面板无人加入时重开时间 (秒)"},
+        "playerJoiningTimeout": {"value": 120, "comment": "等待正在加入玩家超时重开时间 (秒)"},
+        "startMatchDelay": {"value": 15, "comment": "开始差事等待延迟 (秒)"},
+        "exitMatchTimeout": {"value": 120, "comment": "等待差事启动落地超时时间 (秒)(防止卡在启动战局中)"},
         "ocrArgs": {
             "value": r'--models=".\models" --det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx --keys=dict_chinese.txt --padding=70 --maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 --mostAngle=0 --numThread=1',
             "comment": "RapidOCR的启动参数",
@@ -138,16 +149,15 @@ class Config:
         restartGTAConsecutiveFailThreshold: int
         suspendGTATime: int
         delaySuspendTime: int
+        manualMoveToPoint: bool
+        startOnAllJoined: bool
+        crossAisleTime: int
+        walkTimeFindJob: int
         lobbyCheckLoopTime: int
         matchPanelTimeout: int
         playerJoiningTimeout: int
         startMatchDelay: int
-        startOnAllJoined: bool
         exitMatchTimeout: int
-        crossAisleTime: int
-        walkLeftTimeGoJob: int
-        walkDownTimeGoJob: int
-        walkTimeFindJob: int
         ocrArgs: str
         msgOpenJobPanel: str
         msgMatchPanelTimeout: str
@@ -163,9 +173,14 @@ class Config:
 
         :param config_filename (str): 配置文件的路径，默认为'config.yaml'。
         """
-        self.config_filename = config_filename
+        self.config_filepath = Path(config_filename).absolute()
+        if self.config_filepath.is_dir():
+            logger.error(f"路径 '{self.config_filepath}' 是一个文件夹，不是一个文件。")
+            raise FileNotFoundError(f"配置文件路径 '{self.config_filepath}' 是一个文件夹，不是一个文件。")
+
         self.yaml = YAML()
         self.yaml.indent(mapping=2, sequence=4, offset=2)
+
         self._load_or_create()
 
     def _load_or_create(self):
@@ -176,14 +191,15 @@ class Config:
         # 加载配置文件，如果文件为空或者格式错误将返回空字典
         existing_config = {}
         try:
-            with open(self.config_filename, "r", encoding="utf-8") as f:
+            with open(self.config_filepath, "r", encoding="utf-8") as f:
                 existing_config = self.yaml.load(f)
                 if existing_config is None:
                     existing_config = {}
         except FileNotFoundError:
-            logger.info(f"未找到配置文件 '{self.config_filename}'，将创建一个新的。")
+            logger.info(f"未找到配置文件 '{self.config_filepath}'，将创建一个新的。")
         except Exception as e:
-            logger.error(f"加载配置文件时出错: {e}")
+            logger.error(f"加载配置文件时出错，将使用默认配置替换该配置文件: {e}")
+            # 清除已经读取的配置
             existing_config = {}
 
         # 用默认值填写空的配置项
@@ -211,10 +227,10 @@ class Config:
             config_to_save.yaml_set_comment_before_after_key(key, before=comment)
 
         try:
-            with open(self.config_filename, "w", encoding="utf-8") as f:
+            with open(self.config_filepath, "w", encoding="utf-8") as f:
                 self.yaml.dump(config_to_save, f)
         except IOError as e:
-            logger.error(f"无法写入配置文件 {self.config_filename}: {e}")
+            logger.error(f"无法写入配置文件 {self.config_filepath}: {e}")
 
 
 # --- 使用示例 ---
