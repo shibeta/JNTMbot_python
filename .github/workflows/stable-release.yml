@@ -96,7 +96,7 @@ jobs:
           --include-data-dir="${{ env.VGAMEPAD_VIGEM_PATH }}=vgamepad\win\vigem" `
           --include-data-file="${{ env.VIGEM_DLL64_PATH }}=vgamepad\win\vigem\client\x64\ViGEmClient.dll" `
           --include-data-file="${{ env.VIGEM_DLL86_PATH }}=vgamepad\win\vigem\client\x86\ViGEmClient.dll" `
-          --include-package=comtypes `
+          --include-module=comtypes `
           --windows-icon-from-ico=./assets/johnny_guns.ico `
           --product-name=德瑞Bot --product-version=${{ env.PRODUCT_VERSION }} --file-description=德瑞Bot自动开车脚本 main.py
 
