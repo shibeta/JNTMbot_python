@@ -60,15 +60,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Nuitka 打包依赖于 MinGW
+      - name: Setup MinGW GCC
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          pacboy: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-make
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Set up MinGW
-        uses: egor-tensin/setup-mingw@v2.2.0
-        with:
-          version: 12.2.0 
 
       # 静默安装 ViGEmBus 驱动，避免卡在 pip install vgamepad
       - name: Install ViGEmBus Driver from local MSI
@@ -107,6 +112,7 @@ jobs:
 
         shell: pwsh
 
+      # Nuitka 打包失败时，Job并没有以错误状态退出。添加显式检查以终止Job
       - name: Package with Nuitka
         run: |
           nuitka --mingw64 --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter `
@@ -117,6 +123,10 @@ jobs:
           --include-module=comtypes `
           --windows-icon-from-ico=./assets/johnny_guns.ico `
           --product-name=德瑞Bot --product-version=0.1 --file-description=德瑞Bot自动开车脚本 main.py
+          if (-not $?) {
+            Write-Error "Nuitka packaging failed!"
+            exit 1
+          }
 
         shell: pwsh
       
