@@ -65,6 +65,11 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Set up MinGW
+        uses: egor-tensin/setup-mingw@v2.2.0
+        with:
+          version: 12.2.0 
+
       # 静默安装 ViGEmBus 驱动，避免卡在 pip install vgamepad
       - name: Install ViGEmBus Driver from local MSI
         run: |
