@@ -128,12 +128,14 @@
     ```powershell
     python main.py
     ```
-    
+
     命令行参数：
 
-    - `-mp` 或 `--manual-move-to-point`：
-      - 启用后，Bot 拥有者可以手动将角色移动到任务触发点
-      - 默认不启用，而是用“背板”摇杆操作，有时候人物会卡住，无法正常移动到任务点
+    -   `-h` 或 `--help`:
+        -   显示命令行参数列表。
+    -   `--config-file CONFIG_FILE_PATH`:
+        -   指定配置文件的路径，如 `--config-file ./my_config.yaml`。
+        -   默认值: "config.yaml"。
 
 8.  **首次登录 Steam**
 

@@ -100,7 +100,7 @@ def setup_logging(log_level: Optional[str] = None):
 
     # 应用日志设置
     logging.config.dictConfig(logging_config)
-    logging.getLogger(__name__).info("日志模块加载完成。")
+    # logging.getLogger(__name__).info("日志模块加载完成。")
 
 
 def get_logger(name: str) -> logging.Logger:

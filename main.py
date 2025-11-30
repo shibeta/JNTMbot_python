@@ -1,3 +1,4 @@
+import argparse
 import time
 import threading
 import os
@@ -18,6 +19,30 @@ from health_check import HealthMonitor
 from gta_automator.exception import *
 
 logger = get_logger("main")
+
+
+class ArgumentParser:
+    """
+    管理和解析命令行参数的封装类。
+    """
+
+    def __init__(self):
+        self.parser = argparse.ArgumentParser()
+        self._add_arguments()
+
+    def _add_arguments(self):
+        self.parser.add_argument(
+            "--config-file",
+            dest="config_file_path",  # 解析后参数字典中的键名
+            default="config.yaml",  # 默认值
+            help='指定配置文件的路径。\n默认值: "config.yaml"',
+        )
+        # 示例：未来可以轻松添加更多参数
+        # self.parser.add_argument('--verbose', action='store_true', help='启用详细输出模式')
+
+    def parse(self) -> dict:
+        args = self.parser.parse_args()
+        return vars(args)
 
 
 # 用于处理退出的装饰器
@@ -54,13 +79,21 @@ def main():
     os.system(f"title 鸡你太美")
     global_start_time = time.monotonic()
 
+    # 初始化命令行参数
+    try:
+        arg_manager = ArgumentParser()
+        command_line_args = arg_manager.parse()
+    except argparse.ArgumentError as e:
+        logger.error(f"解析命令行参数时出错: {e}", exc_info=e)
+        return
+
     # 加载配置
     try:
         config_file_path = "config.yaml"
-        config = Config(config_file_path)
+        config = Config(command_line_args["config_file_path"])
         logger.info("配置加载成功。")
     except Exception as e:
-        logger.error(f"加载配置失败: {e}")
+        logger.error(f"加载配置失败: {e}", exc_info=e)
         return
 
     # 初始化日志
@@ -77,7 +110,7 @@ def main():
         ocrArgs = config.ocrArgs
         GOCREngine = OCREngine(ocrArgs)
     except Exception as e:
-        logger.error(f"初始化 OCR 引擎失败: {e}")
+        logger.error(f"初始化 OCR 引擎失败: {e}", exc_info=e)
         return
 
     # 初始化 Steam Bot
@@ -86,7 +119,7 @@ def main():
             logger.info("正在初始化 Steam Bot ...")
             steam_bot = SteamBot(config)
         except Exception as e:
-            logger.error(f"初始化 Steam Bot 失败: {e}")
+            logger.error(f"初始化 Steam Bot 失败: {e}", exc_info=e)
             return
 
         # 验证 Steam Bot 能否访问配置中的群组ID
@@ -171,7 +204,7 @@ def main():
             )
 
         else:
-            logger.warning("已启用微信推送，但没有提供 pushplus token。")
+            logger.error("已启用微信推送，但没有提供 pushplus token。")
             logger.info(f"请访问 https://www.pushplus.plus/ 获取 token，并填入 {config_file_path}")
             return
     else:
