@@ -306,6 +306,7 @@ class GamepadSimulator:
                 logger.info("正在重置虚拟手柄状态...")
                 self.pad.reset()
                 self.pad.update()
+                del self.pad
                 logger.info("虚拟手柄状态已重置。")
             except Exception as e:
                 logger.error(f"重置虚拟手柄时出错: {e}")
