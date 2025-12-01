@@ -60,11 +60,6 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
       # 静默安装 ViGEmBus 驱动，避免卡在 pip install vgamepad
       - name: Install ViGEmBus Driver from local MSI
         run: |
@@ -73,6 +68,17 @@ jobs:
           Write-Host "Waiting for ViGEmBus driver to settle..."
           Start-Sleep -Seconds 5
         shell: pwsh
+
+      # Nuitka 打包需要 MSVC 环境
+      - name: Set up MSVC
+        uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: x64
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: Install Python dependencies
         run: |
@@ -105,12 +111,11 @@ jobs:
       # Nuitka 打包失败时，Job不会以错误状态退出。显式检查以终止Job
       - name: Package with Nuitka
         run: |
-          python -m nuitka --mingw64 --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter `
+          python -m nuitka --msvc=latest --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter `
           --output-dir=dist `
           --include-data-dir="${{ env.VGAMEPAD_VIGEM_PATH }}=vgamepad\win\vigem" `
           --include-data-file="${{ env.VIGEM_DLL64_PATH }}=vgamepad\win\vigem\client\x64\ViGEmClient.dll" `
           --include-data-file="${{ env.VIGEM_DLL86_PATH }}=vgamepad\win\vigem\client\x86\ViGEmClient.dll" `
-          --include-module=comtypes `
           --windows-icon-from-ico=./assets/johnny_guns.ico `
           --product-name=德瑞Bot --product-version=0.1 --file-description=德瑞Bot自动开车脚本 main.py
           if (-not $?) {
