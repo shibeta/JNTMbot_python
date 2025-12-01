@@ -231,11 +231,12 @@ class OCREngine:
         """
         在对象销毁时，确保子进程被关闭。
         """
-        logger.info("正在关闭 OCR 引擎...")
         if hasattr(self, "api") and self.api:
-            with rapidocr_lock:
-                self.api.stop()
-        logger.info("成功关闭 OCR 引擎。")
+            try:
+                with rapidocr_lock:
+                    self.api.stop()
+            except Exception as e:
+                logger.error(f"关闭 OCR 引擎时出错: {e}")
 
     def _get_physical_rect(self, hwnd: int, include_title_bar: bool) -> tuple[int, int, int, int]:
         """
