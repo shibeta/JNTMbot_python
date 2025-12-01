@@ -287,9 +287,9 @@ class OCREngine:
 
         try:
             # 截图
-            logger.debug(
-                f"开始对窗口 {hwnd} 截图，{'不' if not include_title_bar else ''}包括标题栏，截图范围 {left}, {top}, {width}, {height} 。"
-            )
+            # logger.debug(
+            #     f"开始对窗口 {hwnd} 截图，{'不' if not include_title_bar else ''}包括标题栏，截图范围 {left}, {top}, {width}, {height} 。"
+            # )
             screenshot_np = self.screen_capturer.capture_window_area(
                 hwnd, left, top, width, height, include_title_bar
             )
@@ -297,10 +297,10 @@ class OCREngine:
             screenshot_png = self.screen_capturer.to_png(screenshot_np)
 
             # 调用 OcrAPI 的 runBytes 方法进行识别
-            logger.debug("将截图字节流发送到 C++ 引擎进行 OCR。")
+            # logger.debug("将截图字节流发送到 C++ 引擎进行 OCR。")
             with rapidocr_lock:
                 result = self.api.runBytes(screenshot_png)
-            logger.debug("从 C++ 引擎收到 OCR 结果。")
+            # logger.debug("从 C++ 引擎收到 OCR 结果。")
 
             # 解析返回的 JSON 结果
             if result and result.get("code") == 100:
