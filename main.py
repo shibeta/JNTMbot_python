@@ -63,7 +63,7 @@ def exit_main_process(main_pid):
     """
     向主进程发送 SIG_INT 信号。
     """
-    logger.info(f"准备向主进程 {main_pid} 发送退出信号...")
+    logger.debug(f"正在向主进程 {main_pid} 发送退出信号...")
     try:
         # 在Windows上，没有SIGINT，但os.kill可以发送CTRL_C_EVENT
         # signal.CTRL_C_EVENT 仅在Windows上定义
