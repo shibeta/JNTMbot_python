@@ -1,10 +1,10 @@
 import argparse
+import signal
 import time
 import threading
 import os
 import traceback
-from functools import wraps
-from atexit import _run_exitfuncs as trigger_atexit
+from functools import wraps, partial
 
 from keyboard_utils import HotKeyManager
 from logger import setup_logging, get_logger
@@ -55,22 +55,34 @@ def interrupt_decorator(func):
             logger.warning("程序被用户中断，正在退出。")
         except Exception as e:
             logger.error(f"未捕获的异常: {e}", exc_info=e)
-        finally:
-            trigger_atexit()
 
     return wrapper
 
 
-def unsafe_exit():
+# def unsafe_exit():
+#     """
+#     退出程序而不需要调用 return 或 sys.exit
+#     因为有人抱怨这不安全，所以改名为 unsafe_exit()
+#     """
+#     try:
+#         # os._exit() 不会触发 atexit，因此需要手动触发
+#         trigger_atexit()
+#     finally:
+#         os._exit(0)
+
+
+def exit_main_process(main_pid):
     """
-    退出程序而不需要调用 return 或 sys.exit
-    因为有人抱怨这不安全，所以改名为 unsafe_exit()
+    向主进程发送 SIG_INT 信号。
     """
+    logger.info(f"准备向主进程 {main_pid} 发送退出信号...")
     try:
-        # os._exit() 不会触发 atexit，因此需要手动触发
-        trigger_atexit()
-    finally:
-        os._exit(0)
+        # 在Windows上，没有SIGINT，但os.kill可以发送CTRL_C_EVENT
+        # signal.CTRL_C_EVENT 仅在Windows上定义
+        sig = getattr(signal, "CTRL_C_EVENT", signal.SIGINT)
+        os.kill(main_pid, sig)
+    except (ProcessLookupError, OSError) as e:
+        logger.error(f"发送信号失败，主进程可能已退出。错误: {e}")
 
 
 # --- 主程序执行 ---
@@ -176,7 +188,7 @@ def main():
     def toggle_exit():
         with exit_lock:
             logger.warning("退出热键被按下，退出程序...")
-            unsafe_exit()
+            exit_main_process(os.getpid())
 
     hotkey.add_hotkey("<ctrl>+<f10>", toggle_exit)
     logger.warning("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
@@ -187,7 +199,8 @@ def main():
     # 初始化健康检查
     if config.enableHealthCheck:
         logger.warning(f"已启用健康检查。正在初始化监控模块...")
-        monitor = HealthMonitor(steam_bot, pause_event, unsafe_exit, config)
+        health_check_exit_func = partial(exit_main_process, os.getpid())
+        monitor = HealthMonitor(steam_bot, pause_event, health_check_exit_func, config)
         monitor.start()
 
     else:
