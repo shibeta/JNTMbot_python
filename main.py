@@ -37,7 +37,7 @@ class ArgumentParser:
             default="config.yaml",  # 默认值
             help='指定配置文件的路径。\n默认值: "config.yaml"',
         )
-        # 示例：未来可以轻松添加更多参数
+        # 示例：添加更多参数
         # self.parser.add_argument('--verbose', action='store_true', help='启用详细输出模式')
 
     def parse(self) -> dict:
@@ -57,18 +57,6 @@ def interrupt_decorator(func):
             logger.error(f"未捕获的异常: {e}", exc_info=e)
 
     return wrapper
-
-
-# def unsafe_exit():
-#     """
-#     退出程序而不需要调用 return 或 sys.exit
-#     因为有人抱怨这不安全，所以改名为 unsafe_exit()
-#     """
-#     try:
-#         # os._exit() 不会触发 atexit，因此需要手动触发
-#         trigger_atexit()
-#     finally:
-#         os._exit(0)
 
 
 def exit_main_process(main_pid):
