@@ -1,4 +1,3 @@
-import atexit
 from typing import Optional
 
 from logger import get_logger
@@ -46,8 +45,11 @@ class GameProcess:
         self.hwnd = hwnd  # 窗口句柄
         self.pid = pid  # 进程ID
 
-        # 注册退出处理函数，以确保Python程序退出时 GTA V 进程不会被挂起
-        atexit.register(self.resume)
+    def __del__(self):
+        """
+        对象销毁时，确保 GTA V 进程不会被挂起。
+        """
+        self.resume()
 
     def update_info(self, hwnd: Optional[int] = None, pid: Optional[int] = None):
         """

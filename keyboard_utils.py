@@ -1,4 +1,3 @@
-import atexit
 import threading
 import time
 from typing import List, Set, Tuple, Union, Callable, Dict
@@ -29,9 +28,6 @@ class KeyboardSimulator:
 
         # 用于保护 _pressed_keys 集合的线程锁
         self._lock: threading.Lock = threading.Lock()
-
-        # 注册程序退出时的清理函数
-        atexit.register(self.release_all)
 
     def press(self, key: KeyType) -> None:
         """
@@ -161,9 +157,6 @@ class HotKeyManager:
         self._listener: GlobalHotKeys | None = None
         self._listener_thread: threading.Thread | None = None
         self._lock: threading.Lock = threading.Lock()
-
-        # 注册程序退出时的清理函数
-        atexit.register(self.stop)
 
     def _update_listener(self) -> None:
         """

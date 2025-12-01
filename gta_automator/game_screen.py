@@ -1,9 +1,7 @@
-import atexit
 import re
 from typing import List, Optional, Union
 
 from ocr_utils import OCREngine
-from windows_utils import unset_top_window
 from logger import get_logger
 
 from .exception import *
@@ -64,18 +62,6 @@ class GameScreen:
     def __init__(self, OCREngine: OCREngine, process: GameProcess):
         self.ocr = OCREngine
         self.process = process
-
-        # 注册退出处理函数，以确保Python程序退出时 GTA V 窗口不会处于置顶状态
-        atexit.register(self.unset_gta_window_topmost)
-
-    def unset_gta_window_topmost(self):
-        """将 GTA V 窗口取消置顶"""
-        if self.process.hwnd:
-            try:
-                unset_top_window(self.process.hwnd)
-            except Exception as e:
-                # 所有异常都不做处理
-                logger.error(f"取消 GTA V 窗口置顶时，发生异常: {e}")
 
     def ocr_game_window(self, left, top, width, height) -> str:
         """
