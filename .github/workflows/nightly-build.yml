@@ -102,7 +102,7 @@ jobs:
 
         shell: pwsh
 
-      # Nuitka 打包失败时，Job不会以错误状态退出。添加显式检查以终止Job
+      # Nuitka 打包失败时，Job不会以错误状态退出。显式检查以终止Job
       - name: Package with Nuitka
         run: |
           python -m nuitka --mingw64 --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter `
@@ -119,7 +119,7 @@ jobs:
           }
 
         shell: pwsh
-      
+
       - name: Upload Python artifact
         uses: actions/upload-artifact@v4
         with:

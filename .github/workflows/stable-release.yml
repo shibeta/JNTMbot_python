@@ -89,6 +89,7 @@ jobs:
 
         shell: pwsh
 
+      # Nuitka 打包失败时，Job不会以错误状态退出。显式检查以终止Job
       - name: Package with Nuitka
         run: |
           nuitka --mingw64 --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter `
@@ -99,6 +100,10 @@ jobs:
           --include-module=comtypes `
           --windows-icon-from-ico=./assets/johnny_guns.ico `
           --product-name=德瑞Bot --product-version=${{ env.PRODUCT_VERSION }} --file-description=德瑞Bot自动开车脚本 main.py
+          if (-not $?) {
+            Write-Error "Nuitka packaging failed!"
+            exit 1
+          }
 
         shell: pwsh
 
