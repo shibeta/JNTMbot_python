@@ -220,14 +220,17 @@ class Config:
 
         :param config_filename (str): 配置文件的路径，默认为'config.yaml'。
         """
+        # 配置文件路径
         self.config_filepath = Path(config_filename).absolute()
         if self.config_filepath.is_dir():
             logger.error(f"路径 '{self.config_filepath}' 是一个文件夹，不是一个文件。")
             raise FileNotFoundError(f"配置文件路径 '{self.config_filepath}' 是一个文件夹，不是一个文件。")
 
+        # YAML 解析器
         self.yaml = YAML()
         self.yaml.indent(mapping=2, sequence=4, offset=2)
 
+        # 将配置写入自身的属性
         self._load_or_create()
 
     def _load_or_create(self):
@@ -236,6 +239,7 @@ class Config:
         最终将加载完成的配置写回 YAML 文件。
         """
         # 加载配置文件，如果文件为空或者格式错误将返回空字典
+        logger.info(f"正在从 '{self.config_filepath}' 加载配置文件...")
         existing_config = {}
         try:
             with open(self.config_filepath, "r", encoding="utf-8") as f:
