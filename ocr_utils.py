@@ -2,6 +2,7 @@ import os
 import sys
 import threading
 import time
+import atexit
 from PIL import Image
 import io
 import win32gui
@@ -212,6 +213,10 @@ class OCREngine:
         初始化 OcrAPI，它会启动并管理一个 RapidOCR-json.exe 子进程。
         """
         logger.info("正在初始化 OCR 引擎...")
+
+        # 确保程序退出时 OCR 引擎被关闭
+        atexit.register(self.shutdown)
+
         # 检查 OCR 引擎可执行文件是否存在
         if not os.path.exists(OCR_EXECUTABLE_PATH):
             logger.error(f"OCR 引擎可执行文件不存在，请检查路径配置: {OCR_EXECUTABLE_PATH}")
@@ -229,7 +234,16 @@ class OCREngine:
 
     def __del__(self):
         """
-        在对象销毁时，确保子进程被关闭。
+        对象销毁时，确保 OCR 引擎被关闭。
+
+        注意: 除非先从 atexit 移除 self.shutdown, 否则对象永远不会被回收。
+        """
+        self.shutdown()
+        atexit.unregister(self.shutdown)
+
+    def shutdown(self):
+        """
+        关闭 RapidOCR-json.exe 子进程。
         """
         if hasattr(self, "api") and self.api:
             try:

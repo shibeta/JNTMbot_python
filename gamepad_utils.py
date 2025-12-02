@@ -4,6 +4,7 @@ import sys
 import copy
 import time
 from typing import Callable, Optional, Union
+import atexit
 from collections import defaultdict
 from functools import total_ordering
 import bisect
@@ -301,6 +302,9 @@ class GamepadSimulator:
 
     def __init__(self):
         try:
+            # 确保程序退出时虚拟手柄上无输入
+            atexit.register(self.reset)
+
             self.pad = vg.VX360Gamepad()
             logger.debug("虚拟手柄设备已创建。")
 
@@ -320,13 +324,12 @@ class GamepadSimulator:
 
     def __del__(self):
         """
-        在对象销毁时，确保手柄是无输入的。
+        对象销毁时，确保虚拟手柄上无输入。
+
+        注意: 除非先从 atexit 移除 self.reset, 否则永远不会触发对象销毁。
         """
-        if self.pad:
-            try:
-                self.reset()
-            except:
-                pass
+        self.reset()
+        atexit.unregister(self.reset)
 
     def _check_connected(self) -> bool:
         if self.pad is None:

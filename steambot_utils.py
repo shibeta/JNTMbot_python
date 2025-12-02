@@ -3,6 +3,7 @@ import subprocess
 import threading
 import signal
 import time
+import atexit
 from typing import Callable, Optional
 import requests
 
@@ -289,6 +290,9 @@ class SteamBot:
         self.last_send_monotonic_time = time.monotonic()  # 上次向 Steam 发送消息的相对时间
         self.last_send_system_time = time.time()  # 上次向 Steam 发送消息的系统时间，仅作参考
 
+        # 确保程序退出时 steam_bot 进程一并被关闭
+        atexit.register(self.shutdown)
+
         # ProcessManager 管理 Steam Bot 进程启停
         command = self._build_command()
         self.process_manager = ProcessManager(command)
@@ -315,8 +319,11 @@ class SteamBot:
     def __del__(self):
         """
         对象销毁时，关闭后端。
+
+        注意: 除非先从 atexit 移除 self.shutdown, 否则对象永远不会被回收。
         """
         self.shutdown()
+        atexit.unregister(self.shutdown)
 
     def _build_command(self) -> list[str]:
         """
