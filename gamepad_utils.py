@@ -12,8 +12,31 @@ from logger import get_logger
 
 logger = get_logger(__name__)
 
+# 导入 vgamepad
 try:
     import vgamepad as vg
+    import vgamepad.win.virtual_gamepad as vg_internal
+    import vgamepad.win.vigem_client as vcli
+
+    # 向 VBus 的 __del__ 方法中添加模块 vigem_client 是否存在的检查
+    # 用于解决 Nuitka 打包后 Vbus 在销毁时报错:
+    # Exception ignored in: <compiled_function VBus.__del__ at 0x00000259A2A32D40>
+    #     File "<workdir>\vgamepad\win\virtual_gamepad.py", line 44, in __del__
+    # AttributeError: 'NoneType' object has no attribute 'vigem_disconnect'
+
+    # 在应用此补丁前，VBus 的 __del__ 方法:
+    # def __del__(self):
+    #     vcli.vigem_disconnect(self._busp)
+    #     vcli.vigem_free(self._busp)
+
+    def __safe_vbus_del(self):
+        # 检查 vigem_client 模块是否存在
+        if vcli is not None:
+            vcli.vigem_disconnect(self._busp)
+            vcli.vigem_free(self._busp)
+
+    vg_internal.VBus.__del__ = __safe_vbus_del
+
 except Exception as e:
     if "VIGEM_ERROR_BUS_NOT_FOUND" in str(e):
         logger.error("没有安装 ViGEmBus 驱动，或驱动未正确运行。")
@@ -282,7 +305,7 @@ class GamepadSimulator:
             logger.debug("虚拟手柄设备已创建。")
 
             # 初始化手柄状态
-            self.pad.reset()
+            self.reset()
 
             # 按一下A键以唤醒手柄
             self.click_button(Button.A)
@@ -300,7 +323,10 @@ class GamepadSimulator:
         在对象销毁时，确保手柄是无输入的。
         """
         if self.pad:
-            self.reset()
+            try:
+                self.reset()
+            except:
+                pass
 
     def _check_connected(self) -> bool:
         if self.pad is None:
@@ -319,7 +345,7 @@ class GamepadSimulator:
             self.pad.update()
         except Exception as e:
             logger.error(f"重置手柄状态时出错: {e}")
-    
+
     def press_button(self, button: AnyButton):
         """
         按下一个按钮。
