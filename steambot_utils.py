@@ -1,7 +1,7 @@
 import os
 import subprocess
 import threading
-from signal import CTRL_BREAK_EVENT
+import signal
 import time
 from typing import Callable, Optional
 import requests
@@ -63,7 +63,9 @@ class ProcessManager:
             proc_to_kill = self.process
             logger.info(f"正在尝试终止进程 (PID: {proc_to_kill.pid})...")
             try:
-                proc_to_kill.send_signal(CTRL_BREAK_EVENT)
+                # signal.CTRL_BREAK_EVENT 仅在Windows上定义
+                stop_sig = getattr(signal, "CTRL_BREAK_EVENT", signal.SIGINT)
+                proc_to_kill.send_signal(stop_sig)
                 proc_to_kill.wait(timeout=2)
                 logger.info(f"进程 {proc_to_kill.pid} 已成功终止。")
             except Exception:
