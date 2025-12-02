@@ -32,10 +32,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
+      # 静默安装 ViGEmBus 驱动，避免卡在 pip install vgamepad
+      - name: Install ViGEmBus Driver from local MSI
+        run: |
+          $msiPath = Join-Path $env:GITHUB_WORKSPACE "assets\ViGEmBusSetup_x64.msi"
+          msiexec /i "$msiPath" /qn /norestart
+          Write-Host "Waiting for ViGEmBus driver to settle..."
+          Start-Sleep -Seconds 5
+        shell: pwsh
 
       # 格式化 tag name 以符合 Nuitka 版本号要求
       - name: Format Tag for Nuitka
@@ -51,15 +55,17 @@ jobs:
           echo "PRODUCT_VERSION=$version" >> $env:GITHUB_ENV
           Write-Host "Formatted version for Nuitka: $version"
         shell: pwsh
-      
-      # 静默安装 ViGEmBus 驱动，避免卡在 pip install vgamepad
-      - name: Install ViGEmBus Driver from local MSI
-        run: |
-          $msiPath = Join-Path $env:GITHUB_WORKSPACE "assets\ViGEmBusSetup_x64.msi"
-          msiexec /i "$msiPath" /qn /norestart
-          Write-Host "Waiting for ViGEmBus driver to settle..."
-          Start-Sleep -Seconds 5
-        shell: pwsh
+
+      # Nuitka 打包需要 MSVC 环境
+      - name: Set up MSVC
+        uses: TheMrMilchmann/setup-msvc-dev@v4
+        with:
+          arch: x64
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
 
       - name: Install Python dependencies
         run: |
@@ -92,7 +98,7 @@ jobs:
       # Nuitka 打包失败时，Job不会以错误状态退出。显式检查以终止Job
       - name: Package with Nuitka
         run: |
-          nuitka --mingw64 --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter `
+          python -m nuitka --msvc=latest --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter `
           --output-dir=dist `
           --include-data-dir="${{ env.VGAMEPAD_VIGEM_PATH }}=vgamepad\win\vigem" `
           --include-data-file="${{ env.VIGEM_DLL64_PATH }}=vgamepad\win\vigem\client\x64\ViGEmClient.dll" `
