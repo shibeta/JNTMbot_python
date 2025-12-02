@@ -61,13 +61,13 @@ def interrupt_decorator(func):
 
 def exit_main_process(main_pid):
     """
-    向主进程发送 SIG_INT 信号。
+    向主进程发送 CTRL_BREAK_EVENT 信号。
     """
     logger.debug(f"正在向主进程 {main_pid} 发送退出信号...")
     try:
-        # 在Windows上，没有SIGINT，但os.kill可以发送CTRL_C_EVENT
-        # signal.CTRL_C_EVENT 仅在Windows上定义
-        sig = getattr(signal, "CTRL_C_EVENT", signal.SIGINT)
+        # 在Windows上，没有SIGINT，但os.CTRL_BREAK_EVENT
+        # signal.CTRL_BREAK_EVENT 仅在Windows上定义
+        sig = getattr(signal, "CTRL_BREAK_EVENT", signal.SIGINT)
         os.kill(main_pid, sig)
     except (ProcessLookupError, OSError) as e:
         logger.error(f"发送信号失败，主进程可能已退出。错误: {e}")
