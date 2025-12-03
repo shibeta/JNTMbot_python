@@ -148,41 +148,44 @@ class GameScreen:
         else:
             return self._search_text_in_area(query_text, left, top, width, height)
 
-    def get_job_setup_status(self) -> tuple[bool, int, int, int]:
+    def get_job_setup_status(self, ocr_text: Optional[str] = None) -> tuple[bool, int, int, int]:
         """
         检查差事面板状态，包括是否在面板中，以及加入的玩家数。
 
         :return: 是否在面板(bool)，正在加入的玩家数(int)，已经加入的玩家数(int)，待命状态的玩家数(int)。如果不在面板中玩家数将固定返回 False, -1, -1, -1 。
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        ocr_result = self.ocr_game_window(0.5, 0, 0.5, 1)
+        if ocr_text is None:
+            ocr_text = self.ocr_game_window(0.5, 0, 0.5, 1)
 
         # 使用正则表达式搜索是否在面板中
-        if self._search_text_in_text(ocr_result, GameScreenTextPatterns.IS_ON_JOB_PANEL_RIGHT_SCREEN):
+        if self._search_text_in_text(ocr_text, GameScreenTextPatterns.IS_ON_JOB_PANEL_RIGHT_SCREEN):
             # 在面板中则识别加入玩家数
             # "离开"是加入失败，可以认为这也是一种"正在加入"状态
-            joining_count = ocr_result.count("正在") + ocr_result.count("离开")
-            joined_count = ocr_result.count("已加")
-            standby_count = ocr_result.count("待命")
+            joining_count = ocr_text.count("正在") + ocr_text.count("离开")
+            joined_count = ocr_text.count("已加")
+            standby_count = ocr_text.count("待命")
 
             return True, joining_count, joined_count, standby_count
         else:
             # 不在面板中则跳过识别直接返回-1
             return False, -1, -1, -1
 
-    def get_bad_sport_level_of_first_player_in_list(self) -> str:
+    def get_bad_sport_level_of_first_player_in_list(self, ocr_text: Optional[str] = None) -> str:
         """
         读取玩家列表中第一个玩家的恶意等级。
 
         :return: 恶意等级字符串，如 "清白玩家", "问题玩家", "恶意玩家", "未知等级"
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        ocr_result = self.ocr_game_window(0.75, 0.2, 0.25, 0.3)
-        if "清白" in ocr_result:
+        if ocr_text is None:
+            ocr_text = self.ocr_game_window(0.75, 0.2, 0.25, 0.3)
+
+        if "清白" in ocr_text:
             return "清白玩家"
-        elif "问题" in ocr_result:
+        elif "问题" in ocr_text:
             return "问题玩家"
-        elif "恶意" in ocr_result:
+        elif "恶意" in ocr_text:
             return "恶意玩家"
         else:
             return "未知等级"
