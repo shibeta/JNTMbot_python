@@ -55,21 +55,24 @@ class LifecycleWorkflow(_BaseWorkflow):
                         # 选择退出选项
                         self.action.confirm()
                         # 等待游戏关闭
-                        if self.wait_for_state(lambda: not self.process.is_game_started(), 30, 1, False):
-                            # 游戏关闭后等待 20 秒，给进程响应时间
-                            time.sleep(20)
-                            logger.info("通过常规方法退出游戏成功。")
+                        if self.wait_for_state(lambda: not self.process.is_game_started(), 30, 2, False):
+                            logger.info("已通过常规方法退出游戏，等待 10 秒以让 RockStar 启动器响应。")
+                            time.sleep(10)
+                        else:
+                            logger.warning("通过常规方法退出游戏失败。")
+
         except Exception as e:
             logger.warning(f"通过常规方法退出游戏时，发生异常: {e}")
-            pass
+
         finally:
             # 更新游戏进程信息
             self.process.update_info()
 
         # 如果游戏还在运行，强制关闭
         if self.process.is_game_started():
-            logger.info("通过常规方法退出游戏失败，将强制关闭游戏。")
+            logger.info("游戏主进程仍在运行，将强制关闭游戏。")
             self.force_shutdown()
+
         logger.info("退出游戏完成。")
 
     def force_shutdown(self):
@@ -134,8 +137,9 @@ class LifecycleWorkflow(_BaseWorkflow):
         else:
             self.shutdown()
 
-        logger.info("20秒后将重启 GTA V...")  # 剩下那 10 秒在第一次循环里
-        time.sleep(10)  # 等待 10 秒钟用于 steam 客户端响应 GTA V 退出
+        # 等待 10 秒钟用于 steam 客户端响应 GTA V 退出
+        logger.info("20秒后将重启 GTA V...")
+        time.sleep(10)  # 剩下那 10 秒在第一次循环里
 
         # 启动游戏并进入在线模式仅邀请战局
         # 从 config 获取最大尝试次数，至少 1 次
