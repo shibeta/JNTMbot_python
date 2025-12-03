@@ -316,15 +316,6 @@ class SteamBot:
 
         logger.info("Steam Bot 后端初始化完成。")
 
-    def __del__(self):
-        """
-        对象销毁时，关闭后端。
-
-        注意: 除非先从 atexit 移除 self.shutdown, 否则对象永远不会被回收。
-        """
-        self.shutdown()
-        atexit.unregister(self.shutdown)
-
     def _build_command(self) -> list[str]:
         """
         基于配置，构造 Steam Bot 后端启动指令。

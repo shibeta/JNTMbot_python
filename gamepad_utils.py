@@ -321,15 +321,6 @@ class GamepadSimulator:
             logger.info('请运行程序目录下的 "install_vigembus.bat" 来安装驱动。')
             raise
 
-    def __del__(self):
-        """
-        对象销毁时，确保虚拟手柄上无输入。
-
-        注意: 除非先从 atexit 移除 self.reset, 否则永远不会触发对象销毁。
-        """
-        self.reset()
-        atexit.unregister(self.reset)
-
     def _check_connected(self) -> bool:
         if self.pad is None:
             logger.error("没有安装虚拟手柄驱动，或没有初始化")

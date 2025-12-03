@@ -49,15 +49,6 @@ class GameProcess:
         # 确保程序退出时 GTA V 进程不会被挂起
         atexit.register(self.resume)
 
-    def __del__(self):
-        """
-        对象销毁时，确保 GTA V 进程不会被挂起。
-
-        注意: 除非先从 atexit 移除 self.resume, 否则对象永远不会被回收。
-        """
-        self.resume()
-        atexit.unregister(self.resume)
-
     def update_info(self, hwnd: Optional[int] = None, pid: Optional[int] = None):
         """
         传入窗口句柄和 PID ，更新对象的信息。

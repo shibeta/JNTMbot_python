@@ -232,15 +232,6 @@ class OCREngine:
 
         logger.warning("OCR 引擎初始化完成。")
 
-    def __del__(self):
-        """
-        对象销毁时，确保 OCR 引擎被关闭。
-
-        注意: 除非先从 atexit 移除 self.shutdown, 否则对象永远不会被回收。
-        """
-        self.shutdown()
-        atexit.unregister(self.shutdown)
-
     def shutdown(self):
         """
         关闭 RapidOCR-json.exe 子进程。
