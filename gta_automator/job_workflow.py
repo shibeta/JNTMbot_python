@@ -1,6 +1,5 @@
 import time
 from typing import Callable, Optional
-import requests
 
 from logger import get_logger
 from config import Config
@@ -231,8 +230,8 @@ class JobWorkflow(_BaseWorkflow):
 
         try:
             self.steam_bot.send_group_message(self.config.msgOpenJobPanel)
-        except requests.RequestException:
-            pass  # 忽略网络错误
+        except Exception:
+            pass  # 忽略发送消息失败
 
     def _try_to_start_job(self) -> bool:
         """
@@ -245,8 +244,8 @@ class JobWorkflow(_BaseWorkflow):
         logger.info("动作: 正在启动差事...")
         try:
             self.steam_bot.send_group_message(self.config.msgJobStarting)
-        except requests.RequestException:
-            pass
+        except Exception:
+            pass  # 忽略发送消息失败
 
         time.sleep(1)  # 等待 1 秒以给其他玩家反应时间
         self.action.confirm()  # 按 A 键启动
@@ -310,8 +309,8 @@ class JobWorkflow(_BaseWorkflow):
                 logger.warning("长时间没有玩家加入，放弃本次差事。")
                 try:
                     self.steam_bot.send_group_message(self.config.msgMatchPanelTimeout)
-                except requests.RequestException:
-                    pass
+                except Exception:
+                    pass  # 忽略发送消息失败
                 raise OperationTimeout(OperationTimeoutContext.TEAMMATE)
 
             # 玩家长期卡在正在加入
@@ -319,16 +318,16 @@ class JobWorkflow(_BaseWorkflow):
                 logger.warning('玩家长期卡在"正在加入"状态，放弃本次差事。')
                 try:
                     self.steam_bot.send_group_message(self.config.msgPlayerJoiningTimeout)
-                except requests.RequestException:
-                    pass
+                except Exception:
+                    pass  # 忽略发送消息失败
                 raise OperationTimeout(OperationTimeoutContext.PLAYER_JOIN)
 
             # 处理满员通知
             if not lobby_full_notified and self.lobby_tracker.is_lobby_full():
                 try:
                     self.steam_bot.send_group_message(self.config.msgTeamFull)
-                except requests.RequestException:
-                    pass  # 忽略网络错误
+                except Exception:
+                    pass  # 忽略发送消息失败
                 finally:
                     lobby_full_notified = True
 
@@ -411,8 +410,8 @@ class JobWorkflow(_BaseWorkflow):
                 wait_end_time = time.monotonic() + 20
                 try:
                     self.steam_bot.send_group_message(self.config.msgDetectedSB)
-                except requests.RequestException:
-                    pass
+                except Exception:
+                    pass  # 忽略发送消息失败
                 # 计算还需要等待的时间
                 remaining_wait_time = wait_end_time - time.monotonic()
                 if remaining_wait_time > 0:
