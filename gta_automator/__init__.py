@@ -220,7 +220,14 @@ class GTAAutomator:
             raise
 
         # 等待复活
-        self.job_workflow.wait_for_respawn()
+        try:
+            self.job_workflow.wait_for_respawn()
+        except OperationTimeout as e:
+            if e.context == OperationTimeoutContext.RESPAWN_IN_AGENCY:
+                # 等待复活超时，为避免无法进入线上模式等严重错误，退出游戏
+                logger.error("初始化游戏时，等待在事务所复活超时，退出游戏。")
+                self.lifecycle_workflow.shutdown()
+            raise
 
         # 执行德瑞bot任务
         self.play_dre_job()
