@@ -312,7 +312,7 @@ class JobWorkflow(_BaseWorkflow):
                     self.steam_bot.send_group_message(self.config.msgMatchPanelTimeout)
                 except requests.RequestException:
                     pass
-                raise OperationTimeout(OperationTimeoutContext.WAIT_TEAMMATE)
+                raise OperationTimeout(OperationTimeoutContext.TEAMMATE)
 
             # 玩家长期卡在正在加入
             if self.lobby_tracker.has_joining_timeout(self.config.playerJoiningTimeout):

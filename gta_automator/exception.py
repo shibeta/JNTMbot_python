@@ -9,7 +9,7 @@ class OperationTimeoutContext(enum.Enum):
     STORY_MODE_LOAD = "故事模式加载"
     DOWNLOAD_POLICY = "下载在线服务政策"
     JOIN_ONLINE_SESSION = "加入在线战局"
-    WAIT_TEAMMATE = "队友"
+    TEAMMATE = "队友"
     PLAYER_JOIN = "玩家完成加入"
     RESPAWN_IN_AGENCY = "在事务所复活"
     JOB_SETUP_PANEL_OPEN = "差事面板打开"
@@ -58,7 +58,6 @@ class NetworkErrorContext(enum.Enum):
     """抛出 NetworkError 异常时，可能处于的上下文"""
 
     FETCH_WARPBOT_INFO = "获取差传Bot战局信息"
-    JOIN_WARPBOT_SESSION = "加入差传Bot战局"
 
 
 class GameAutomatorException(Exception):
@@ -169,9 +168,9 @@ if __name__ == "__main__":
     # 4. 测试 NetworkError
     try:
         print("\n测试: NetworkError")
-        raise NetworkError(NetworkErrorContext.JOIN_WARPBOT_SESSION)
+        raise NetworkError(NetworkErrorContext.FETCH_WARPBOT_INFO)
     except NetworkError as e:
         print(f"成功捕获异常: {e}")
-        assert e.message == "加入差传Bot战局时发生网络错误"
+        assert e.message == "获取差传Bot战局信息时发生网络错误"
 
     print("\n--- 所有测试用例执行完毕 ---")
