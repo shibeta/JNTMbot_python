@@ -69,7 +69,8 @@ class HealthMonitor(threading.Thread):
         """执行单次健康检查的核心逻辑。"""
         last_send_monotonic_time = self.steam_bot.last_send_monotonic_time
         elapsed_time = time.monotonic() - last_send_monotonic_time
-        logger.debug(f"健康检查：距离上次发送消息已过去 {timedelta(seconds=elapsed_time)}。")
+        # 转换为整数以输出更好看的时间
+        logger.debug(f"健康检查：距离上次发送消息已过去 {timedelta(seconds=int(elapsed_time))}。")
 
         unhealthy_reason = None
         if elapsed_time > self.steam_chat_timeout_threshold * 60:
