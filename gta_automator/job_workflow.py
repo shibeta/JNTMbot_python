@@ -1,5 +1,5 @@
 import time
-from typing import Optional
+from typing import Callable, Optional
 import requests
 
 from logger import get_logger
@@ -19,7 +19,13 @@ logger = get_logger(__name__.split(".")[-1])
 class LobbyStateTracker:
     """封装了跟踪差事面板状态的所有逻辑。"""
 
-    def __init__(self, gamescreen: GameScreen, start_immediately_when_full: bool, normal_start_delay: float):
+    def __init__(
+        self,
+        gamescreen: GameScreen,
+        handle_warning_page_func: Callable,
+        start_immediately_when_full: bool,
+        normal_start_delay: float,
+    ):
         """
         初始化面板状态跟踪器
 
@@ -28,6 +34,7 @@ class LobbyStateTracker:
         :param float normal_start_delay: 未满员时延迟多少秒开始游戏
         """
         self.screen = gamescreen
+        self.handle_warning_page_func = handle_warning_page_func
         self.start_immediately_when_full = start_immediately_when_full
         self.normal_start_delay = normal_start_delay
         self.init()
@@ -50,25 +57,31 @@ class LobbyStateTracker:
 
     def update(self, ocr_text: Optional[str] = None):
         """
-        从屏幕上获取最新的大厅状态。
+        从屏幕上获取最新的大厅状态。这个方法会自动处理警告页面。
 
         :param str ocr_text: 可选的 OCR 结果字符串，传入时将跳过 OCR，直接使用该字符串作为识别结果
         """
         current_time = time.monotonic()
 
         is_on_panel, joining, joined, standby = self.screen.get_job_setup_status(ocr_text)
+
+        # 处理警告页面
+        if not is_on_panel:
+            self.handle_warning_page_func()
+            is_on_panel, joining, joined, standby = self.screen.get_job_setup_status(ocr_text)
+
         # 如果能识别到任务面板则说明在大厅中，反之亦然
         self.in_lobby = is_on_panel
-        # 如果人数结构发生变化，更新队伍状态变化计时器
+
+        # 如果人数结构发生变化，更新队伍状态变化计时器和大厅人数计数器
         if joining != self.joining_count or joined != self.joined_count or standby != self.standby_count:
             self.team_status_last_changed_time = current_time
-            # 如果队伍状态变化且没有正在加入的玩家，更新无加入状态玩家计时器
-            if joining == 0:
-                self.last_zero_joining_player_time = current_time
-            # 更新大厅人数计数器
             self.joining_count = joining
             self.joined_count = joined
             self.standby_count = standby
+            # 如果队伍状态变化且没有正在加入的玩家，更新无加入状态玩家计时器
+            if joining == 0:
+                self.last_zero_joining_player_time = current_time
 
     def is_lobby_full(self):
         """检查队伍是否已满"""
@@ -123,7 +136,9 @@ class JobWorkflow(_BaseWorkflow):
     ):
         super(JobWorkflow, self).__init__(screen, input, process, config)
         self.steam_bot = steam_bot
-        self.lobby_tracker = LobbyStateTracker(screen, config.startOnAllJoined, config.startMatchDelay)
+        self.lobby_tracker = LobbyStateTracker(
+            screen, self.handle_warning_page, config.startOnAllJoined, config.startMatchDelay
+        )
 
     def wait_for_respawn(self):
         """
@@ -272,7 +287,6 @@ class JobWorkflow(_BaseWorkflow):
         lobby_full_notified = False
 
         # 初始化大厅状态跟踪器
-        # lobby_tracker = LobbyStateTracker()
         self.lobby_tracker.init()
 
         while True:
@@ -364,11 +378,6 @@ class JobWorkflow(_BaseWorkflow):
         if not self.wait_for_state(lambda: not self.screen.is_on_job_panel(), self.config.exitMatchTimeout):
             # 超时后直接抛出异常，应该是网络故障相关
             raise OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR)
-
-        # 首次卡单
-        # logger.info(f"面板已消失。{self.config.delaySuspendTime} 秒后将卡单。")
-        # time.sleep(self.config.delaySuspendTime)
-        # self.glitch_single_player_session()
 
         # 等待人物落地
         logger.info("差事加载完成！等待人物落地...")
