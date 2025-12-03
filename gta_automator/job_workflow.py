@@ -1,4 +1,5 @@
 import time
+from typing import Optional
 import requests
 
 from logger import get_logger
@@ -15,63 +16,94 @@ from .game_action import GameAction
 logger = get_logger(__name__.split(".")[-1])
 
 
-
 class LobbyStateTracker:
     """封装了跟踪差事面板状态的所有逻辑。"""
 
-    def __init__(self):
+    def __init__(self, gamescreen: GameScreen, start_immediately_when_full: bool, normal_start_delay: float):
+        """
+        初始化面板状态跟踪器
+
+        :param gta_automator.game_screen.GameScreen gamescreen: GameScreen对象
+        :param bool start_immediately_when_full: 满员是是否立刻开始游戏
+        :param float normal_start_delay: 未满员时延迟多少秒开始游戏
+        """
+        self.screen = gamescreen
+        self.start_immediately_when_full = start_immediately_when_full
+        self.normal_start_delay = normal_start_delay
+        self.init()
+
+    def init(self):
+        # 开始等待的时间
         self.start_wait_time = time.monotonic()
+        # 是否在差事面板中
+        self.in_lobby = False
+        # 上一次队伍状态发生变动的时间
         self.team_status_last_changed_time = self.start_wait_time
+        # 上一次变为没有正在加入的玩家的时间
         self.last_zero_joining_player_time = self.start_wait_time
-        self.last_joining_player = 0
-        self.last_joined_player = 0
-        self.team_full_notified = False
+        # 最新一次检查时正在加入的玩家数
+        self.joining_count = 0
+        # 最新一次检查时已加入的玩家数
+        self.joined_count = 0
+        # 最新一次检查时待命状态的玩家数
+        self.standby_count = 0
 
-    def get_last_counts(self) -> tuple[int, int]:
-        """返回上一轮的玩家数量 (joining, joined)。"""
-        return self.last_joining_player, self.last_joined_player
+    def update(self, ocr_text: Optional[str] = None):
+        """
+        从屏幕上获取最新的大厅状态。
 
-    def update(self, joining_count: int, joined_count: int):
-        """用最新的玩家数量更新内部状态和计时器。"""
+        :param str ocr_text: 可选的 OCR 结果字符串，传入时将跳过 OCR，直接使用该字符串作为识别结果
+        """
         current_time = time.monotonic()
 
-        # 如果总人数或加入/正在加入的人数结构发生变化，更新队伍状态变化计时器
-        if joining_count != self.last_joining_player or joined_count != self.last_joined_player:
+        is_on_panel, joining, joined, standby = self.screen.get_job_setup_status(ocr_text)
+        # 如果能识别到任务面板则说明在大厅中，反之亦然
+        self.in_lobby = is_on_panel
+        # 如果人数结构发生变化，更新队伍状态变化计时器
+        if joining != self.joining_count or joined != self.joined_count or standby != self.standby_count:
             self.team_status_last_changed_time = current_time
-            # 如果没有正在加入的玩家，更新无加入状态玩家计时器
-            if joining_count == 0:
+            # 如果队伍状态变化且没有正在加入的玩家，更新无加入状态玩家计时器
+            if joining == 0:
                 self.last_zero_joining_player_time = current_time
-
             # 更新大厅人数计数器
-            self.last_joining_player = joining_count
-            self.last_joined_player = joined_count
+            self.joining_count = joining
+            self.joined_count = joined
+            self.standby_count = standby
 
-    def has_wait_timeout(self, timeout: int) -> bool:
+    def is_lobby_full(self):
+        """检查队伍是否已满"""
+        return self.joined_count + self.joining_count + self.standby_count >= 3
+
+    def has_standby_player(self):
+        """检查是否有待命状态的玩家。"""
+        return self.standby_count > 0
+
+    def has_wait_timeout(self, timeout: int):
         """检查是否长时间没有任何玩家加入。"""
-        is_empty = self.last_joined_player == 0 and self.last_joining_player == 0
+        is_empty = self.joined_count == 0 and self.joining_count == 0
         time_elapsed = time.monotonic() - self.start_wait_time
         return is_empty and time_elapsed > timeout
 
-    def has_joining_timeout(self, timeout: int) -> bool:
+    def has_joining_timeout(self, timeout: int):
         """检查是否有人长时间卡在“正在加入”状态。"""
-        is_stuck = self.get_last_counts()[0] > 0  # 有人正在加入
+        is_stuck = self.joining_count > 0  # 有人正在加入
         time_elapsed = time.monotonic() - self.last_zero_joining_player_time
         return is_stuck and time_elapsed > timeout
 
-    def should_start_job(
-        self,
-        joining_count: int,
-        joined_count: int,
-        start_immediately_when_full: bool,
-        normal_start_delay: float,
-    ) -> bool:
+    def should_start_job(self):
         """根据当前状态和配置，判断是否应该开始差事。"""
-        team_is_full = joined_count >= 3  # 队伍已满
-        if team_is_full and start_immediately_when_full:
+        # 有待命状态玩家
+        if self.standby_count != 0:
+            return False
+
+        # 队伍已满，且配置了满队立刻启动
+        team_is_full = self.joined_count >= 3
+        if team_is_full and self.start_immediately_when_full:
             return True
 
-        can_start_with_delay = joined_count > 0 and joining_count == 0  # 有人已加入，且没人正在加入了
-        delay_passed = (time.monotonic() - self.team_status_last_changed_time) > normal_start_delay
+        # 有人已加入，且无人正在加入，且距离上一次队伍状态变化时间已经超过了启动延时
+        can_start_with_delay = self.joined_count > 0 and self.joining_count == 0
+        delay_passed = (time.monotonic() - self.team_status_last_changed_time) > self.normal_start_delay
         if can_start_with_delay and delay_passed:
             return True
 
@@ -91,6 +123,7 @@ class JobWorkflow(_BaseWorkflow):
     ):
         super(JobWorkflow, self).__init__(screen, input, process, config)
         self.steam_bot = steam_bot
+        self.lobby_tracker = LobbyStateTracker(screen, config.startOnAllJoined, config.startMatchDelay)
 
     def wait_for_respawn(self):
         """
@@ -186,53 +219,6 @@ class JobWorkflow(_BaseWorkflow):
         except requests.RequestException:
             pass  # 忽略网络错误
 
-    def _check_lobby_integrity(self, is_on_job_panel: bool, standby_count: int):
-        """
-        检查大厅状态是否有效，如果无效则抛出异常。
-
-        :raises ``UIElementNotFound(UIElement.JOB_SETUP_PANEL)``: 意外离开了任务面板
-        :raises ``UnexpectedGameState(expected=GameState.JOB_PANEL_2, actual=GameState.BAD_JOB_PANEL_STANDBY_PLAYER)``: 发现"待命"状态的玩家
-        """
-        if not is_on_job_panel:
-            raise UIElementNotFound(UIElement.JOB_SETUP_PANEL)
-        if standby_count > 0:
-            raise UnexpectedGameState(GameState.JOB_PANEL_2, GameState.BAD_JOB_PANEL_STANDBY_PLAYER)
-
-    def _handle_full_lobby_notifications(
-        self, lobby_tracker: LobbyStateTracker, joining_count: int, joined_count: int
-    ):
-        """处理队伍已满的消息发送。"""
-        if not lobby_tracker.team_full_notified and (joining_count + joined_count) >= 3:
-            try:
-                self.steam_bot.send_group_message(self.config.msgTeamFull)
-            except requests.RequestException:
-                pass  # 忽略网络错误
-            finally:
-                lobby_tracker.team_full_notified = True
-
-    def _check_for_timeouts(self, lobby_tracker: LobbyStateTracker):
-        """
-        检查并处理各种超时情况。
-
-        :raises ``OperationTimeout(OperationTimeoutContext.WAIT_TEAMMATE)``: 长时间没有玩家加入，超时
-        :raises ``OperationTimeout(OperationTimeoutContext.PLAYER_JOIN)``: 玩家长期卡在"正在加入"状态，超时
-        """
-        if lobby_tracker.has_wait_timeout(self.config.matchPanelTimeout):
-            logger.warning("长时间没有玩家加入，放弃本次差事。")
-            try:
-                self.steam_bot.send_group_message(self.config.msgMatchPanelTimeout)
-            except requests.RequestException:
-                pass
-            raise OperationTimeout(OperationTimeoutContext.WAIT_TEAMMATE)
-
-        if lobby_tracker.has_joining_timeout(self.config.playerJoiningTimeout):
-            logger.warning('玩家长期卡在"正在加入"状态，放弃本次差事。')
-            try:
-                self.steam_bot.send_group_message(self.config.msgPlayerJoiningTimeout)
-            except requests.RequestException:
-                pass
-            raise OperationTimeout(OperationTimeoutContext.PLAYER_JOIN)
-
     def _try_to_start_job(self) -> bool:
         """
         尝试启动差事。启动失败时会尝试回到差事面板，无法回到面板会抛出异常。
@@ -282,44 +268,65 @@ class JobWorkflow(_BaseWorkflow):
 
         # 初始化任务大厅
         self._initialize_job_lobby()
+        # 初始化时设置为未发送过满员消息
+        lobby_full_notified = False
 
         # 初始化大厅状态跟踪器
-        lobby_tracker = LobbyStateTracker()
+        # lobby_tracker = LobbyStateTracker()
+        self.lobby_tracker.init()
 
         while True:
-            # 1. 获取最新状态
-            is_on_panel, joining, joined, standby = self.screen.get_job_setup_status()
-            if is_on_panel:
-                logger.info(f"队伍状态: {joined}人已加入, {joining}人正在加入, {standby}人待命。")
-            else:
-                logger.error("检查队伍状态失败。")
+            # 获取最新的大厅状态
+            self.lobby_tracker.update()
 
-            # 2. 检查致命错误
-            self._check_lobby_integrity(is_on_panel, standby)
+            # 检查是否在大厅
+            if not self.lobby_tracker.in_lobby:
+                raise UIElementNotFound(UIElement.JOB_SETUP_PANEL)
 
-            # 3. 处理满员通知
-            self._handle_full_lobby_notifications(lobby_tracker, joining, joined)
-
-            # 4. 检查超时
-            self._check_for_timeouts(lobby_tracker)
-
-            # 5. 更新状态追踪器
-            lobby_tracker.update(joining, joined)
-
-            # 6. 检测是否该启动差事
-            should_start_job = lobby_tracker.should_start_job(
-                joining, joined, self.config.startOnAllJoined, self.config.startMatchDelay
+            logger.info(
+                f"队伍状态: {self.lobby_tracker.joined_count}人已加入, {self.lobby_tracker.joining_count}人正在加入, {self.lobby_tracker.standby_count}人待命。"
             )
 
-            # 7. 尝试启动差事，如果成功则退出循环
-            if should_start_job:
+            # 有待命玩家
+            if self.lobby_tracker.has_standby_player():
+                raise UnexpectedGameState(GameState.JOB_PANEL_2, GameState.BAD_JOB_PANEL_STANDBY_PLAYER)
+
+            # 长时间无人加入
+            if self.lobby_tracker.has_wait_timeout(self.config.matchPanelTimeout):
+                logger.warning("长时间没有玩家加入，放弃本次差事。")
+                try:
+                    self.steam_bot.send_group_message(self.config.msgMatchPanelTimeout)
+                except requests.RequestException:
+                    pass
+                raise OperationTimeout(OperationTimeoutContext.WAIT_TEAMMATE)
+
+            # 玩家长期卡在正在加入
+            if self.lobby_tracker.has_joining_timeout(self.config.playerJoiningTimeout):
+                logger.warning('玩家长期卡在"正在加入"状态，放弃本次差事。')
+                try:
+                    self.steam_bot.send_group_message(self.config.msgPlayerJoiningTimeout)
+                except requests.RequestException:
+                    pass
+                raise OperationTimeout(OperationTimeoutContext.PLAYER_JOIN)
+
+            # 处理满员通知
+            if not lobby_full_notified and self.lobby_tracker.is_lobby_full():
+                try:
+                    self.steam_bot.send_group_message(self.config.msgTeamFull)
+                except requests.RequestException:
+                    pass  # 忽略网络错误
+                finally:
+                    lobby_full_notified = True
+
+            # 处理差事启动
+            if self.lobby_tracker.should_start_job():
                 if self._try_to_start_job():
                     break
 
             # 8. 等待下一轮检查
             time.sleep(self.config.lobbyCheckLoopTime)
 
-        logger.info(f"成功发车，本班车载有 {lobby_tracker.last_joined_player} 人。")
+        logger.info(f"成功发车，本班车载有 {self.lobby_tracker.joined_count} 人。")
 
     def exit_job_panel(self):
         """
