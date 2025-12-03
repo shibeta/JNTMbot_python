@@ -64,11 +64,14 @@ class _BaseWorkflow:
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         for _ in range(max_retries):
+            # 检查能否打开在线模式暂停菜单
             self.action.open_or_close_pause_menu()
             if self.screen.is_on_online_pause_menu():
-                # 在在线模式暂停菜单中，表示当前在在线模式中
+                # 检查能否关闭在线模式暂停菜单，防止游戏卡死在暂停菜单
                 self.action.open_or_close_pause_menu()
-                return True
+                if not self.screen.is_on_online_pause_menu():
+                    # 能开能关，表示在在线模式中
+                    return True
         else:
             return False
 
@@ -81,11 +84,14 @@ class _BaseWorkflow:
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         for _ in range(max_retries):
+            # 检查能否打开故事模式暂停菜单
             self.action.open_or_close_pause_menu()
             if self.screen.is_on_story_pause_menu():
-                # 在故事模式暂停菜单中，表示当前在故事模式中
+                # 检查能否关闭故事模式暂停菜单，防止游戏卡死在暂停菜单
                 self.action.open_or_close_pause_menu()
-                return True
+                if not self.screen.is_on_online_pause_menu():
+                    # 能开能关，表示在故事模式中
+                    return True
         else:
             return False
 
