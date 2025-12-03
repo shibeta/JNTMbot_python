@@ -16,11 +16,17 @@ class OnlineWorkflow(_BaseWorkflow):
         尝试执行一次切换到仅邀请战局的完整操作。
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法切换战局
+        :raises ``UnexpectedGameState(GameState.ONLINE_PAUSED, GameState.UNKNOWN)``: 游戏卡死
         :raises ``UIElementNotFound(UIElement.PAUSE_MENU)``: 打开暂停菜单失败
         :raises ``UIElementNotFound(UIElement.SWITCH_SESSION_TAB)``: 打开切换战局菜单失败
         """
         # 打开暂停菜单
         self.open_pause_menu()
+
+        # 检查是否已经在切换战局菜单，防止游戏卡死在切换战局菜单
+        if self.screen.is_on_go_online_menu():
+            logger.error("游戏似乎卡死了。")
+            raise UnexpectedGameState(GameState.ONLINE_PAUSED, GameState.UNKNOWN)
 
         # 尝试打开切换战局菜单
         logger.info("动作: 正在打开切换战局菜单...")
@@ -66,6 +72,7 @@ class OnlineWorkflow(_BaseWorkflow):
         尝试从在线战局中切换到另一个仅邀请战局，必须在在线模式中才能工作。
 
         :raises ``UnexpectedGameState(expected={GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, actual=GameState.UNKNOWN)``: 游戏状态未知，无法切换战局
+        :raises ``UnexpectedGameState(GameState.ONLINE_PAUSED, GameState.UNKNOWN)``: 游戏卡死，无法切换战局
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法切换战局
         """
         logger.info("动作: 正在切换新战局...")
@@ -84,7 +91,8 @@ class OnlineWorkflow(_BaseWorkflow):
             logger.info("成功进入新战局。")
             return
         except UIElementNotFound:
-            # 捕获打开菜单失败的异常，执行恢复策略
+            # 不处理找不到 UI 元素异常，以执行恢复策略
+            # 其他异常原样抛出
             pass
 
         # 首次尝试失败，开始执行恢复策略
