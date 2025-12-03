@@ -36,21 +36,21 @@ class GTAAutomator:
         screen = GameScreen(ocr_engine, process)
         player_input = GameAction(gamepad if gamepad else GamepadSimulator(), config)
 
-
         # 初始化工作流，注入依赖
         self.lifecycle_workflow = LifecycleWorkflow(screen, player_input, process, config)
         self.online_workflow = OnlineWorkflow(screen, player_input, process, config)
-        self.job_workflow = JobWorkflow(
-            screen, player_input, process, config, steam_bot
-        )
+        self.job_workflow = JobWorkflow(screen, player_input, process, config, steam_bot)
 
     def setup(self):
         """
-        初始化游戏状态，确保 GTA V 已启动并进入在线模式，同时非恶意玩家状态。
+        初始化游戏状态，确保 GTA V 已启动并进入在线模式。
+
+        如果游戏未启动或不在在线模式中，会重启游戏并检查恶意值。
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏意外关闭
         :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.UNKNOWN)``: 启动游戏失败
-        :raises ``UnexpectedGameState(expected=GameState.GOOD_SPORT_LEVEL, actual=GameState.BAD_SPORT_LEVEL)``: 恶意等级过高
+        :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.BAD_SPORT_LEVEL)``: 恶意等级为恶意玩家
+        :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.DODGY_PLAYER_LEVEL)``: 恶意等级为问题玩家
         :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
         """
         logger.info("动作: 正在初始化 GTA V ...")
@@ -67,7 +67,10 @@ class GTAAutomator:
         bad_sport_level = self.online_workflow.get_bad_sport_level()
         if bad_sport_level != "清白玩家":
             logger.warning(f"当前恶意等级为 {bad_sport_level} ，恶意等级过高。")
-            raise UnexpectedGameState(GameState.GOOD_SPORT_LEVEL, GameState.BAD_SPORT_LEVEL)
+            if bad_sport_level == "问题玩家":
+                raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.DODGY_PLAYER_LEVEL)
+            else:  # 恶意玩家
+                raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.BAD_SPORT_LEVEL)
         else:
             logger.info(f"当前恶意等级为 {bad_sport_level} ，恶意等级正常。")
 
@@ -77,10 +80,9 @@ class GTAAutomator:
         """
         执行德瑞差事的任务流程:
         1. 移动到任务触发点，进入别惹德瑞
-        2. 发送消息，等待玩家加入
-        3. 启动差事，然后卡单
-        4. 落地后，再卡单
-        5. 检查是否在任务中
+        2. 发送消息，等待玩家加入，启动差事
+        3. 落地后，卡单
+        4. 检查是否在任务中
 
         :raises ``UnexpectedGameState(actual=GameState.OFF)``: 在自动化任务中，游戏意外关闭
         :raises ``OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)``: 等待在事务所床上复活超时
@@ -180,7 +182,8 @@ class GTAAutomator:
         1. 启动游戏并确保进入在线模式。
         2. 执行一轮德瑞差事。
 
-        :raises ``UnexpectedGameState(expected=GameState.GOOD_SPORT_LEVEL, actual=GameState.BAD_SPORT_LEVEL)``: 恶意等级过高
+        :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.BAD_SPORT_LEVEL)``: 恶意等级为恶意玩家
+        :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.DODGY_PLAYER_LEVEL)``: 恶意等级为问题玩家
         :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
         :raises ``UnexpectedGameState(expected={GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, actual=GameState.UNKNOWN)``: 切换战局时失败
         :raises ``UnexpectedGameState(actual=GameState.OFF)``: 在自动化任务中，游戏意外关闭

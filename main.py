@@ -236,7 +236,10 @@ def main():
             logger.error(f"主循环中发生错误: {e}", exc_info=e)
 
             # 为保证账号安全，恶意状态玩家报错直接退出程序
-            if isinstance(e, UnexpectedGameState) and e.actual_state == GameState.BAD_SPORT_LEVEL:
+            if isinstance(e, UnexpectedGameState) and e.actual_state in {
+                GameState.BAD_SPORT_LEVEL,
+                GameState.DODGY_PLAYER_LEVEL,
+            }:
                 logger.info(f"检测到恶意等级过高，程序将退出以保护账号安全。")
                 if config.enableWechatPush:
                     bot_name = steam_bot.get_login_status().get("name", "")
@@ -244,7 +247,7 @@ def main():
                         bot_name = "N/A"
                     wechat_push(
                         config.pushplusToken,
-                        f"Bot: {bot_name} 恶意等级过高，程序将退出以保护账号安全。",
+                        f"Bot: {bot_name} 恶意值过高({e.actual_state.value})，程序将退出以保护账号安全。",
                         traceback.format_exc(),
                     )
                 return  # 退出程序

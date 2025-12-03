@@ -38,8 +38,9 @@ class GameState(enum.Enum):
     BAD_JOB_PANEL_STANDBY_PLAYER = "有待命状态玩家的任务面板"
     WARNING = "警告/错误页面"
     BAD_PCSETTING_BIN = "此时无法载入您保存的数据"
-    BAD_SPORT_LEVEL = "恶意等级过高"
-    GOOD_SPORT_LEVEL = "恶意等级正常"
+    BAD_SPORT_LEVEL = "恶意玩家"
+    DODGY_PLAYER_LEVEL = "问题玩家"
+    CLEAN_PLAYER_LEVEL = "清白玩家"
 
 
 class UIElement(enum.Enum):
