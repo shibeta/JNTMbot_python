@@ -132,7 +132,7 @@ class GameAction:
         self.confirm()  # 进入"玩家"选项卡
 
     def enter_invite_only_session(self):
-        """在'寻找新战局'选项卡中，进入仅受邀请的战局"""
+        """在'寻找新战局'选项卡中，进入仅邀请战局"""
         self.down()  # 选中"仅邀请战局"
         time.sleep(0.5)  # 多等一会
         self.confirm()  # 进入"仅邀请战局"
