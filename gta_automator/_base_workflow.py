@@ -32,7 +32,10 @@ class _BaseWorkflow:
     # --- 管理器的公用方法 ---
     def open_pause_menu(self):
         """
-        打开暂停菜单（如果尚未打开的话）。
+        打开暂停菜单。
+
+        如果暂停菜单已经打开，会先关闭暂停菜单，确保打开的暂停菜单总是新的。
+
         这个方法会自动处理警告页面等干扰。
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
@@ -41,12 +44,15 @@ class _BaseWorkflow:
         logger.info("动作: 正在打开暂停菜单...")
         # 处理警告屏幕
         self.handle_warning_page()
-        # 打开暂停菜单
+        # 打开暂停菜单，或者关闭现在的暂停菜单
+        self.action.open_or_close_pause_menu()
+        # 如果菜单关闭，将其打开
         if not self.screen.is_on_pause_menu():
             self.action.open_or_close_pause_menu()
-        # 确认暂停菜单已打开
-        if not self.screen.is_on_pause_menu():
-            raise UIElementNotFound(UIElement.PAUSE_MENU)
+            # 确认暂停菜单已打开
+            if not self.screen.is_on_pause_menu():
+                raise UIElementNotFound(UIElement.PAUSE_MENU)
+
         logger.info("成功打开暂停菜单。")
 
     def check_if_in_onlinemode(self, max_retries: int = 3) -> bool:
