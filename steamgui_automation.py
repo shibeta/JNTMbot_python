@@ -47,9 +47,10 @@ class SteamAutomation:
         try:
             # 记录发送消息前激活的控件，发送消息后切换回该控件
             original_focused_control = auto.GetFocusedControl()
-            # 记录剪贴板
+
         except:
             original_focused_control = None
+
         try:
             # 寻找 Steam 聊天窗口
             chat_window = self.find_steam_chat_window()
