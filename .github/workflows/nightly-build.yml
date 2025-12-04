@@ -111,8 +111,8 @@ jobs:
       - name: Final organize additional data
         shell: pwsh
         run: |
-          $releaseDir = "./dist/${{ env.PRODUCT_NAME }}" `
-          Write-Host "Organizing files into $releaseDir" `
+          $releaseDir = "./dist/${{ env.PRODUCT_NAME }}"
+          Write-Host "Organizing files into $releaseDir"
 
           # 复制 vgamepad 驱动文件和 DLL
           Write-Host "Copying vgamepad data..."
