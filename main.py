@@ -60,9 +60,11 @@ def interrupt_decorator(func):
     return wrapper
 
 
-def exit_main_process(main_pid):
+def exit_main_process(main_pid: int):
     """
-    触发 atexit 中注册的所有方法，然后向主进程发送 CTRL_C_EVENT 信号。
+    触发 atexit 中注册的所有方法，然后向主进程发送 CTRL_BREAK_EVENT 信号。
+
+    :param int main_pid: 主进程的 PID。可以通过在主进程中执行`os.getpid()`获取。
     """
     logger.debug("正在执行 atexit 退出回调...")
     try:
@@ -73,14 +75,16 @@ def exit_main_process(main_pid):
 
     logger.debug(f"正在向主进程 {main_pid} 发送退出信号...")
     try:
-        # 在Windows上，没有SIGINT，但os.CTRL_C_EVENT
-        # signal.CTRL_C_EVENT 仅在Windows上定义
-        sig = getattr(signal, "CTRL_C_EVENT", signal.SIGINT)
+        # signal.CTRL_BREAK_EVENT 仅在Windows上定义
+        sig = getattr(signal, "CTRL_BREAK_EVENT", signal.SIGINT)
         os.kill(main_pid, sig)
     except (ProcessLookupError, OSError) as e:
         logger.error(f"发送退出信号失败，主进程可能已退出。错误: {e}")
     except Exception as e:
         logger.error(f"发送退出信号时发生异常: {e}")
+
+    # 以防终端窗口不关闭，提示用户程序已退出
+    logger.info("程序已经退出，现在可以安全关闭终端窗口。")
 
 
 # --- 主程序执行 ---
