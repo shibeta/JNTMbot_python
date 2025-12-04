@@ -24,6 +24,7 @@ jobs:
 
       - name: Check for changes since last nightly tag
         id: check
+        shell: bash
         run: |
           # 从远程获取所有 tag
           git fetch --all --tags
@@ -45,7 +46,6 @@ jobs:
             echo "自上次 nightly 发布以来无新提交，跳过构建。"
             echo "should_build=false" >> "$GITHUB_OUTPUT"
           fi
-        shell: bash
 
   # --- 构建 Python 部分 ---
   build_python:
@@ -64,12 +64,12 @@ jobs:
 
       # 静默安装 ViGEmBus 驱动，避免卡在 pip install vgamepad
       - name: Install ViGEmBus Driver from local MSI
+        shell: pwsh
         run: |
           $msiPath = Join-Path $env:GITHUB_WORKSPACE "assets\ViGEmBusSetup_x64.msi"
           msiexec /i "$msiPath" /qn /norestart
           Write-Host "Waiting for ViGEmBus driver to settle..."
           Start-Sleep -Seconds 5
-        shell: pwsh
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -77,11 +77,13 @@ jobs:
           python-version: '3.11'
 
       - name: Install Python dependencies
+        shell: pwsh
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
       - name: Generate PyInstaller Version Info
+        shell: pwsh
         run: |
           pyivf-make_version `
           --product-name ${{ env.PRODUCT_NAME }} `
@@ -91,24 +93,23 @@ jobs:
           --version 0.1 `
           --outfile version_file.txt
 
-        shell: pwsh
-
       - name: Generate PyInstaller Spec
+        shell: pwsh
         run: |
-          pyi-makespec --onedir --optimize 2 --console `
+          pyi-makespec `
+          --onedir --optimize 2 --console `
           --contents-directory resources `
-          --icon ./assets/johnny_guns.ico`
-          --version-file version_file.txt `
+          --icon ./assets/johnny_guns.ico `
+          --version-file ./version_file.txt `
           --name ${{ env.PRODUCT_NAME }} `
           main.py
 
       - name: Package with PyInstaller
-        run: |
-          pyinstaller "${{ env.PRODUCT_NAME }}.spec" --noconfirm
-
         shell: pwsh
+        run: pyinstaller "${{ env.PRODUCT_NAME }}.spec" --noconfirm
 
       - name: Final organize additional data
+        shell: pwsh
         run: |
           $releaseDir = "./dist/${{ env.PRODUCT_NAME }}" `
           Write-Host "Organizing files into $releaseDir" `
@@ -133,8 +134,6 @@ jobs:
           # 复制 README 文件
           Copy-Item -Path "./README.md" -Destination "$releaseDir/帮助文档.md" -Force
 
-        shell: pwsh
-
       - name: Upload Python artifact
         uses: actions/upload-artifact@v4
         with:
@@ -158,11 +157,11 @@ jobs:
           node-version: '22'
 
       - name: Install Node.js dependencies and build
+        shell: bash
         run: |
           cd steam_bot
           npm install
           npm run build
-        shell: bash
 
       - name: Upload Node.js artifact
         uses: actions/upload-artifact@v4
@@ -186,8 +185,8 @@ jobs:
 
         # 设置当前日期环境变量
       - name: Set current date variable
-        run: echo "TODAY=$(Get-Date -Format 'yyyy-MM-dd')" >> $env:GITHUB_ENV
         shell: pwsh
+        run: echo "TODAY=$(Get-Date -Format 'yyyy-MM-dd')" >> $env:GITHUB_ENV
 
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
@@ -196,6 +195,7 @@ jobs:
           path: build_output
 
       - name: Prepare and package release files
+        shell: pwsh
         id: package
         run: |
           # 定义目录和文件名
@@ -215,7 +215,6 @@ jobs:
           Compress-Archive -Path "$releaseSubDir/*" -DestinationPath $zipPath -Force
 
           echo "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
-        shell: pwsh
 
       - name: Create or update Nightly Release
         uses: andelf/nightly-release@main
