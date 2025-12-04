@@ -29,6 +29,7 @@ jobs:
       PYTHONUTF8: "1"  # 强制 Python 使用 UTF-8 模式
       PRODUCT_NAME: "德瑞Bot"
       PRODUCT_DESCRIPTION: "德瑞Bot自动开车脚本"
+      CONTENTS_DIRECTORY_NAME: "resources"
 
     steps:
       - name: Checkout repository
@@ -74,7 +75,7 @@ jobs:
           pyivf-make_version `
           --product-name ${{ env.PRODUCT_NAME }} `
           --internal-name ${{ env.PRODUCT_NAME }} `
-          --file-description 德瑞Bot自动开车脚本 `
+          --file-description ${{ env.PRODUCT_DESCRIPTION }} `
           --original-filename ${{ env.PRODUCT_NAME }}.exe `
           --version ${{ env.PRODUCT_VERSION }} `
           --outfile version_file.txt
@@ -83,7 +84,7 @@ jobs:
         shell: pwsh
         run: |
           pyi-makespec --onedir --optimize 2 --console `
-          --contents-directory resources `
+          --contents-directory ${{ env.CONTENTS_DIRECTORY_NAME }} `
           --icon ./assets/johnny_guns.ico `
           --version-file version_file.txt `
           --name ${{ env.PRODUCT_NAME }} `
@@ -104,7 +105,7 @@ jobs:
           $vgamepadPkgPath = python -c "import vgamepad, os; print(os.path.dirname(vgamepad.__file__))"
           $vigemDataPath = Join-Path $vgamepadPkgPath "win\vigem"
           Write-Host "VGAMEPAD_VIGEM_PATH: $vigemDataPath"
-          Copy-Item -Path "$vigemDataPath" -Destination "$releaseDir/vgamepad/win/vigem" -Recurse -Force
+          Copy-Item -Path "$vigemDataPath" -Destination "$releaseDir/${{ env.CONTENTS_DIRECTORY_NAME }}/vgamepad/win/vigem" -Recurse -Force
 
           # 复制配置文件
           Write-Host "Copying config file..."
