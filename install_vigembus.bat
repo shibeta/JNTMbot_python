@@ -24,7 +24,7 @@ set "RELEASE_MSI_PATH=%~dp0vgamepad\win\vigem\install\x64\ViGEmBusSetup_x64.msi"
 set "SOURCE_MSI_PATH=%~dp0assets\ViGEmBusSetup_x64.msi"
 set "MSI_PATH="
 
-:: 首先检查 Release (Nuitka打包后) 的路径
+:: 首先检查 Release (打包后) 的路径
 if exist "%RELEASE_MSI_PATH%" (
     set "MSI_PATH=%RELEASE_MSI_PATH%"
 )
