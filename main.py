@@ -5,6 +5,7 @@ import threading
 import os
 import traceback
 from functools import wraps, partial
+from atexit import _run_exitfuncs as trigger_atexit, _clear as clear_atexit
 
 from keyboard_utils import HotKeyManager
 from logger import setup_logging, get_logger
@@ -61,8 +62,15 @@ def interrupt_decorator(func):
 
 def exit_main_process(main_pid):
     """
-    向主进程发送 CTRL_C_EVENT 信号。
+    触发 atexit 中注册的所有方法，然后向主进程发送 CTRL_C_EVENT 信号。
     """
+    logger.debug("正在执行 atexit 退出回调...")
+    try:
+        trigger_atexit()
+        clear_atexit()
+    except Exception as e:
+        logger.error(f"执行 atexit 退出回调时发生异常: {e}")
+
     logger.debug(f"正在向主进程 {main_pid} 发送退出信号...")
     try:
         # 在Windows上，没有SIGINT，但os.CTRL_C_EVENT
@@ -70,7 +78,9 @@ def exit_main_process(main_pid):
         sig = getattr(signal, "CTRL_C_EVENT", signal.SIGINT)
         os.kill(main_pid, sig)
     except (ProcessLookupError, OSError) as e:
-        logger.error(f"发送信号失败，主进程可能已退出。错误: {e}")
+        logger.error(f"发送退出信号失败，主进程可能已退出。错误: {e}")
+    except Exception as e:
+        logger.error(f"发送退出信号时发生异常: {e}")
 
 
 # --- 主程序执行 ---
@@ -104,6 +114,40 @@ def main():
         setup_logging(log_level="DEBUG")
     else:
         setup_logging(log_level="INFO")
+
+    # 初始化热键
+    hotkey = HotKeyManager()
+
+    # 暂停/恢复热键
+    pause_lock = threading.Lock()
+    pause_event = threading.Event()
+    pause_event.set()  # 初始状态为“已恢复”
+
+    def toggle_pause():
+        with pause_lock:
+            if pause_event.is_set():
+                pause_event.clear()  # 清除标志，进入暂停状态
+                logger.warning("暂停/恢复热键被按下，Bot 将在本轮循环结束后暂停。按 CTRL+F9 恢复。")
+            else:
+                pause_event.set()  # 设置标志，恢复运行
+                try:
+                    steam_bot.reset_send_timer()
+                except NameError:
+                    pass  # steam_bot 可能未被定义
+                logger.warning("暂停/恢复热键被按下，Bot 已恢复。")
+
+    hotkey.add_hotkey("<ctrl>+<f9>", toggle_pause)
+
+    # 退出热键
+    exit_lock = threading.Lock()
+
+    def toggle_exit():
+        with exit_lock:
+            logger.warning("退出热键被按下，退出程序...")
+            exit_main_process(os.getpid())
+
+    hotkey.add_hotkey("<ctrl>+<f10>", toggle_exit)
+    logger.warning("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
 
     # 初始化 OCR
     try:
@@ -145,41 +189,6 @@ def main():
     else:
         logger.info("正在初始化 Steam Automation ...")
         steam_bot = SteamAutomation(config.AlterMessagingMethodWindowTitle)
-
-    # 初始化热键
-    hotkey = HotKeyManager()
-
-    # 暂停/恢复热键
-    pause_lock = threading.Lock()
-    pause_event = threading.Event()
-    pause_event.set()  # 初始状态为“已恢复”
-
-    def toggle_pause():
-        with pause_lock:
-            if pause_event.is_set():
-                pause_event.clear()  # 清除标志，进入暂停状态
-                logger.warning("暂停/恢复热键被按下，Bot 将在本轮循环结束后暂停。按 CTRL+F9 恢复。")
-            else:
-                pause_event.set()  # 设置标志，恢复运行
-                try:
-                    if steam_bot:
-                        steam_bot.reset_send_timer()
-                except:
-                    pass  # 没有什么需要做的
-                logger.warning("暂停/恢复热键被按下，Bot 已恢复。")
-
-    hotkey.add_hotkey("<ctrl>+<f9>", toggle_pause)
-
-    # 退出热键
-    exit_lock = threading.Lock()
-
-    def toggle_exit():
-        with exit_lock:
-            logger.warning("退出热键被按下，退出程序...")
-            exit_main_process(os.getpid())
-
-    hotkey.add_hotkey("<ctrl>+<f10>", toggle_exit)
-    logger.warning("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
 
     # 初始化游戏控制器
     automator = GTAAutomator(config, GOCREngine, steam_bot)
