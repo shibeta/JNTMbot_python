@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import List, Set, Tuple, Union, Callable, Dict
+from typing import List, Optional, Set, Tuple, Union, Callable, Dict
 from pynput.keyboard import Controller, KeyCode, Key, GlobalHotKeys
 
 
@@ -143,93 +143,91 @@ class HotKeyManager:
     """
     一个用于管理全局热键的类，基于 pynput.keyboard.GlobalHotKeys。
 
-    该类在一个独立的后台线程中运行监听器，因此不会阻塞主程序。
+    该类在一个独立的后台线程中运行监听器。
     它支持在运行时动态地添加和移除热键。
     """
 
-    def __init__(self):
+    def __init__(self, enable: bool = True):
         """
         初始化 HotKeyManager 实例。
-        """
-        # 存储热键字符串到回调函数的映射
-        self._hotkeys: Dict[str, Callable] = {}
-        self._is_running: bool = True
-        self._listener: GlobalHotKeys | None = None
-        self._listener_thread: threading.Thread | None = None
-        self._lock: threading.Lock = threading.Lock()
 
-    def _update_listener(self) -> None:
+        :param bool enable: 是否立刻启动热键监听器。默认启用
         """
-        核心内部方法：根据当前的热键字典和运行状态，智能地更新监听器。
-        - 如果管理器正在运行且有热键，则确保监听器在运行。
-        - 如果管理器未运行或没有 Hotkey ，则确保监听器已停止。
+        # 是否启用
+        self.enable: bool = enable
+        # 热键字符串到回调函数的映射
+        self._hotkeys: Dict[str, Callable] = {}
+        # GlobalHotKeys 对象，支持部分 threading.Thread 的特性
+        self._listener: GlobalHotKeys | None = None
+        # GlobalHotKeys 对象的锁
+        self._listener_lock: threading.Lock = threading.Lock()
+
+    def __update_listener_unsafe(self) -> None:
+        """
+        根据热键字典和使能状态，更新监听器:
+        - 如果启用且有热键，则运行监听器。
+        - 如果禁用或没有热键，则停止监听器。
+
+        这个方法是线程不安全的，请确保已经获取了 self._listener_lock 。
         """
         # 停止现有的监听器
-        if self._listener:
+        if self._listener is not None:
             try:
                 self._listener.stop()
             except:
                 # 忽略任何异常
                 pass
-        if self._listener_thread and self._listener_thread.is_alive():
-            try:
-                self._listener_thread.join()
-            except:
-                # 忽略任何异常
-                pass
 
-        self._listener = None
-        self._listener_thread = None
+        # 如果启用且有热键，则启动新的监听器
+        if self.enable and self._hotkeys:
+            self._listener = GlobalHotKeys(self._hotkeys, daemon=True)
+            self._listener.start()
+        else:
+            self._listener = None
 
-        # 如果服务处于活动状态且有热键，则启动新的监听器
-        if self._is_running and self._hotkeys:
-            self._listener = GlobalHotKeys(self._hotkeys)
-            self._listener_thread = threading.Thread(target=self._listener.run, daemon=True)
-            self._listener_thread.start()
-
-    def start(self) -> None:
+    def start(self):
         """
         启动热键管理器服务，开始监听管理的热键。
         """
-        with self._lock:
-            if self._is_running:
-                return
-            self._is_running = True
+        with self._listener_lock:
+            self.enable = True
+            self.__update_listener_unsafe()
 
-            # 更新监听器
-            self._update_listener()
-
-    def stop(self) -> None:
+    def stop(self):
         """
         停止热键管理器服务并释放所有资源。
         """
-        with self._lock:
-            if not self._is_running:
-                return
-            self._is_running = False
+        with self._listener_lock:
+            self.enable = False
+            self.__update_listener_unsafe()
 
-            # 更新监听器
-            self._update_listener()
-
-    def add_hotkey(self, hotkey: str, callback: Callable) -> None:
+    def add_hotkey(self, hotkey: str, callback: Callable):
         """
         添加或更新一个全局热键。
-        如果管理器处于活动状态，此操作会自动更新或停止监听器。
         """
-        with self._lock:
+        with self._listener_lock:
             self._hotkeys[hotkey] = callback
-            # 如果管理器启动，立刻更新监听器
-            if self._is_running:
-                self._update_listener()
+            # 如果启用，更新监听器
+            if self.enable:
+                self.__update_listener_unsafe()
 
-    def remove_hotkey(self, hotkey: str) -> None:
+    def remove_hotkey(self, hotkey: str):
         """
         移除一个已注册的全局热键。
-        如果管理器处于活动状态，此操作会自动更新或停止监听器。
         """
-        with self._lock:
+        with self._listener_lock:
             if hotkey in self._hotkeys:
-                del self._hotkeys[hotkey]
-                # 如果管理器启动，立刻更新监听器
-                if self._is_running:
-                    self._update_listener()
+                self._hotkeys.pop(hotkey)
+            # 如果启用，更新监听器
+            if self.enable:
+                self.__update_listener_unsafe()
+
+    def clear_hotkey(self):
+        """
+        移除所有已注册的全局热键。
+        """
+        with self._listener_lock:
+            self._hotkeys = {}
+            # 如果启用，更新监听器
+            if self.enable:
+                self.__update_listener_unsafe()
