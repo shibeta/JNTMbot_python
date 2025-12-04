@@ -16,26 +16,26 @@ logger = get_logger(__name__)
 # 导入 vgamepad
 try:
     import vgamepad as vg
-    import vgamepad.win.virtual_gamepad as vg_internal
+    # import vgamepad.win.virtual_gamepad as vg_internal
 
-    # 向 VBus 的 __del__ 方法中添加模块 vigem_client 是否存在的检查
-    # 用于解决 Nuitka 打包后 Vbus 在销毁时报错:
-    # Exception ignored in: <compiled_function VBus.__del__ at 0x00000259A2A32D40>
-    #     File "<workdir>\vgamepad\win\virtual_gamepad.py", line 44, in __del__
-    # AttributeError: 'NoneType' object has no attribute 'vigem_disconnect'
+    # # 向 VBus 的 __del__ 方法中添加模块 vigem_client 是否存在的检查
+    # # 用于解决 Nuitka 打包后 Vbus 在销毁时报错:
+    # # Exception ignored in: <compiled_function VBus.__del__ at 0x00000259A2A32D40>
+    # #     File "<workdir>\vgamepad\win\virtual_gamepad.py", line 44, in __del__
+    # # AttributeError: 'NoneType' object has no attribute 'vigem_disconnect'
 
-    # 在应用此补丁前，VBus 的 __del__ 方法:
-    # def __del__(self):
-    #     vcli.vigem_disconnect(self._busp)
-    #     vcli.vigem_free(self._busp)
+    # # 在应用此补丁前，VBus 的 __del__ 方法:
+    # # def __del__(self):
+    # #     vcli.vigem_disconnect(self._busp)
+    # #     vcli.vigem_free(self._busp)
 
-    def __safe_vbus_del(self):
-        # 检查 vigem_client 模块是否存在
-        if vg_internal.vcli is not None:
-            vg_internal.vcli.vigem_disconnect(self._busp)
-            vg_internal.vcli.vigem_free(self._busp)
+    # def __safe_vbus_del(self):
+    #     # 检查 vigem_client 模块是否存在
+    #     if vg_internal.vcli is not None:
+    #         vg_internal.vcli.vigem_disconnect(self._busp)
+    #         vg_internal.vcli.vigem_free(self._busp)
 
-    vg_internal.VBus.__del__ = __safe_vbus_del
+    # vg_internal.VBus.__del__ = __safe_vbus_del
 
 except Exception as e:
     if "VIGEM_ERROR_BUS_NOT_FOUND" in str(e):
