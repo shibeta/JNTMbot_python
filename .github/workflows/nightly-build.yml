@@ -192,10 +192,7 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-        # 设置当前日期环境变量
+      # 为 Release 命名需要当前日期
       - name: Set current date variable
         shell: pwsh
         run: echo "TODAY=$(Get-Date -Format 'yyyy-MM-dd')" >> $env:GITHUB_ENV
