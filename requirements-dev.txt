@@ -1,2 +1,4 @@
 -r requirements.txt
-nuitka
+pyinstaller
+pyinstaller_versionfile
+Pillow

@@ -27,6 +27,8 @@ jobs:
     runs-on: windows-latest
     env:
       PYTHONUTF8: "1"  # 强制 Python 使用 UTF-8 模式
+      PRODUCT_NAME: "德瑞Bot"
+      PRODUCT_DESCRIPTION: "德瑞Bot自动开车脚本"
 
     steps:
       - name: Checkout repository
@@ -41,9 +43,8 @@ jobs:
           Start-Sleep -Seconds 5
         shell: pwsh
 
-      # 格式化 tag name 以符合 Nuitka 版本号要求
-      - name: Format Tag for Nuitka
-        id: format_tag
+      # 格式化 tag name 以符合 PyInstaller 版本号要求
+      - name: Format Tag for PyInstaller
         run: |
           $tagName = "${{ github.event.inputs.tag_name }}"
           # 如果 tag 以 'v' 开头，则移除它
@@ -53,14 +54,8 @@ jobs:
             $version = $tagName
           }
           echo "PRODUCT_VERSION=$version" >> $env:GITHUB_ENV
-          Write-Host "Formatted version for Nuitka: $version"
+          Write-Host "Formatted version for PyInstaller: $version"
         shell: pwsh
-
-      # Nuitka 打包需要 MSVC 环境
-      - name: Set up MSVC
-        uses: TheMrMilchmann/setup-msvc-dev@v4
-        with:
-          arch: x64
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -72,44 +67,59 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      # Nuitka 打包 vgamepad 时，需要指定 vigembus 驱动的路径
-      - name: Find and set vgamepad data path
+        shell: pwsh
+
+      - name: Generate PyInstaller Version Info
         run: |
-          $vgamepadPkgPath = python -c "import vgamepad, os; print(os.path.dirname(vgamepad.__file__))"
-
-          # vigem 文件夹，包括驱动安装文件和 client DLL
-          $vigemDataPath = Join-Path $vgamepadPkgPath "win\vigem"
-          echo "VGAMEPAD_VIGEM_PATH=$vigemDataPath" >> $env:GITHUB_ENV
-          Write-Host "Set VGAMEPAD_VIGEM_PATH to: $vigemDataPath"
-
-          # --include-data-dir 不会打包 DLL，需要单独指定
-          # vigem client DLL 64 位
-          $vigemDll64Path = Join-Path $vgamepadPkgPath "win\vigem\client\x64\ViGEmClient.dll"
-          echo "VIGEM_DLL64_PATH=$vigemDll64Path" >> $env:GITHUB_ENV
-          Write-Host "Set VIGEM_DLL64_PATH to: $vigemDllPath"
-
-          # vigem client DLL 32 位
-          $vigemDll86Path = Join-Path $vgamepadPkgPath "win\vigem\client\x86\ViGEmClient.dll"
-          echo "VIGEM_DLL86_PATH=$vigemDll86Path" >> $env:GITHUB_ENV
-          Write-Host "Set VIGEM_DLL86_PATH to: $vigemDllPath"
+          pyivf-make_version `
+          --product-name ${{ env.PRODUCT_NAME }} `
+          --internal-name ${{ env.PRODUCT_NAME }} `
+          --file-description 德瑞Bot自动开车脚本 `
+          --original-filename ${{ env.PRODUCT_NAME }}.exe `
+          --version ${{ env.PRODUCT_VERSION }} `
+          --outfile version_file.txt
 
         shell: pwsh
 
-      # Nuitka 打包失败时，Job不会以错误状态退出。显式检查以终止Job
-      - name: Package with Nuitka
+      - name: Generate PyInstaller Spec
         run: |
-          python -m nuitka --msvc=latest --standalone --assume-yes-for-downloads --nofollow-import-to=tkinter `
-          --output-dir=dist `
-          --include-data-dir="${{ env.VGAMEPAD_VIGEM_PATH }}=vgamepad\win\vigem" `
-          --include-data-file="${{ env.VIGEM_DLL64_PATH }}=vgamepad\win\vigem\client\x64\ViGEmClient.dll" `
-          --include-data-file="${{ env.VIGEM_DLL86_PATH }}=vgamepad\win\vigem\client\x86\ViGEmClient.dll" `
-          --include-module=comtypes `
-          --windows-icon-from-ico=./assets/johnny_guns.ico `
-          --product-name=德瑞Bot --product-version=${{ env.PRODUCT_VERSION }} --file-description=德瑞Bot自动开车脚本 main.py
-          if (-not $?) {
-            Write-Error "Nuitka packaging failed!"
-            exit 1
-          }
+          pyi-makespec --onedir --optimize 2 --console `
+          --contents-directory resources `
+          --icon ./assets/johnny_guns.ico`
+          --version-file version_file.txt `
+          --name ${{ env.PRODUCT_NAME }} `
+          main.py
+
+      - name: Package with PyInstaller
+        run: |
+          pyinstaller "${{ env.PRODUCT_NAME }}.spec" --noconfirm
+
+        shell: pwsh
+
+      - name: Final organize additional data
+        run: |
+          $releaseDir = "./dist/${{ env.PRODUCT_NAME }}" `
+          Write-Host "Organizing files into $releaseDir" `
+
+          # 复制 vgamepad 驱动文件和 DLL
+          Write-Host "Copying vgamepad data..."
+          $vgamepadPkgPath = python -c "import vgamepad, os; print(os.path.dirname(vgamepad.__file__))"
+          $vigemDataPath = Join-Path $vgamepadPkgPath "win\vigem"
+          Write-Host "VGAMEPAD_VIGEM_PATH: $vigemDataPath"
+          Copy-Item -Path "$vigemDataPath" -Destination "$releaseDir/vgamepad/win/vigem" -Recurse -Force
+
+          # 复制配置文件
+          Copy-Item -Path "./config.yaml.example" -Destination "$releaseDir/config.yaml" -Force
+
+          # 复制 VigemBus 驱动安装脚本
+          Copy-Item -Path "./install_vigembus.bat" -Destination "$releaseDir/install_vigembus.bat" -Force
+
+          # 复制 RapidOCR 的可执行文件和模型文件
+          Copy-Item -Path "./RapidOCR-json.exe" -Destination "$releaseDir/RapidOCR-json.exe" -Force
+          Copy-Item -Path "./models" -Destination "$releaseDir/models" -Recurse -Force
+
+          # 复制 README 文件
+          Copy-Item -Path "./README.md" -Destination "$releaseDir/帮助文档.md" -Force
 
         shell: pwsh
 
@@ -117,7 +127,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: python-artifact
-          path: ./dist/main.dist/
+          path: ./dist/${{ env.PRODUCT_NAME }}/
 
   # --- 构建 Node.js 部分 ---
   build_node:
@@ -181,22 +191,6 @@ jobs:
           # 从下载的 artifacts 中复制构建好的文件
           Copy-Item -Path "./build_output/python-artifact/*" -Destination $releaseSubDir -Recurse -Force
           Copy-Item -Path "./build_output/node-artifact/steam_bot.exe" -Destination $releaseSubDir -Force
-
-          # 复制配置文件
-          Copy-Item -Path "./config.yaml.example" -Destination "$releaseSubDir/config.yaml" -Force
-
-          # 复制 VigemBus 驱动安装脚本
-          Copy-Item -Path "./install_vigembus.bat" -Destination "$releaseSubDir/install_vigembus.bat" -Force
-
-          # 复制 RapidOCR 的可执行文件和模型文件
-          Copy-Item -Path "./RapidOCR-json.exe" -Destination "$releaseSubDir/RapidOCR-json.exe" -Force
-          Copy-Item -Path "./models" -Destination "$releaseSubDir/models" -Recurse -Force
-
-          # 复制 README 文件
-          Copy-Item -Path "./README.md" -Destination "$releaseSubDir/帮助文档.md" -Force
-
-          # 重命名主程序
-          Rename-Item -Path "$releaseSubDir/main.exe" -NewName "德瑞Bot.exe" -Force
 
           # 打包为 zip
           Compress-Archive -Path "$releaseSubDir/*" -DestinationPath $zipPath -Force
