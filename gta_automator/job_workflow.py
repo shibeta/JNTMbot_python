@@ -24,18 +24,24 @@ class LobbyStateTracker:
         handle_warning_page_func: Callable,
         start_immediately_when_full: bool,
         normal_start_delay: float,
+        wait_timeout: float,
+        joining_timeout: float,
     ):
         """
         初始化面板状态跟踪器
 
         :param gta_automator.game_screen.GameScreen gamescreen: GameScreen对象
-        :param bool start_immediately_when_full: 满员是是否立刻开始游戏
-        :param float normal_start_delay: 未满员时延迟多少秒开始游戏
+        :param bool start_immediately_when_full: 满员时是否立刻开始游戏
+        :param float normal_start_delay: 开始差事等待延迟
+        :param float wait_timeout: 面板无人加入时重开时间
+        :param float joining_timeout: 等待正在加入玩家超时重开时间
         """
         self.screen = gamescreen
         self.handle_warning_page_func = handle_warning_page_func
         self.start_immediately_when_full = start_immediately_when_full
         self.normal_start_delay = normal_start_delay
+        self.wait_timeout = wait_timeout
+        self.joining_timeout = joining_timeout
         self.init()
 
     def init(self):
@@ -82,26 +88,31 @@ class LobbyStateTracker:
             if joining == 0:
                 self.last_zero_joining_player_time = current_time
 
+    @property
     def is_lobby_full(self):
         """检查队伍是否已满"""
         return self.joined_count + self.joining_count + self.standby_count >= 3
 
+    @property
     def has_standby_player(self):
         """检查是否有待命状态的玩家。"""
         return self.standby_count > 0
 
-    def has_wait_timeout(self, timeout: int):
+    @property
+    def has_wait_timeout(self):
         """检查是否长时间没有任何玩家加入。"""
         is_empty = self.joined_count == 0 and self.joining_count == 0
         time_elapsed = time.monotonic() - self.start_wait_time
-        return is_empty and time_elapsed > timeout
+        return is_empty and time_elapsed > self.wait_timeout
 
-    def has_joining_timeout(self, timeout: int):
+    @property
+    def has_joining_timeout(self):
         """检查是否有人长时间卡在“正在加入”状态。"""
         is_stuck = self.joining_count > 0  # 有人正在加入
         time_elapsed = time.monotonic() - self.last_zero_joining_player_time
-        return is_stuck and time_elapsed > timeout
+        return is_stuck and time_elapsed > self.joining_timeout
 
+    @property
     def should_start_job(self):
         """根据当前状态和配置，判断是否应该开始差事。"""
         # 有待命状态玩家
@@ -136,7 +147,12 @@ class JobWorkflow(_BaseWorkflow):
         super(JobWorkflow, self).__init__(screen, input, process, config)
         self.steam_bot = steam_bot
         self.lobby_tracker = LobbyStateTracker(
-            screen, self.handle_warning_page, config.startOnAllJoined, config.startMatchDelay
+            screen,
+            self.handle_warning_page,
+            config.startOnAllJoined,
+            config.startMatchDelay,
+            self.config.matchPanelTimeout,
+            self.config.playerJoiningTimeout,
         )
 
     def wait_for_respawn(self):
@@ -301,11 +317,11 @@ class JobWorkflow(_BaseWorkflow):
             )
 
             # 有待命玩家
-            if self.lobby_tracker.has_standby_player():
+            if self.lobby_tracker.has_standby_player:
                 raise UnexpectedGameState(GameState.JOB_PANEL_2, GameState.BAD_JOB_PANEL_STANDBY_PLAYER)
 
             # 长时间无人加入
-            if self.lobby_tracker.has_wait_timeout(self.config.matchPanelTimeout):
+            if self.lobby_tracker.has_wait_timeout:
                 logger.warning("长时间没有玩家加入，放弃本次差事。")
                 try:
                     self.steam_bot.send_group_message(self.config.msgMatchPanelTimeout)
@@ -314,7 +330,7 @@ class JobWorkflow(_BaseWorkflow):
                 raise OperationTimeout(OperationTimeoutContext.TEAMMATE)
 
             # 玩家长期卡在正在加入
-            if self.lobby_tracker.has_joining_timeout(self.config.playerJoiningTimeout):
+            if self.lobby_tracker.has_joining_timeout:
                 logger.warning('玩家长期卡在"正在加入"状态，放弃本次差事。')
                 try:
                     self.steam_bot.send_group_message(self.config.msgPlayerJoiningTimeout)
@@ -323,7 +339,7 @@ class JobWorkflow(_BaseWorkflow):
                 raise OperationTimeout(OperationTimeoutContext.PLAYER_JOIN)
 
             # 处理满员通知
-            if not lobby_full_notified and self.lobby_tracker.is_lobby_full():
+            if not lobby_full_notified and self.lobby_tracker.is_lobby_full:
                 try:
                     self.steam_bot.send_group_message(self.config.msgTeamFull)
                 except Exception:
@@ -332,7 +348,7 @@ class JobWorkflow(_BaseWorkflow):
                     lobby_full_notified = True
 
             # 处理差事启动
-            if self.lobby_tracker.should_start_job():
+            if self.lobby_tracker.should_start_job:
                 if self._try_to_start_job():
                     break
 
