@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       should_build: ${{ steps.check.outputs.should_build }}
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
@@ -53,6 +55,8 @@ jobs:
     runs-on: windows-latest
     needs: check_for_changes
     if: needs.check_for_changes.outputs.should_build == 'true'
+    permissions:
+      contents: read
     env:
       PYTHONUTF8: "1"  # 强制 Python 使用 UTF-8 模式
       PRODUCT_NAME: "德瑞Bot"
@@ -152,6 +156,8 @@ jobs:
     runs-on: windows-latest
     needs: check_for_changes
     if: needs.check_for_changes.outputs.should_build == 'true'
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout repository

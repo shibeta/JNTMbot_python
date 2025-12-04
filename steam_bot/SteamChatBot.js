@@ -53,7 +53,8 @@ class SteamChatBot {
                 );
             } else {
                 console.error(
-                    `❌ 不支持的代理格式或协议: "${proxy}"。请使用"http://..."或"socks5://..."等格式。`
+                    '❌ 不支持的代理格式或协议: "%s"。请使用"http://..."或"socks5://..."等格式。',
+                    proxy
                 );
                 console.warn("代理URL无效，不使用代理。");
             }
@@ -73,7 +74,8 @@ class SteamChatBot {
     #setupEventHandlers() {
         this.#client.on("loggedOn", (details) => {
             console.log(
-                `✅ 成功登录 SteamID : ${this.#client.steamID.getSteamID64()}`
+                "✅ 成功登录 SteamID : %s",
+                this.#client.steamID.getSteamID64()
             );
         });
 
@@ -83,19 +85,24 @@ class SteamChatBot {
             try {
                 await fs.writeFile(this.#refreshTokenPath, token);
                 console.log(
-                    `💾 Refresh Token 已成功保存至 ${this.#refreshTokenPath}`
+                    "💾 Refresh Token 已成功保存至 %s",
+                    this.#refreshTokenPath
                 );
             } catch (err) {
-                console.error("❌ 保存 Refresh Token 失败:", err);
+                console.error("❌ 保存 Refresh Token 失败: %s", err);
             }
         });
 
         this.#client.on("disconnected", (eresult, msg) => {
-            console.warn(`🔌 已从 Steam 断开连接。原因: ${msg} (${eresult})。`);
+            console.warn(
+                "🔌 已从 Steam 断开连接。原因: %s (%s)。",
+                msg,
+                eresult
+            );
         });
 
         this.#client.on("error", (err) => {
-            console.error("❌ 客户端遇到一个错误:", err);
+            console.error("❌ 客户端遇到一个错误: %s", err);
         });
     }
 
@@ -146,7 +153,8 @@ class SteamChatBot {
                 } catch (error) {
                     // logOnWithToken 失败 (例如 token 过期或被撤销)
                     console.warn(
-                        `⚠️ 使用 Refresh Token 登录失败: ${error.message}。将使用账户密码登录。`
+                        "⚠️ 使用 Refresh Token 登录失败: %s。将使用账户密码登录。",
+                        error.message
                     );
                     await this.logOnWithPassword();
                 }
@@ -201,13 +209,14 @@ class SteamChatBot {
                 switch (err.eresult) {
                     case SteamUser.EResult.InvalidPassword:
                     case SteamUser.EResult.AccountNotFound:
-                        console.warn(`❌ 账户名或密码错误。(${err.message})`);
+                        console.warn("❌ 账户名或密码错误。(%s)", err.message);
                         break;
 
                     case SteamUser.EResult.AccountLogonDenied:
                     case SteamUser.EResult.TwoFactorCodeMismatch:
                         console.warn(
-                            `❌ Steam Guard 验证码错误。(${err.message})`
+                            "❌ Steam Guard 验证码错误。(%s)",
+                            err.message
                         );
                         // 这种情况通常是 _attemptPasswordLogin 内部处理了，但如果它失败了，我们在这里提示
                         break;
@@ -221,7 +230,9 @@ class SteamChatBot {
 
                     default:
                         console.error(
-                            `❌ 发生未知的登录错误: ${err.message} (EResult: ${err.eresult})`
+                            "❌ 发生未知的登录错误: %s (EResult: %s)",
+                            err.message,
+                            err.eresult
                         );
                         break; // 对于未知错误，我们也会继续重试
                 }
@@ -250,10 +261,10 @@ class SteamChatBot {
                 if (lastCodeWrong) {
                     console.warn("❌ 上一个验证码错误！请重新输入。");
                 }
-                const promptMessage = `请输入发送至 ${
+                const code = await promptUser(
+                    "请输入发送至 %s 的验证码: ",
                     domain || "Steam 手机应用"
-                } 的验证码: `;
-                const code = await promptUser(promptMessage);
+                );
                 callback(code);
             };
 
@@ -348,8 +359,8 @@ class SteamChatBot {
 
             if (!targetGroupState) {
                 const errorMsg = `找不到群组 ID: ${groupId}。请确认机器人是该群组成员。`;
-                console.error(`💥 ${errorMsg}`);
-                throw new Error(errorMsg);
+                console.error("💥 %s", errorMsg);
+                throw new Error("%s", errorMsg);
             }
 
             // 检查目标频道是否存在
@@ -359,8 +370,8 @@ class SteamChatBot {
 
             if (!targetChannel) {
                 const errorMsg = `在群组 "${targetGroupState.header_state.chat_name}" 中找不到频道: "${channelName}"。`;
-                console.error(`💥 ${errorMsg}`);
-                throw new Error(errorMsg);
+                console.error("💥 %s", errorMsg);
+                throw new Error("%s", errorMsg);
             }
 
             chatId = targetChannel.chat_id;
@@ -371,7 +382,8 @@ class SteamChatBot {
                     "请求群组元数据超时，请检查网络连接和代理是否正常。";
             }
             console.error(
-                `💥 在准备向群组 ${groupId} 发送消息时出错:`,
+                "💥 在准备向群组 %s 发送消息时出错: %s",
+                groupId,
                 error.message
             );
             throw error;
@@ -381,19 +393,25 @@ class SteamChatBot {
             .sendChatMessage(groupId, chatId, message)
             .then((result) => {
                 console.log(
-                    `✅ 消息已成功送达至群组 ${groupId} (频道: ${channelName})。`
+                    "✅ 消息已成功送达至群组 %s (频道: %s)。",
+                    groupId,
+                    channelName
                 );
             })
             .catch((error) => {
                 // 等待发送确认超时
                 if (error.message === "Request timed out") {
                     console.warn(
-                        `⚠️ 对群组 ${groupId} (频道: ${channelName}) 的消息发送确认超时，但消息可能已发出。`
+                        "⚠️ 对群组 %s (频道: %s) 的消息发送确认超时，但消息可能已发出。",
+                        groupId,
+                        channelName
                     );
                 } else {
                     // 其他类型的错误
                     console.error(
-                        `💥 发送消息到群组 ${groupId} (频道: ${channelName}) 时发生未知错误:`,
+                        "💥 发送消息到群组 %s (频道: %s) 时发生未知错误: %s",
+                        groupId,
+                        channelName,
                         error
                     );
                 }
@@ -401,7 +419,9 @@ class SteamChatBot {
 
         // 立即返回，并告知调用者任务已提交
         console.log(
-            `✅ 已提交向群组 ${groupId} (频道: ${channelName}) 发送消息的请求。`
+            "✅ 已提交向群组 %s (频道: %s) 发送消息的请求。",
+            groupId,
+            channelName
         );
     }
 
@@ -413,7 +433,11 @@ class SteamChatBot {
         return new Promise((resolve) => {
             // 监听 'disconnected' 事件，这是登出完成的明确信号
             this.#client.once("disconnected", (eresult, msg) => {
-                console.log(`👋 已从 Steam 登出。原因: ${msg} (${eresult})。`);
+                console.log(
+                    "👋 已从 Steam 登出。原因: %s (%s)。",
+                    msg,
+                    eresult
+                );
                 resolve(); // 当断开连接时，resolve Promise
             });
 

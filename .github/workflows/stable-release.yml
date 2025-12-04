@@ -25,6 +25,8 @@ jobs:
   build_python:
     name: Build Python Executable
     runs-on: windows-latest
+    permissions:
+      contents: read
     env:
       PYTHONUTF8: "1"  # 强制 Python 使用 UTF-8 模式
       PRODUCT_NAME: "德瑞Bot"
@@ -135,6 +137,8 @@ jobs:
   build_node:
     name: Build Node.js Executable
     runs-on: windows-latest
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout repository
