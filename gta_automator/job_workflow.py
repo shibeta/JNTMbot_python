@@ -298,6 +298,7 @@ class JobWorkflow(_BaseWorkflow):
 
         # 初始化任务大厅
         self._initialize_job_lobby()
+
         # 初始化时设置为未发送过满员消息
         lobby_full_notified = False
 
@@ -316,29 +317,11 @@ class JobWorkflow(_BaseWorkflow):
                 f"队伍状态: {self.lobby_tracker.joined_count}人已加入, {self.lobby_tracker.joining_count}人正在加入, {self.lobby_tracker.standby_count}人待命。"
             )
 
-            # 有待命玩家
+            # 有待命玩家时，抛出异常
             if self.lobby_tracker.has_standby_player:
                 raise UnexpectedGameState(GameState.JOB_PANEL_2, GameState.BAD_JOB_PANEL_STANDBY_PLAYER)
 
-            # 长时间无人加入
-            if self.lobby_tracker.has_wait_timeout:
-                logger.warning("长时间没有玩家加入，放弃本次差事。")
-                try:
-                    self.steam_bot.send_group_message(self.config.msgMatchPanelTimeout)
-                except Exception:
-                    pass  # 忽略发送消息失败
-                raise OperationTimeout(OperationTimeoutContext.TEAMMATE)
-
-            # 玩家长期卡在正在加入
-            if self.lobby_tracker.has_joining_timeout:
-                logger.warning('玩家长期卡在"正在加入"状态，放弃本次差事。')
-                try:
-                    self.steam_bot.send_group_message(self.config.msgPlayerJoiningTimeout)
-                except Exception:
-                    pass  # 忽略发送消息失败
-                raise OperationTimeout(OperationTimeoutContext.PLAYER_JOIN)
-
-            # 处理满员通知
+            # 满员时发送消息，整个等待过程只发送一次
             if not lobby_full_notified and self.lobby_tracker.is_lobby_full:
                 try:
                     self.steam_bot.send_group_message(self.config.msgTeamFull)
@@ -347,12 +330,35 @@ class JobWorkflow(_BaseWorkflow):
                 finally:
                     lobby_full_notified = True
 
-            # 处理差事启动
+            # 检查是否该启动差事
             if self.lobby_tracker.should_start_job:
                 if self._try_to_start_job():
+                    # 启动成功则退出循环
                     break
+                else:
+                    # 启动失败继续等，不进行无人加入和正在加入超时检查
+                    time.sleep(self.config.lobbyCheckLoopTime)
+                    continue
 
-            # 8. 等待下一轮检查
+            # 长时间无人加入，发送消息，抛出异常
+            if self.lobby_tracker.has_wait_timeout:
+                logger.warning("长时间没有玩家加入，放弃本次差事。")
+                try:
+                    self.steam_bot.send_group_message(self.config.msgMatchPanelTimeout)
+                except Exception:
+                    pass  # 忽略发送消息失败
+                raise OperationTimeout(OperationTimeoutContext.TEAMMATE)
+
+            # 玩家长期卡在正在加入，发送消息，抛出异常
+            if self.lobby_tracker.has_joining_timeout:
+                logger.warning('玩家长期卡在"正在加入"状态，放弃本次差事。')
+                try:
+                    self.steam_bot.send_group_message(self.config.msgPlayerJoiningTimeout)
+                except Exception:
+                    pass  # 忽略发送消息失败
+                raise OperationTimeout(OperationTimeoutContext.PLAYER_JOIN)
+
+            # 每次检查大厅状态间间隔一定时间，通过配置文件指定
             time.sleep(self.config.lobbyCheckLoopTime)
 
         logger.info(f"成功发车，本班车载有 {self.lobby_tracker.joined_count} 人。")
