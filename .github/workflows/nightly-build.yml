@@ -108,7 +108,7 @@ jobs:
         shell: pwsh
         run: pyinstaller "${{ env.PRODUCT_NAME }}.spec" --noconfirm
 
-      - name: Final organize additional data
+      - name: Bundle runtime dependencies and documentation
         shell: pwsh
         run: |
           $releaseDir = "./dist/${{ env.PRODUCT_NAME }}"
@@ -122,16 +122,21 @@ jobs:
           Copy-Item -Path "$vigemDataPath" -Destination "$releaseDir/vgamepad/win/vigem" -Recurse -Force
 
           # 复制配置文件
+          Write-Host "Copying config file..."
           Copy-Item -Path "./config.yaml.example" -Destination "$releaseDir/config.yaml" -Force
 
           # 复制 VigemBus 驱动安装脚本
+          Write-Host "Copying VigemBus driver install script..."
           Copy-Item -Path "./install_vigembus.bat" -Destination "$releaseDir/install_vigembus.bat" -Force
 
           # 复制 RapidOCR 的可执行文件和模型文件
+          Write-Host "Copying RapidOCR executable file..."
           Copy-Item -Path "./RapidOCR-json.exe" -Destination "$releaseDir/RapidOCR-json.exe" -Force
+          Write-Host "Copying RapidOCR model..."
           Copy-Item -Path "./models" -Destination "$releaseDir/models" -Recurse -Force
 
           # 复制 README 文件
+          Write-Host "Copying readme file..."
           Copy-Item -Path "./README.md" -Destination "$releaseDir/帮助文档.md" -Force
 
       - name: Upload Python artifact
