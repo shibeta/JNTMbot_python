@@ -35,7 +35,7 @@ class GameScreenTextPatterns:
             return re.compile(final_regex_str)
 
     IS_ON_JOB_PANEL_RIGHT_SCREEN = _compile_to_pattern(["浑球", "办事", "角色"])
-    IS_ON_MAINMENU_DISPLAY_CALIBRATION_PAGE = _compile_to_pattern(["调整", "确认"])
+    IS_ON_MAINMENU_BRIGHTNESS_OR_WARNING_PAGE = _compile_to_pattern(["调整", "确认"])
     IS_ON_MAINMENU_GTAPLUS_ADVERTISEMENT_PAGE = _compile_to_pattern(["导览", "跳过"])
     IS_ON_JOB_PANEL_LEFT_SCREEN = _compile_to_pattern(["别惹", "德瑞", "搭档"])
     IS_ON_FIRST_JOB_SETUP_PAGE = _compile_to_pattern(["设置", "镜头", "武器"])
@@ -191,14 +191,14 @@ class GameScreen:
             return "未知等级"
 
     # --- 状态检查方法 ---
-    def is_on_mainmenu_display_calibration_page(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_mainmenu_brightness_or_warning_page(self, ocr_text: Optional[str] = None) -> bool:
         """
-        检查游戏是否在主菜单的亮度调整页面。
+        检查游戏是否在主菜单的亮度调整页面或警告页面。
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         return self.search_text(
-            GameScreenTextPatterns.IS_ON_MAINMENU_DISPLAY_CALIBRATION_PAGE, ocr_text, 0.25, 0.4, 0.5, 0.2
+            GameScreenTextPatterns.IS_ON_MAINMENU_BRIGHTNESS_OR_WARNING_PAGE, ocr_text, 0.25, 0.4, 0.5, 0.2
         )
 
     def is_on_mainmenu_gtaplus_advertisement_page(self, ocr_text: Optional[str] = None) -> bool:

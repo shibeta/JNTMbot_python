@@ -232,9 +232,9 @@ class LifecycleWorkflow(_BaseWorkflow):
             if self.screen.is_on_mainmenu(ocr_text):
                 # 进入了主菜单
                 return
-            # 当pcsetting文件损坏时，会展示设置伽马值的页面
+            # 当pcsetting文件损坏时，会显示设置亮度的页面
             # 有的时候加载主菜单还会显示警告页面，该方法可以一并处理
-            elif self.screen.is_on_mainmenu_display_calibration_page(ocr_text):
+            elif self.screen.is_on_mainmenu_brightness_or_warning_page(ocr_text):
                 time.sleep(2)  # 等待页面加载完成
                 self.action.confirm()
                 continue
