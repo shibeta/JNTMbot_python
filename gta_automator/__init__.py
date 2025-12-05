@@ -197,7 +197,10 @@ class GTAAutomator:
         try:
             self.setup()
         except UnexpectedGameState as e:
-            if e.actual_state == GameState.BAD_SPORT_LEVEL:
+            if e.actual_state in {
+                GameState.BAD_SPORT_LEVEL,
+                GameState.DODGY_PLAYER_LEVEL,
+            }:
                 # 恶意等级过高，退出游戏
                 logger.error("初始化游戏时，检测到恶意等级过高，退出游戏。")
                 self.lifecycle_workflow.shutdown()
