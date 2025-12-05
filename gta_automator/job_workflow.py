@@ -388,7 +388,7 @@ class JobWorkflow(_BaseWorkflow):
 
     def handle_post_job_start(self):
         """
-        处理差事启动后的一系列操作：等待加载，等待落地，卡单。
+        处理差事启动后的一系列操作：等待加载，卡单，等待落地，卡单。
 
         :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR)``: 启动差事时，等待差事面板消失超时
         :raises ``OperationTimeout(OperationTimeoutContext.CHARACTER_LAND)``: 启动差事后，等待人物落地超时
@@ -399,6 +399,11 @@ class JobWorkflow(_BaseWorkflow):
         if not self.wait_for_state(lambda: not self.screen.is_on_job_panel(), self.config.exitMatchTimeout):
             # 超时后直接抛出异常，应该是网络故障相关
             raise OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR)
+
+        # 首次卡单
+        logger.info(f"面板已消失。{self.config.delaySuspendTime} 秒后将卡单。")
+        time.sleep(self.config.delaySuspendTime)
+        self.glitch_single_player_session()
 
         # 等待人物落地
         logger.info("差事加载完成！等待人物落地...")
