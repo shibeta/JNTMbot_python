@@ -60,8 +60,7 @@ class SteamAutomation:
             time.sleep(0.5)  # 等待窗口绘制
 
             # 文本输入框没有特征，基于发送按钮辅助定位文本输入框
-            base_node = chat_window.DocumentControl(foundIndex=1)
-            input_field = base_node.ButtonControl(Name="发送").GetPreviousSiblingControl()
+            input_field = chat_window.ButtonControl(Name="发送").GetPreviousSiblingControl()
 
             if input_field is None or not input_field.Exists():
                 raise Exception("未找到文本输入框")
