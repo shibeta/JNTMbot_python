@@ -1,7 +1,6 @@
 import re
-from typing import List, Optional, Union
+from typing import List, Optional, Protocol, Union
 
-from ocr_utils import OCREngine
 from logger import get_logger
 
 from .exception import *
@@ -56,11 +55,45 @@ class GameScreenTextPatterns:
     IS_ON_GO_ONLINE_MENU = _compile_to_pattern(["公开战局", "邀请的", "帮会战局"])
 
 
+class OcrFuncProtocol(Protocol):
+    """
+    定义截图方法的接口
+    """
+
+    def __call__(
+        self,
+        hwnd: int,
+        left: float,
+        top: float,
+        width: float,
+        height: float,
+        include_title_bar: bool,
+    ) -> str:
+        """
+        用于对窗口截图的方法。
+
+        :param int hwnd: 目标窗口句柄。
+        :param float left: 截图区域左上角的相对横坐标 (0.0 to 1.0)。
+        :param float top: 截图区域左上角的相对纵坐标 (0.0 to 1.0)。
+        :param float width: 截图区域的相对宽度 (0.0 to 1.0)。
+        :param float height: 截图区域的相对高度 (0.0 to 1.0)。
+        :param bool include_title_bar: 是否将标题栏和边框计算在内。(True: 基于完整窗口截图 False: 基于客户区截图 (排除标题栏和边框))
+        :return: 识别出的所有文本拼接成的字符串。
+        """
+        ...
+
+
 class GameScreen:
     """封装与游戏画面相关的各种方法"""
 
-    def __init__(self, OCREngine: OCREngine, process: GameProcess):
-        self.ocr = OCREngine
+    def __init__(self, ocr_func: OcrFuncProtocol, process: GameProcess):
+        # 截图方法，接受 5 个参数:
+        # :param hwnd: 目标窗口句柄。
+        # :param left: 截图区域左上角的相对横坐标 (0.0 to 1.0)。
+        # :param top: 截图区域左上角的相对纵坐标 (0.0 to 1.0)。
+        # :param width: 截图区域的相对宽度 (0.0 to 1.0)。
+        # :param height: 截图区域的相对高度 (0.0 to 1.0)。
+        self.ocr_func = ocr_func
         self.process = process
 
     def ocr_game_window(self, left, top, width, height) -> str:
@@ -73,7 +106,14 @@ class GameScreen:
             raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
 
         try:
-            return self.ocr.ocr_window(self.process.hwnd, left, top, width, height)
+            return self.ocr_func(
+                hwnd=self.process.hwnd,
+                left=left,
+                top=top,
+                width=width,
+                height=height,
+                include_title_bar=False,
+            )
         except ValueError as e:
             raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF) from e
 

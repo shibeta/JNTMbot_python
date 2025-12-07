@@ -1,16 +1,13 @@
 import time
-from typing import Optional
+from typing import Callable, Optional
 
 from config import Config
 from gamepad_utils import GamepadSimulator
 from logger import get_logger
-from ocr_utils import OCREngine
-from steambot_utils import SteamBot
-from steamgui_automation import SteamAutomation
 
 from .exception import *
 from .game_process import GameProcess
-from .game_screen import GameScreen
+from .game_screen import GameScreen, OcrFuncProtocol
 from .game_action import GameAction
 from .lifecycle_workflow import LifecycleWorkflow
 from .online_workflow import OnlineWorkflow
@@ -27,19 +24,19 @@ class GTAAutomator:
     def __init__(
         self,
         config: Config,
-        ocr_engine: OCREngine,
-        steam_bot: SteamBot | SteamAutomation,
+        ocr_func: OcrFuncProtocol,
+        send_steam_message_func: Callable[[str],],
         gamepad: Optional[GamepadSimulator] = None,
     ):
         # 初始化底层模块
         process = GameProcess()
-        screen = GameScreen(ocr_engine, process)
+        screen = GameScreen(ocr_func, process)
         player_input = GameAction(gamepad if gamepad else GamepadSimulator(), config)
 
         # 初始化工作流，注入依赖
         self.lifecycle_workflow = LifecycleWorkflow(screen, player_input, process, config)
         self.online_workflow = OnlineWorkflow(screen, player_input, process, config)
-        self.job_workflow = JobWorkflow(screen, player_input, process, config, steam_bot)
+        self.job_workflow = JobWorkflow(screen, player_input, process, config, send_steam_message_func)
 
         # 上一次恶意值检查结果为清白玩家的时间戳，None 表示尚未进行过恶意值检查
         self._last_clean_player_verified_timestamp: Optional[float] = None

@@ -156,7 +156,7 @@ def main():
     # 初始化 OCR
     try:
         ocrArgs = config.ocrArgs
-        GOCREngine = OCREngine(ocrArgs)
+        ocr_engine = OCREngine(ocrArgs)
     except Exception as e:
         logger.error(f"初始化 OCR 引擎失败: {e}", exc_info=e)
         return
@@ -193,9 +193,6 @@ def main():
     else:
         logger.info("正在初始化 Steam Automation ...")
         steam_bot = SteamAutomation(config.AlterMessagingMethodWindowTitle)
-
-    # 初始化游戏控制器
-    automator = GTAAutomator(config, GOCREngine, steam_bot)
 
     # 初始化微信推送
     if config.enableWechatPush:
@@ -237,9 +234,11 @@ def main():
         health_check_exit_func = partial(exit_main_process, os.getpid())
         monitor = HealthMonitor(steam_bot, pause_event, health_check_exit_func, push_message, config)
         monitor.start()
-
     else:
         logger.warning("未启用健康检查。")
+
+    # 初始化游戏控制器
+    automator = GTAAutomator(config, ocr_engine.ocr_window, steam_bot.send_group_message)
 
     # --- 主循环 ---
     # 主循环连续出错的次数
