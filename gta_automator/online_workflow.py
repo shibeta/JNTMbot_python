@@ -143,3 +143,35 @@ class OnlineWorkflow(_BaseWorkflow):
 
         logger.info(f"当前角色的恶意等级为 {bad_sport_level} 。")
         return bad_sport_level
+
+    def afk(self, afk_time: float, online_check_interval: float = 60):
+        """
+        在线上模式挂机防踢。
+        会定期检查是否在在线战局中。如果不在，将抛出异常。
+
+        本方法的执行时间并不精确，请勿依赖本方法计时。
+
+        :param float afk_time: 要挂机的时间(秒)
+        :param float online_check_interval: 每隔多久检查一次是否在线上(秒)
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        :raises ``UnexpectedGameState(expected={GameState.ONLINE_FREEMODE, actual=GameState.IN_MISSION}, GameState.UNKNOWN)``: 离开了在线战局
+        """
+        end_time = time.monotonic() + afk_time
+        while True:
+            # 检查是否还在在线战局中
+            # 这个方法执行需要时间，因此挂机时间是不可靠的
+            if not self.check_if_in_onlinemode():
+                raise UnexpectedGameState(
+                    {GameState.ONLINE_FREEMODE, GameState.IN_MISSION}, GameState.UNKNOWN
+                )
+
+            # 当剩余时间短于检查间隔时，休眠并退出循环
+            remaining_time = end_time - time.monotonic()
+            if remaining_time <= online_check_interval:
+                if remaining_time > 0:
+                    # 让挂机时间尽量精确
+                    time.sleep(remaining_time)
+                break
+
+            # 其他时候休眠并等待下一次检查
+            time.sleep(online_check_interval)
