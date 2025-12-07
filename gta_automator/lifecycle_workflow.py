@@ -56,8 +56,8 @@ class LifecycleWorkflow(_BaseWorkflow):
                         self.action.confirm()
                         # 等待游戏关闭
                         if self.wait_for_state(lambda: not self.process.is_game_started(), 30, 2, False):
-                            logger.info("已通过常规方法退出游戏，等待 10 秒以让 RockStar 启动器响应。")
-                            time.sleep(10)
+                            logger.info("已通过常规方法退出游戏，等待 20 秒以让 RockStar 启动器响应。")
+                            time.sleep(20)
                         else:
                             logger.warning("通过常规方法退出游戏失败。")
 
@@ -79,6 +79,8 @@ class LifecycleWorkflow(_BaseWorkflow):
         """杀死进程以强制关闭游戏"""
         logger.info("动作: 正在强制关闭游戏...")
         self.process.kill()
+        # 等待系统回收资源
+        time.sleep(1)
         logger.info("强制关闭游戏完成。")
 
     def launch(self):
