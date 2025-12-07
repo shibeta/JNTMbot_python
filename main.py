@@ -225,15 +225,23 @@ def main():
         logger.warning("未启用微信推送。")
 
     # --- 主循环 ---
-    # 记录主循环连续出错的次数
+    # 主循环连续出错的次数
     main_loop_consecutive_error_count = 0
+    # 是否应当降低恶意值而非执行德瑞bot
+    requires_reduce_bad_sport = False
     while True:
         try:
             # 响应暂停信号
             pause_event.wait()
 
-            # 执行一轮完整的业务逻辑
-            automator.run_dre_bot()
+            # 执行一轮业务逻辑
+            if requires_reduce_bad_sport:
+                # 降低恶意值
+                automator.reduce_bad_sport_level()
+                requires_reduce_bad_sport = False
+            else:
+                # 德瑞 Bot
+                automator.run_dre_bot()
 
             # 如果成功完成，重置连续错误计数器
             if main_loop_consecutive_error_count != 0:
@@ -248,12 +256,24 @@ def main():
 
             logger.error(f"主循环中发生错误: {e}", exc_info=e)
 
-            # 为保证账号安全，恶意状态玩家报错直接退出程序
-            if isinstance(e, UnexpectedGameState) and e.actual_state in {
-                GameState.BAD_SPORT_LEVEL,
-                GameState.DODGY_PLAYER_LEVEL,
-            }:
-                logger.info(f"检测到恶意等级过高，程序将退出以保护账号安全。")
+            # 问题玩家可以通过降低恶意值来回到清白玩家状态
+            if isinstance(e, UnexpectedGameState) and e.actual_state == GameState.DODGY_PLAYER_LEVEL:
+                logger.info(f"检测到恶意等级过高: 问题玩家。将执行降低恶意值流程。")
+                if config.enableWechatPush:
+                    bot_name = steam_bot.get_login_status().get("name", "")
+                    if not bot_name:
+                        bot_name = "N/A"
+                    wechat_push(
+                        config.pushplusToken,
+                        f"Bot: {bot_name} 恶意值过高({e.actual_state.value})，将执行降低恶意值流程。",
+                        traceback.format_exc(),
+                    )
+                requires_reduce_bad_sport = True
+                continue
+
+            # 恶意玩家只能等到离开恶意状态，直接退出程序
+            elif isinstance(e, UnexpectedGameState) and e.actual_state == GameState.BAD_SPORT_LEVEL:
+                logger.info(f"检测到恶意等级过高: 恶意玩家。程序将退出以保护账号安全。")
                 if config.enableWechatPush:
                     bot_name = steam_bot.get_login_status().get("name", "")
                     if not bot_name:
@@ -266,19 +286,22 @@ def main():
                 return  # 退出程序
 
             # 其他异常则根据配置文件决定是重试还是退出
-            logger.info(
-                f"当前连续失败次数 {main_loop_consecutive_error_count}，阈值 {config.mainLoopConsecutiveErrorThreshold}。"
-            )
-            if main_loop_consecutive_error_count > config.mainLoopConsecutiveErrorThreshold:
-                logger.error("超过连续失败阈值，程序将退出...")
-                # 启用了微信推送并且运行超过 wechatPushActivationDelay 分钟则推送消息
-                if config.enableWechatPush:
-                    if time.monotonic() - global_start_time > config.wechatPushActivationDelay * 60:
-                        wechat_push(config.pushplusToken, f"主循环中发生错误: {e}", traceback.format_exc())
-                return  # 退出程序
+            else:
+                logger.info(
+                    f"当前连续失败次数 {main_loop_consecutive_error_count}，阈值 {config.mainLoopConsecutiveErrorThreshold}。"
+                )
+                if main_loop_consecutive_error_count > config.mainLoopConsecutiveErrorThreshold:
+                    logger.error("超过连续失败阈值，程序将退出...")
+                    # 启用了微信推送并且运行超过 wechatPushActivationDelay 分钟则推送消息
+                    if config.enableWechatPush:
+                        if time.monotonic() - global_start_time > config.wechatPushActivationDelay * 60:
+                            wechat_push(
+                                config.pushplusToken, f"主循环中发生错误: {e}", traceback.format_exc()
+                            )
+                    return  # 退出程序
 
-            logger.info(f"未超过连续失败阈值，将在 {wait_before_restart_loop} 秒后重启循环...")
-            time.sleep(wait_before_restart_loop)
+                logger.info(f"未超过连续失败阈值，将在 {wait_before_restart_loop} 秒后重启循环...")
+                time.sleep(wait_before_restart_loop)
 
 
 if __name__ == "__main__":

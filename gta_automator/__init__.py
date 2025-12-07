@@ -41,40 +41,32 @@ class GTAAutomator:
         self.online_workflow = OnlineWorkflow(screen, player_input, process, config)
         self.job_workflow = JobWorkflow(screen, player_input, process, config, steam_bot)
 
+        # 上一次恶意值检查结果为清白玩家的时间戳，None 表示尚未进行过恶意值检查
+        self._last_clean_player_verified_timestamp: Optional[float] = None
+        # 恶意值检查间隔 (秒)
+        self.bad_sport_check_interval: float = 3600
+        # 降低恶意值时，挂机结束的目标时间戳，None 表示当前没有正在进行的挂机任务
+        self._afk_target_timestamp: Optional[float] = None
+
     def setup(self):
         """
         初始化游戏状态，确保 GTA V 已启动并进入在线模式。
 
-        如果游戏未启动或不在在线模式中，会重启游戏并检查恶意值。
-
-        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏意外关闭
+        :return bool: 是否重启了游戏
         :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.UNKNOWN)``: 启动游戏失败
-        :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.BAD_SPORT_LEVEL)``: 恶意等级为恶意玩家
-        :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.DODGY_PLAYER_LEVEL)``: 恶意等级为问题玩家
-        :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
         """
         logger.info("动作: 正在初始化 GTA V ...")
 
         if self.lifecycle_workflow.is_game_ready():
             logger.info("初始化 GTA V 完成。")
-            return
+            return False
 
         # 如果游戏未就绪，重启游戏
         logger.warning("游戏状态错误，将重启游戏。")
         self.lifecycle_workflow.restart()
 
-        # 重启游戏后，检查恶意值
-        bad_sport_level = self.online_workflow.get_bad_sport_level()
-        if bad_sport_level != "清白玩家":
-            logger.warning(f"当前恶意等级为 {bad_sport_level} ，恶意等级过高。")
-            if bad_sport_level == "问题玩家":
-                raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.DODGY_PLAYER_LEVEL)
-            else:  # 恶意玩家
-                raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.BAD_SPORT_LEVEL)
-        else:
-            logger.info(f"当前恶意等级为 {bad_sport_level} ，恶意等级正常。")
-
         logger.info("初始化 GTA V 完成。")
+        return True
 
     def play_dre_job(self):
         """
@@ -177,11 +169,66 @@ class GTAAutomator:
         # 检查最终状态
         self.job_workflow.verify_mission_status_after_glitch()
 
+    def _should_check_bad_sport(self, game_restarted: bool):
+        """
+        判断是否需要检查恶意值:
+        - 游戏刚刚重启
+        - 第一次运行
+        - 距离上次检查超过 1 小时
+
+        :param game_restarted: 本次流程启动时是否重启了游戏
+        :return bool: 需要进行恶意值检查
+        """
+        if game_restarted:
+            logger.info("触发恶意值检查: 游戏已重启。")
+            return True
+        elif self._last_clean_player_verified_timestamp is None:
+            logger.info("触发恶意值检查: 尚未检查过。")
+            return True
+        elif (time.monotonic() - self._last_clean_player_verified_timestamp) > self.bad_sport_check_interval:
+            logger.info(f"触发恶意值检查: 距离上次检查已超过 {self.bad_sport_check_interval/60:.0f} 分钟。")
+            return True
+
+        return False
+
+    def _perform_bad_sport_check(self):
+        """
+        执行恶意值检查。如果不是清白玩家，会抛出异常。
+
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.BAD_SPORT_LEVEL)``: 恶意等级为恶意玩家
+        :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.DODGY_PLAYER_LEVEL)``: 恶意等级为问题玩家
+        :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
+        """
+        logger.info("正在检查恶意值...")
+        try:
+            bad_sport_level = self.online_workflow.get_bad_sport_level()
+        except UIElementNotFound as e:
+            if e.element_not_found == UIElement.BAD_SPORT_LEVEL_INDICATOR:
+                logger.error("检查恶意值失败，退出游戏。")
+                self.lifecycle_workflow.shutdown()
+            raise
+
+        if bad_sport_level != "清白玩家":
+            logger.warning(f"当前恶意等级为 {bad_sport_level} ，恶意值过高。")
+            if bad_sport_level == "问题玩家":
+                raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.DODGY_PLAYER_LEVEL)
+            else:
+                logger.error("恶意等级为恶意玩家，退出游戏。")
+                self.lifecycle_workflow.shutdown()
+                raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.BAD_SPORT_LEVEL)
+
+        logger.info(f"当前恶意等级为 {bad_sport_level} ，恶意值正常。")
+
+        # 检查通过，更新时间戳
+        self._last_clean_player_verified_timestamp = time.monotonic()
+
     def run_dre_bot(self):
         """
         执行一轮完整的德瑞 Bot 任务:
         1. 启动游戏并确保进入在线模式。
-        2. 执行一轮德瑞差事。
+        2. 检查恶意值(按需)
+        3. 执行一轮德瑞差事。
 
         :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.BAD_SPORT_LEVEL)``: 恶意等级为恶意玩家
         :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.DODGY_PLAYER_LEVEL)``: 恶意等级为问题玩家
@@ -195,23 +242,11 @@ class GTAAutomator:
         """
         logger.info("动作: 正在开始新一轮德瑞 Bot 任务...")
         # 确保游戏就绪，即在在线模式中
-        try:
-            self.setup()
-        except UnexpectedGameState as e:
-            if e.actual_state in {
-                GameState.BAD_SPORT_LEVEL,
-                GameState.DODGY_PLAYER_LEVEL,
-            }:
-                # 恶意等级过高，退出游戏
-                logger.error("初始化游戏时，检测到恶意等级过高，退出游戏。")
-                self.lifecycle_workflow.shutdown()
-            raise
-        except UIElementNotFound as e:
-            if e.element_not_found == UIElement.BAD_SPORT_LEVEL_INDICATOR:
-                # 无法检查恶意等级，为避免恶意等级过高，退出游戏以再次触发恶意等级检查
-                logger.error("初始化游戏时，检测恶意等级失败，退出游戏。")
-                self.lifecycle_workflow.shutdown()
-            raise
+        game_restarted = self.setup()
+
+        # 按需检查恶意值
+        if self._should_check_bad_sport(game_restarted):
+            self._perform_bad_sport_check()
 
         # 切换到新战局
         try:
@@ -240,3 +275,85 @@ class GTAAutomator:
         self.play_dre_job()
 
         logger.info("本轮德瑞 Bot 任务成功完成。")
+
+    def reduce_bad_sport_level(self):
+        """
+        挂机 20 小时来降低恶意值。支持断点续传。
+
+        如果在挂机过程中抛出异常，再次调用此方法会自动计算剩余时间继续挂机。
+
+        任务成功完成后，会自动重置内部计时器。
+
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
+        :raises ``UnexpectedGameState(expected={GameState.ONLINE_FREEMODE, actual=GameState.IN_MISSION}, GameState.UNKNOWN)``: 离开了在线战局
+        """
+        TOTAL_AFK_DURATION = 20 * 3600  # 总挂机目标: 20 小时
+        AFK_CHUNK_SIZE = 10 * 60  # 单次 AFK 指令的时长: 10 分钟
+
+        logger.info("动作: 正在挂机以降低恶意值...")
+        # 确保游戏在在线模式
+        self.setup()
+
+        # 检查是否为恶意玩家，恶意玩家无法降低恶意值
+        logger.info("正在检查恶意值...")
+        try:
+            bad_sport_level = self.online_workflow.get_bad_sport_level()
+        except UIElementNotFound as e:
+            if e.element_not_found == UIElement.BAD_SPORT_LEVEL_INDICATOR:
+                logger.error("检查恶意值失败，退出游戏。")
+                self.lifecycle_workflow.shutdown()
+            raise
+        if bad_sport_level == "恶意玩家":
+            logger.error("当前恶意等级为恶意玩家，无法降低恶意值，退出游戏。")
+            # 清空挂机目标计时器
+            self._afk_target_timestamp = None
+            self.lifecycle_workflow.shutdown()
+            raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.BAD_SPORT_LEVEL)
+
+        # 其他恶意等级无条件执行挂机
+        logger.info(f"当前恶意等级为 {bad_sport_level}，开始挂机以降低恶意值。")
+
+        # 设定或恢复目标时间
+        if self._afk_target_timestamp is None:
+            # 新的任务
+            self._afk_target_timestamp = time.monotonic() + TOTAL_AFK_DURATION
+            logger.info(f"开始新的挂机任务，目标时长: {TOTAL_AFK_DURATION / 3600:.2f} 小时。")
+        else:
+            # 断点续传
+            remaining = self._afk_target_timestamp - time.monotonic()
+            if remaining > 0:
+                logger.info(f"检测到未完成的挂机任务，继续执行。剩余时间: {remaining / 3600:.2f} 小时。")
+            else:
+                logger.info("检测到挂机任务时间已在中断期间耗尽。")
+
+        # 循环挂机
+        while True:
+            # 基于时间戳计时挂机
+            remaining_time = self._afk_target_timestamp - time.monotonic()
+            # 时间到则退出循环
+            if remaining_time <= 0:
+                logger.info("挂机时间已达标。")
+                break
+
+            # 计算本次挂机时长：取 默认块时长 与 剩余总时长 的较小值
+            # 确保最后一次挂机不会超出总时长
+            current_chunk = min(AFK_CHUNK_SIZE, remaining_time)
+
+            try:
+                # 记录进度
+                logger.info(
+                    f"剩余需挂机: {remaining_time / 3600:.2f} 小时。执行 AFK 动作 {int(current_chunk)} 秒..."
+                )
+                # 挂机
+                self.online_workflow.afk(current_chunk)
+
+            except UnexpectedGameState as e:
+                if e.actual_state == GameState.UNKNOWN:
+                    logger.warning("挂机时意外离开了战局，退出游戏。")
+                    self.lifecycle_workflow.shutdown()
+                raise
+
+        # 挂机完成，重置计时器
+        self._afk_target_timestamp = None
+        logger.info("已完成降低恶意值工作流程。")
