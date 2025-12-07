@@ -197,16 +197,6 @@ def main():
     # 初始化游戏控制器
     automator = GTAAutomator(config, GOCREngine, steam_bot)
 
-    # 初始化健康检查
-    if config.enableHealthCheck:
-        logger.warning(f"已启用健康检查。正在初始化监控模块...")
-        health_check_exit_func = partial(exit_main_process, os.getpid())
-        monitor = HealthMonitor(steam_bot, pause_event, health_check_exit_func, config)
-        monitor.start()
-
-    else:
-        logger.warning("未启用健康检查。")
-
     # 初始化微信推送
     if config.enableWechatPush:
         if config.pushplusToken:
@@ -214,7 +204,7 @@ def main():
             if config.enableHealthCheck:
                 logger.info("当健康检查发现 Bot 状态发生变化时，将通过微信通知。")
             logger.info(
-                f"当程序运行超过 {config.wechatPushActivationDelay} 分钟后，因发生异常而退出时，将通过微信通知。"
+                f"当程序运行超过 {config.pushActivationDelay} 分钟后，因发生异常而退出时，将通过微信通知。"
             )
 
         else:
@@ -223,6 +213,33 @@ def main():
             return
     else:
         logger.warning("未启用微信推送。")
+
+    def push_message(title: str, messege: str):
+        """
+        将消息推送到配置的消息平台的统一方法。目前只有微信推送。
+
+        :param str title: 要发送的消息标题
+        :param str messege: 要发送的消息内容
+        """
+        if config.enableWechatPush:
+            bot_name = steam_bot.get_login_status().get("name", "")
+            if not bot_name:
+                bot_name = "N/A"
+            wechat_push(
+                config.pushplusToken,
+                f"Bot: {bot_name} {title}",
+                messege,
+            )
+
+    # 初始化健康检查
+    if config.enableHealthCheck:
+        logger.warning(f"已启用健康检查。正在初始化监控模块...")
+        health_check_exit_func = partial(exit_main_process, os.getpid())
+        monitor = HealthMonitor(steam_bot, pause_event, health_check_exit_func, push_message, config)
+        monitor.start()
+
+    else:
+        logger.warning("未启用健康检查。")
 
     # --- 主循环 ---
     # 主循环连续出错的次数
@@ -235,13 +252,16 @@ def main():
             pause_event.wait()
 
             # 执行一轮业务逻辑
-            if requires_reduce_bad_sport:
-                # 降低恶意值
-                automator.reduce_bad_sport_level()
-                requires_reduce_bad_sport = False
-            else:
+            if not requires_reduce_bad_sport:
                 # 德瑞 Bot
                 automator.run_dre_bot()
+            else:
+                # 降低恶意值
+                automator.reduce_bad_sport_level()
+                # 完成后取消需要降低恶意值标志
+                requires_reduce_bad_sport = False
+                # 通知已经完成降低恶意值
+                push_message("降低恶意值完成", "Bot 将开始执行德瑞差事。")
 
             # 如果成功完成，重置连续错误计数器
             if main_loop_consecutive_error_count != 0:
@@ -258,31 +278,17 @@ def main():
 
             # 问题玩家可以通过降低恶意值来回到清白玩家状态
             if isinstance(e, UnexpectedGameState) and e.actual_state == GameState.DODGY_PLAYER_LEVEL:
-                logger.info(f"检测到恶意等级过高: 问题玩家。将执行降低恶意值流程。")
-                if config.enableWechatPush:
-                    bot_name = steam_bot.get_login_status().get("name", "")
-                    if not bot_name:
-                        bot_name = "N/A"
-                    wechat_push(
-                        config.pushplusToken,
-                        f"Bot: {bot_name} 恶意值过高({e.actual_state.value})，将执行降低恶意值流程。",
-                        traceback.format_exc(),
-                    )
+                logger.info(f"检测到恶意等级过高: 问题玩家。将开始挂机以降低恶意值。")
+                # 通知恶意值过高
+                push_message(f"恶意值过高({e.actual_state.value})", "Bot 将开始挂机以降低恶意值。")
                 requires_reduce_bad_sport = True
                 continue
 
             # 恶意玩家只能等到离开恶意状态，直接退出程序
             elif isinstance(e, UnexpectedGameState) and e.actual_state == GameState.BAD_SPORT_LEVEL:
                 logger.info(f"检测到恶意等级过高: 恶意玩家。程序将退出以保护账号安全。")
-                if config.enableWechatPush:
-                    bot_name = steam_bot.get_login_status().get("name", "")
-                    if not bot_name:
-                        bot_name = "N/A"
-                    wechat_push(
-                        config.pushplusToken,
-                        f"Bot: {bot_name} 恶意值过高({e.actual_state.value})，程序将退出以保护账号安全。",
-                        traceback.format_exc(),
-                    )
+                # 通知恶意值过高
+                push_message(f"恶意值过高({e.actual_state.value})", "程序将退出以保护账号安全。")
                 return  # 退出程序
 
             # 其他异常则根据配置文件决定是重试还是退出
@@ -292,12 +298,9 @@ def main():
                 )
                 if main_loop_consecutive_error_count > config.mainLoopConsecutiveErrorThreshold:
                     logger.error("超过连续失败阈值，程序将退出...")
-                    # 启用了微信推送并且运行超过 wechatPushActivationDelay 分钟则推送消息
-                    if config.enableWechatPush:
-                        if time.monotonic() - global_start_time > config.wechatPushActivationDelay * 60:
-                            wechat_push(
-                                config.pushplusToken, f"主循环中发生错误: {e}", traceback.format_exc()
-                            )
+                    # 运行超过 pushActivationDelay 分钟则推送消息
+                    if time.monotonic() - global_start_time > config.pushActivationDelay * 60:
+                        push_message("超过连续失败阈值，程序将退出", f"最后一次错误: {e} \n{traceback.format_exc()}")
                     return  # 退出程序
 
                 logger.info(f"未超过连续失败阈值，将在 {wait_before_restart_loop} 秒后重启循环...")

@@ -19,7 +19,12 @@ class HealthMonitor(threading.Thread):
     """
 
     def __init__(
-        self, steam_bot: SteamBot | SteamAutomation, pause_event: threading.Event, exit_func: Callable, config: Config
+        self,
+        steam_bot: SteamBot | SteamAutomation,
+        pause_event: threading.Event,
+        exit_func: Callable[[], None],
+        push_func: Callable[[str, str], None],
+        config: Config,
     ):
         # 将线程设置为守护线程，并为其命名以方便调试
         super().__init__(daemon=True, name="HealthMonitorThread")
@@ -27,13 +32,14 @@ class HealthMonitor(threading.Thread):
         # 依赖注入
         self.steam_bot = steam_bot
         self.pause_event = pause_event
+        # 用于退出主进程的无参方法
         self.exit_func = exit_func
+        # 用于推送的方法，第一个参数接受一个字符串作为标题，第二个参数接受一个字符串作为正文
+        self.push_func = push_func
 
         # 从config对象中解构配置
         self.check_interval = config.healthCheckInterval  # 分钟
         self.steam_chat_timeout_threshold = config.healthCheckSteamChatTimeoutThreshold  # 分钟
-        self.enable_wechat_push = config.enableWechatPush
-        self.wechat_push_token = config.pushplusToken
         self.enable_exit_on_unhealthy = config.enableExitOnUnhealthy
 
         # 内部状态
@@ -62,8 +68,18 @@ class HealthMonitor(threading.Thread):
             self._perform_check()
 
     def stop(self):
-        """外部调用的方法，用于请求线程优雅地停止。"""
+        """外部调用的方法，用于请求线程停止。"""
         self._stop_event.set()
+
+    def __send_notification(self, title: str, message: str):
+        """
+        推送消息到配置的推送方法。
+
+        :param str title: 消息标题
+        :param str message: 消息正文
+        """
+        logger.warning(f"正在发送通知: {title}: {message}")
+        self.push_func(title, message)
 
     def _perform_check(self):
         """执行单次健康检查的核心逻辑。"""
@@ -90,23 +106,14 @@ class HealthMonitor(threading.Thread):
             logger.info("Bot 状态已恢复健康。")
             self._on_become_healthy()
 
-        # 如果当前不健康，则执行相应操作
         if not is_healthy_now:
-            self._on_is_unhealthy()
+            self._on_unhealthy()
 
         # 更新状态以备下次检查
         self._is_healthy_on_last_check = is_healthy_now
 
     def _on_become_unhealthy(self, reason: Optional[str] = None):
         """从健康变为不健康时触发。"""
-        if not self.enable_wechat_push:
-            return
-
-        bot_name = self.steam_bot.get_login_status().get("name", "")
-        if not bot_name:
-            bot_name = "N/A"
-        title = f"Bot: {bot_name} 状态变为不健康"
-
         if reason == "SteamChatTimeout":
             last_send_system_time = datetime.fromtimestamp(self.steam_bot.last_send_system_time)
             formatted_time = last_send_system_time.strftime("%Y-%m-%d %H:%M:%S")
@@ -114,26 +121,14 @@ class HealthMonitor(threading.Thread):
         else:
             msg = f"未知原因: {reason}"
 
-        logger.warning(f"正在发送微信通知: {title}: {msg}")
-        wechat_push(self.wechat_push_token, title, msg)
+        self.__send_notification("状态变为不健康", msg)
 
     def _on_become_healthy(self):
         """从不健康恢复为健康时触发。"""
-        if not self.enable_wechat_push:
-            return
+        self.__send_notification("状态恢复健康", "现在一切正常。")
 
-        bot_name = self.steam_bot.get_login_status().get("name", "")
-        if not bot_name:
-            bot_name = "N/A"
-        title = f"Bot: {bot_name} 状态恢复健康"
-
-        msg = "现在一切正常。"
-
-        logger.info(f"正在发送微信通知: {title}: {msg}")
-        wechat_push(self.wechat_push_token, title, msg)
-
-    def _on_is_unhealthy(self):
-        """每次检查结果为不健康时触发。"""
+    def _on_unhealthy(self):
+        """检查结果为不健康时触发。"""
         if self.enable_exit_on_unhealthy:
             logger.error("检测到 Bot 不健康且已配置为自动退出，程序将关闭。")
             self.exit_func()

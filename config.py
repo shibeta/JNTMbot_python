@@ -56,9 +56,9 @@ class Config:
             "comment": "是否启用微信推送bot状态信息。启用后，当程序运行一段时间后发生报错退出，或健康状态发生变化时，会向微信推送错误信息",
         },
         "pushplusToken": {"value": "", "comment": "pushplus的API token，用于微信通知"},
-        "wechatPushActivationDelay": {
+        "pushActivationDelay": {
             "value": 5,
-            "comment": "微信推送报错退出的启用延迟。为节省API用量，只有程序运行时长超过该时间后，报错退出时才会向微信推送 (分钟)",
+            "comment": "推送报错退出的启用延迟。为节省API用量，只有程序运行时长超过该时间后，报错退出时才会发起推送 (分钟)",
         },
         "mainLoopConsecutiveErrorThreshold": {
             "value": 10,
@@ -181,7 +181,7 @@ class Config:
         enableExitOnUnhealthy: bool
         enableWechatPush: bool
         pushplusToken: str
-        wechatPushActivationDelay: int
+        pushActivationDelay: int
         mainLoopConsecutiveErrorThreshold: int
         restartGTAConsecutiveFailThreshold: int
         suspendGTATime: int
