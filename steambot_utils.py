@@ -315,6 +315,28 @@ class SteamBot:
         # 等待 Steam Bot 完成登录，无限期等待
         while self.api_client.get_login_status()["loggedIn"] != True:
             time.sleep(5)
+        logger.info("Steam Bot 后端登录成功。")
+
+        # 验证 Steam Bot 能否访问配置中的群组ID
+        try:
+            bot_userinfo = self.get_userinfo()
+        except Exception as e:
+            raise Exception("获取 Steam 用户信息失败") from e
+
+        logger.info(f"登录的 Steam 用户名: {bot_userinfo['name']}")
+        for group in bot_userinfo["groups"]:
+            if config.steamGroupId == group["id"]:
+                logger.info(f"Bot发车信息将发送到 {group['name']} ({group['id']}) 群组。")
+                break
+        else:
+            logger.error(f"配置中的 Steam 群组 ID ({config.steamGroupId})无效，或者 Bot 不在该群组中。")
+            logger.error("================Bot 所在的群组列表=================")
+            for group in bot_userinfo["groups"]:
+                logger.error(f"  - {group['name']} (ID: {group['id']})")
+            logger.error("=================================================")
+            logger.error(f"请将正确的群组ID填入 {self.config.config_filepath} 中的 steamGroupId。")
+
+            raise ValueError(f"配置中的 Steam 群组 ID ({config.steamGroupId})无效，或者 Bot 不在该群组中")
 
         logger.info("Steam Bot 后端初始化完成。")
 

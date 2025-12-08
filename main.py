@@ -14,7 +14,7 @@ from config import Config
 from ocr_utils import OCREngine
 from steambot_utils import SteamBot
 from steamgui_automation import SteamAutomation
-from push_utils import wechat_push
+from push_utils import UniPush
 from gta_automator import GTAAutomator
 from health_check import HealthMonitor
 from gta_automator.exception import *
@@ -169,27 +169,6 @@ def main():
         except Exception as e:
             logger.error(f"初始化 Steam Bot 失败: {e}", exc_info=e)
             return
-
-        # 验证 Steam Bot 能否访问配置中的群组ID
-        try:
-            bot_userinfo = steam_bot.get_userinfo()
-        except Exception as e:
-            logger.error(f"获取 Steam 群组信息失败: {e}", exc_info=e)
-            return
-
-        logger.info(f"登录的 Steam 用户名: {bot_userinfo['name']}")
-        for group in bot_userinfo["groups"]:
-            if config.steamGroupId == group["id"]:
-                logger.info(f"Bot发车信息将发送到 {group['name']} ({group['id']}) 群组。")
-                break
-        else:
-            logger.error(f"配置中的 Steam 群组 ID ({config.steamGroupId})无效，或者 Bot 不在该群组中。")
-            logger.error("================Bot 所在的群组列表=================")
-            for group in bot_userinfo["groups"]:
-                logger.error(f"  - {group['name']} (ID: {group['id']})")
-            logger.error("=================================================")
-            logger.error(f"请将正确的群组ID填入 {config_file_path} 。")
-            return
     else:
         logger.info("正在初始化 Steam Automation ...")
         try:
@@ -198,45 +177,20 @@ def main():
             logger.error(f"初始化 Steam Automation 失败: {e}", exc_info=e)
             return
 
-    # 初始化微信推送
-    if config.enableWechatPush:
-        if config.pushplusToken:
-            logger.warning("已启用微信推送。")
-            if config.enableHealthCheck:
-                logger.info("当健康检查发现 Bot 状态发生变化时，将通过微信通知。")
-            logger.info(
-                f"当程序运行超过 {config.pushActivationDelay} 分钟后，因发生异常而退出时，将通过微信通知。"
-            )
-
-        else:
-            logger.error("已启用微信推送，但没有提供 pushplus token。")
-            logger.info(f"请访问 https://www.pushplus.plus/ 获取 token，并填入 {config_file_path}")
-            return
-    else:
-        logger.warning("未启用微信推送。")
-
-    def push_message(title: str, messege: str):
-        """
-        将消息推送到配置的消息平台的统一方法。目前只有微信推送。
-
-        :param str title: 要发送的消息标题
-        :param str messege: 要发送的消息内容
-        """
-        if config.enableWechatPush:
-            bot_name = steam_bot.get_login_status().get("name", "")
-            if not bot_name:
-                bot_name = "N/A"
-            wechat_push(
-                config.pushplusToken,
-                f"Bot: {bot_name} {title}",
-                messege,
-            )
+    # 初始化消息推送
+    try:
+        push_integration = UniPush(config, steam_bot.get_login_status().get("name", "N/A"))
+    except Exception as e:
+        logger.error(f"初始化消息推送失败: {e}", exc_info=e)
+        return
 
     # 初始化健康检查
     if config.enableHealthCheck:
         logger.warning(f"已启用健康检查。正在初始化监控模块...")
         health_check_exit_func = partial(exit_main_process, os.getpid())
-        monitor = HealthMonitor(steam_bot, pause_event, health_check_exit_func, push_message, config)
+        monitor = HealthMonitor(
+            steam_bot, pause_event, health_check_exit_func, push_integration.push_message, config
+        )
         monitor.start()
     else:
         logger.warning("未启用健康检查。")
@@ -247,25 +201,24 @@ def main():
     # --- 主循环 ---
     # 主循环连续出错的次数
     main_loop_consecutive_error_count = 0
-    # 是否应当降低恶意值而非执行德瑞bot
+    # 是否需要降低恶意值
     requires_reduce_bad_sport = False
     while True:
         try:
             # 响应暂停信号
             pause_event.wait()
 
-            # 如果标记需要清除恶意值，循环清除恶意值直到方法正常返回
-            # 如果不需要，运行德瑞 Bot
+            # 降低恶意值和德瑞 Bot 是互斥的，只在必要时(问题玩家)执行降低恶意值
             if not requires_reduce_bad_sport:
-                # 德瑞 Bot
+                # 如果不需要降低恶意值，运行德瑞 Bot
                 automator.run_dre_bot()
             else:
-                # 降低恶意值
+                # 如果标记需要清除恶意值，循环清除恶意值直到方法正常返回
                 automator.reduce_bad_sport_level()
                 # 完成后取消需要降低恶意值标志
                 requires_reduce_bad_sport = False
                 # 通知已经完成降低恶意值
-                push_message("降低恶意值完成", "Bot 将开始执行德瑞差事。")
+                push_integration.push_message("降低恶意值完成", "Bot 将开始执行德瑞差事。")
 
             # 如果成功完成，重置连续错误计数器
             if main_loop_consecutive_error_count != 0:
@@ -285,7 +238,7 @@ def main():
                 if config.autoReduceBadSportOnDodgyPlayer:
                     logger.info(f"检测到恶意等级过高: {e.actual_state.value}。将开始挂机以降低恶意值。")
                     # 通知恶意值过高
-                    push_message(
+                    push_integration.push_message(
                         f"恶意值过高({e.actual_state.value})", "Bot 将开始挂机以降低恶意值。"
                     )
                     # 标记需要降低恶意值
@@ -295,7 +248,7 @@ def main():
                     logger.info(f"检测到恶意等级过高: {e.actual_state.value}。程序将退出以保护账号安全。")
                     automator.lifecycle_workflow.shutdown()
                     # 通知恶意值过高
-                    push_message(
+                    push_integration.push_message(
                         f"恶意值过高({e.actual_state.value})", "程序将退出以保护账号安全。"
                     )
                     return  # 退出程序
@@ -305,7 +258,7 @@ def main():
                 logger.info(f"检测到恶意等级过高: {e.actual_state.value}。程序将退出以保护账号安全。")
                 automator.lifecycle_workflow.shutdown()
                 # 通知恶意值过高
-                push_message(
+                push_integration.push_message(
                     f"恶意值过高({e.actual_state.value})", "程序将退出以保护账号安全。"
                 )
                 return  # 退出程序
@@ -319,7 +272,9 @@ def main():
                     logger.error("超过连续失败阈值，程序将退出...")
                     # 运行超过 pushActivationDelay 分钟则推送消息
                     if time.monotonic() - global_start_time > config.pushActivationDelay * 60:
-                        push_message("超过连续失败阈值，程序将退出", f"最后一次错误: {e} \n{traceback.format_exc()}")
+                        push_integration.push_message(
+                            "超过连续失败阈值，程序将退出", f"最后一次错误: {e} \n{traceback.format_exc()}"
+                        )
                     return  # 退出程序
 
                 logger.info(f"未超过连续失败阈值，将在 {wait_before_restart_loop} 秒后重启循环...")

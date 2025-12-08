@@ -5,7 +5,6 @@ from typing import Any, Callable, Optional
 
 from config import Config
 from logger import get_logger
-from push_utils import wechat_push
 from steambot_utils import SteamBot
 from steamgui_automation import SteamAutomation
 
