@@ -1,5 +1,5 @@
 import time
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from logger import get_logger
 from config import Config
@@ -19,7 +19,7 @@ class LobbyStateTracker:
     def __init__(
         self,
         gamescreen: GameScreen,
-        handle_warning_page_func: Callable[[],],
+        handle_warning_page_func: Callable[[], Any],
         start_immediately_when_full: bool,
         normal_start_delay: float,
         wait_timeout: float,
@@ -140,7 +140,7 @@ class JobWorkflow(_BaseWorkflow):
         input: GameAction,
         process: GameProcess,
         config: Config,
-        send_steam_message_func: Callable[[str],]
+        send_steam_message_func: Callable[[str], Any],
     ):
         super(JobWorkflow, self).__init__(screen, input, process, config)
         self.send_steam_message_func = send_steam_message_func

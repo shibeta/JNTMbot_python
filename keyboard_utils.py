@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import List, Optional, Set, Tuple, Union, Callable, Dict
+from typing import Any, List, Optional, Set, Tuple, Union, Callable, Dict
 from pynput.keyboard import Controller, KeyCode, Key, GlobalHotKeys
 
 
@@ -156,7 +156,7 @@ class HotKeyManager:
         # 是否启用
         self.enable: bool = enable
         # 热键字符串到回调函数的映射
-        self._hotkeys: Dict[str, Callable] = {}
+        self._hotkeys: Dict[str, Callable[[], Any]] = {}
         # GlobalHotKeys 对象，支持部分 threading.Thread 的特性
         self._listener: GlobalHotKeys | None = None
         # GlobalHotKeys 对象的锁

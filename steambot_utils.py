@@ -88,7 +88,9 @@ class SteamBotApiClient:
         self.base_url = base_url
         self.headers = headers
 
-    def _make_authenticated_request(self, request_func: Callable, *args, **kwargs) -> requests.Response:
+    def _make_authenticated_request(
+        self, request_func: Callable[..., requests.Response], *args, **kwargs
+    ) -> requests.Response:
         """
         一个包装器，用于执行需要认证的API请求。
         如果请求因401 Unauthorized失败，它会自动尝试重新登录并重试一次。
@@ -116,7 +118,7 @@ class SteamBotApiClient:
                 raise
 
     @staticmethod
-    def _make_request(request_func: Callable, *args, **kwargs) -> requests.Response:
+    def _make_request(request_func: Callable[..., requests.Response], *args, **kwargs) -> requests.Response:
         """发送请求，并处理异常"""
         try:
             response = request_func(*args, **kwargs)

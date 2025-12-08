@@ -1,5 +1,5 @@
 import time
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from config import Config
 from gamepad_utils import GamepadSimulator
@@ -25,7 +25,7 @@ class GTAAutomator:
         self,
         config: Config,
         ocr_func: OcrFuncProtocol,
-        send_steam_message_func: Callable[[str],],
+        send_steam_message_func: Callable[[str], Any],
         gamepad: Optional[GamepadSimulator] = None,
     ):
         # 初始化底层模块

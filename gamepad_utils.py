@@ -16,6 +16,7 @@ logger = get_logger(__name__)
 # 导入 vgamepad
 try:
     import vgamepad as vg
+
     # import vgamepad.win.virtual_gamepad as vg_internal
 
     # # 向 VBus 的 __del__ 方法中添加模块 vigem_client 是否存在的检查
@@ -223,7 +224,7 @@ class Macro:
         new_macro._events.sort()
         return new_macro
 
-    def filter(self, condition_func: Callable):
+    def filter(self, condition_func: Callable[[MacroEvent], bool]):
         """
         根据给定的条件函数过滤事件，返回一个新宏，以实现“删除”逻辑。
 

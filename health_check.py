@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import threading
 import time
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 from config import Config
 from logger import get_logger
@@ -22,8 +22,8 @@ class HealthMonitor(threading.Thread):
         self,
         steam_bot: SteamBot | SteamAutomation,
         pause_event: threading.Event,
-        exit_func: Callable[[], None],
-        push_func: Callable[[str, str], None],
+        exit_func: Callable[[], Any],
+        push_func: Callable[[str, str], Any],
         config: Config,
     ):
         # 将线程设置为守护线程，并为其命名以方便调试
