@@ -280,19 +280,34 @@ def main():
 
             logger.error(f"主循环中发生错误: {e}", exc_info=e)
 
-            # 问题玩家可以通过降低恶意值来回到清白玩家状态
+            # 问题玩家根据配置决定退出还是挂机
             if isinstance(e, UnexpectedGameState) and e.actual_state == GameState.DODGY_PLAYER_LEVEL:
-                logger.info(f"检测到恶意等级过高: 问题玩家。将开始挂机以降低恶意值。")
-                # 通知恶意值过高
-                push_message(f"恶意值过高({e.actual_state.value})", "Bot 将开始挂机以降低恶意值。")
-                requires_reduce_bad_sport = True
-                continue
+                if config.autoReduceBadSportOnDodgyPlayer:
+                    logger.info(f"检测到恶意等级过高: {e.actual_state.value}。将开始挂机以降低恶意值。")
+                    # 通知恶意值过高
+                    push_message(
+                        f"恶意值过高({e.actual_state.value})", "Bot 将开始挂机以降低恶意值。"
+                    )
+                    # 标记需要降低恶意值
+                    requires_reduce_bad_sport = True
+                    continue
+                else:
+                    logger.info(f"检测到恶意等级过高: {e.actual_state.value}。程序将退出以保护账号安全。")
+                    automator.lifecycle_workflow.shutdown()
+                    # 通知恶意值过高
+                    push_message(
+                        f"恶意值过高({e.actual_state.value})", "程序将退出以保护账号安全。"
+                    )
+                    return  # 退出程序
 
             # 恶意玩家只能等到离开恶意状态，直接退出程序
             elif isinstance(e, UnexpectedGameState) and e.actual_state == GameState.BAD_SPORT_LEVEL:
-                logger.info(f"检测到恶意等级过高: 恶意玩家。程序将退出以保护账号安全。")
+                logger.info(f"检测到恶意等级过高: {e.actual_state.value}。程序将退出以保护账号安全。")
+                automator.lifecycle_workflow.shutdown()
                 # 通知恶意值过高
-                push_message(f"恶意值过高({e.actual_state.value})", "程序将退出以保护账号安全。")
+                push_message(
+                    f"恶意值过高({e.actual_state.value})", "程序将退出以保护账号安全。"
+                )
                 return  # 退出程序
 
             # 其他异常则根据配置文件决定是重试还是退出

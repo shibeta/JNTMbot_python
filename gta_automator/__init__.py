@@ -211,8 +211,7 @@ class GTAAutomator:
             if bad_sport_level == "问题玩家":
                 raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.DODGY_PLAYER_LEVEL)
             else:
-                logger.error("恶意等级为恶意玩家，退出游戏。")
-                self.lifecycle_workflow.shutdown()
+                # 恶意玩家
                 raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.BAD_SPORT_LEVEL)
 
         logger.info(f"当前恶意等级为 {bad_sport_level} ，恶意值正常。")

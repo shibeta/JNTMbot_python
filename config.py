@@ -73,6 +73,7 @@ class Config:
             "value": 5,
             "comment": "卡单延迟时间 (秒)",
         },
+        "autoReduceBadSportOnDodgyPlayer": {"value": True, "comment": "当bot变成问题玩家后是否自动挂机清除恶意值。设置为False后变成问题玩家会退出程序。"},
         "manualMoveToPoint": {
             "value": False,
             "comment": "禁用在事务所内起床后自动移动到任务触发点，改为要求用户手动将角色移动到任务触发点",
@@ -186,6 +187,7 @@ class Config:
         restartGTAConsecutiveFailThreshold: int
         suspendGTATime: int
         delaySuspendTime: int
+        autoReduceBadSportOnDodgyPlayer: bool
         manualMoveToPoint: bool
         startOnAllJoined: bool
         walkToPillarTime: int
