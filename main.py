@@ -254,7 +254,8 @@ def main():
             # 响应暂停信号
             pause_event.wait()
 
-            # 执行一轮业务逻辑
+            # 如果标记需要清除恶意值，循环清除恶意值直到方法正常返回
+            # 如果不需要，运行德瑞 Bot
             if not requires_reduce_bad_sport:
                 # 德瑞 Bot
                 automator.run_dre_bot()
