@@ -192,7 +192,11 @@ def main():
             return
     else:
         logger.info("正在初始化 Steam Automation ...")
-        steam_bot = SteamAutomation(config.AlterMessagingMethodWindowTitle)
+        try:
+            steam_bot = SteamAutomation(config.AlterMessagingMethodWindowTitle)
+        except Exception as e:
+            logger.error(f"初始化 Steam Automation 失败: {e}", exc_info=e)
+            return
 
     # 初始化微信推送
     if config.enableWechatPush:
