@@ -59,9 +59,14 @@ class SteamAutomation:
             chat_window.SetFocus()  # 将窗口放置在前台，否则查找元素会出错
             time.sleep(0.5)  # 等待窗口绘制
 
-            # 文本输入框没有特征，基于发送按钮辅助定位文本输入框
-            input_field = chat_window.ButtonControl(Name="发送").GetPreviousSiblingControl()
+            # 文本输入框没有特征，基于表情包按钮辅助定位文本输入框
+            # 文本输入框 <- 表情包按钮
+            # 不用发送按钮定位是因为有时找不到发送按钮
+            emoji_button = chat_window.ButtonControl(Name="表情包")
+            if emoji_button is None or not emoji_button.Exists():
+                raise Exception("未找到辅助定位用的表情包按钮")
 
+            input_field = emoji_button.GetPreviousSiblingControl()
             if input_field is None or not input_field.Exists():
                 raise Exception("未找到文本输入框")
 
@@ -102,7 +107,7 @@ class SteamAutomation:
 
 if __name__ == "__main__":
     GROUP_NAME = "蠢人帮"
-    MESSAGE_TO_SEND = "这是一条 UIautomation 发送的测试消息！"
+    MESSAGE_TO_SEND = "测试: 通过 UIautomation 发送 Steam 聊天消息。"
     my_steamautomation = SteamAutomation(GROUP_NAME)
     print("1秒钟后将向Steam聊天窗口发送测试消息。")
     time.sleep(1)
