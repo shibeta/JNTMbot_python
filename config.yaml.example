@@ -38,6 +38,8 @@ restartGTAConsecutiveFailThreshold: 5
 suspendGTATime: 13
 # 卡单延迟时间 (秒)
 delaySuspendTime: 5
+# 当bot变成问题玩家后是否自动挂机清除恶意值。设置为False后变成问题玩家会退出程序。
+autoReduceBadSportOnDodgyPlayer: true
 # 禁用在事务所内起床后自动移动到任务触发点，改为要求用户手动将角色移动到任务触发点
 manualMoveToPoint: false
 # 全部玩家已加入时立即开始差事而不等待 (绕过 "startMatchDelay" 时间)
