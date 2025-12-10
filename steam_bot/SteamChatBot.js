@@ -1,6 +1,5 @@
 const SteamUser = require("steam-user");
 const fs = require("fs/promises"); // 使用 fs/promises 以便在 async/await 中使用
-const readline = require("readline");
 const prompts = require("prompts");
 const path = require("path");
 
@@ -20,7 +19,7 @@ class SteamChatBot {
     constructor(proxy = null) {
         var steamUserOptions = {
             autoRelogin: true,
-            protocol: SteamUser.EConnectionProtocol.WebSocket,
+            protocol: SteamUser.EConnectionProtocol.Auto,
         };
         if (proxy) {
             const proxy_lower = proxy.toLowerCase();
@@ -28,28 +27,42 @@ class SteamChatBot {
                 proxy_lower.startsWith("http://") ||
                 proxy_lower.startsWith("https://")
             ) {
+                // HTTP 代理
                 steamUserOptions.httpProxy = proxy;
             } else if (
-                proxy_lower.startsWith("socks5://") ||
-                proxy_lower.startsWith("socks://")
+                proxy_lower.startsWith("socks4a://") ||
+                proxy_lower.startsWith("socks5h://")
             ) {
+                // 支持域名解析的 SOCKS 代理
+                steamUserOptions.socksProxy = proxy;
+            } else if (
+                proxy_lower.startsWith("socks4://") ||
+                proxy_lower.startsWith("socks5://")
+            ) {
+                // 不支持域名解析的 SOCKS 代理
                 steamUserOptions.socksProxy = proxy;
                 console.warn(
-                    "⚠️ 注意：SOCKS代理无法代理域名解析，请优先使用HTTP代理。"
+                    "⚠️ 注意：当前代理协议无法代理域名解析，易受DNS污染影响。请优先使用HTTP代理或SOCKS4A，SOCKS5H代理。"
+                );
+            } else if (proxy_lower.startsWith("socks://")) {
+                // socks-proxy-agent 会将 socks:// 视为 socks5h://
+                steamUserOptions.socksProxy = proxy;
+                console.warn(
+                    "⚠️ 注意：未指明SOCKS代理协议版本，将视为支持域名解析的SOCKS5H代理。"
                 );
             } else {
                 console.error(
-                    '❌ 不支持的代理格式或协议: "%s"。请使用"http://..."或"socks5://..."等格式。',
+                    '❌ 不支持的代理格式或协议: "%s"。请使用"http://..."或"socks://..."等格式。',
                     proxy
                 );
                 console.warn("代理URL无效，不使用代理。");
             }
         }
-        // console.log("启动参数: ")
-        // for(var key in steamUserOptions) {
-        //     console.log(`${key}: ${steamUserOptions[key]}`)
+        // console.log("启动参数: ");
+        // for (var key in steamUserOptions) {
+        //     console.log(`${key}: ${steamUserOptions[key]}`);
         // }
-        this.#client = new SteamUser({ steamUserOptions });
+        this.#client = new SteamUser(steamUserOptions);
 
         this.#setupEventHandlers();
     }

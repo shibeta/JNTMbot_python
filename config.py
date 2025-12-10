@@ -26,7 +26,7 @@ class Config:
         "steamBotToken": {"value": "0x4445414442454546", "comment": "访问Steam Bot后端的认证Token"},
         "steamBotProxy": {
             "value": "system",
-            "comment": 'Steam Bot使用的代理，格式为"http://127.0.0.1:8080"或"socks5://127.0.0.1:1080"。"system"表示使用系统代理，留空则不使用代理',
+            "comment": 'Steam Bot使用的代理，格式为"http://127.0.0.1:8080"或"socks5h://127.0.0.1:1080"。"system"表示使用系统代理，留空则不使用代理。建议使用HTTP代理',
         },
         "steamGroupId": {"value": "37660928", "comment": "要发送消息的Steam群组ID，程序启动时可以读取到"},
         "steamChannelName": {"value": "BOT候车室", "comment": "要发送消息的Steam群组频道名称"},

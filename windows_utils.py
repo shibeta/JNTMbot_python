@@ -603,16 +603,16 @@ def get_steam_exe_path() -> Optional[str]:
 
 def get_system_proxy() -> Optional[str]:
     """
-    使用 urllib3 获取系统代理。优先获取socks代理，其次是http代理。
+    使用 urllib3 获取系统代理。优先获取 HTTP 代理，其次是 SOCKS 代理。
 
     :return: 代理字符串。如果未找到，返回 None
     """
-    socks_proxy = getproxies().get("socks", None)
     http_proxy = getproxies().get("http", None)
-    if socks_proxy:
-        return socks_proxy
-    elif http_proxy:
+    socks_proxy = getproxies().get("socks", None)
+    if http_proxy:
         return http_proxy
+    elif socks_proxy:
+        return socks_proxy
     else:
         return None
 
