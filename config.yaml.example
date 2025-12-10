@@ -65,7 +65,7 @@ goDownSecondStairFlightTime: 4500
 # 差事层进行"走出楼梯间"动作的持续时间 (毫秒)
 exitStairwellTime: 1000
 # 差事层进行"穿过走廊"动作的持续时间 (毫秒)
-crossAisleTime: 4200
+crossAisleTime: 4250
 # 差事层进行"寻找差事黄圈"动作时 每次移动的持续时间 (毫秒)
 moveTimeFindJob: 350
 # 差事面板玩家加入状态检测间隔时间 (秒)
