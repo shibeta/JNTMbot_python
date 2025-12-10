@@ -20,7 +20,7 @@ class OperationTimeoutContext(enum.Enum):
 class GameState(enum.Enum):
     """抛出 UnexpectedGameState 异常时，游戏可能处于的状态"""
 
-    ON = "游戏运行中的任意状态"  # 仅用于expected
+    ON = "游戏运行中的任意状态"
     UNKNOWN = "游戏运行中的未识别的状态"  # 仅用于actual
     OFF = "游戏未运行"
     OFFLINE = "离线模式"
