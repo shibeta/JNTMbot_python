@@ -1,22 +1,8 @@
 const SteamUser = require("steam-user");
 const fs = require("fs/promises"); // 使用 fs/promises 以便在 async/await 中使用
 const readline = require("readline");
+const prompts = require("prompts");
 const path = require("path");
-
-// 辅助函数，用于从控制台获取用户输入
-function promptUser(query) {
-    const rl = readline.createInterface({
-        input: process.stdin,
-        output: process.stdout,
-    });
-
-    return new Promise((resolve) =>
-        rl.question(query, (ans) => {
-            rl.close();
-            resolve(ans);
-        })
-    );
-}
 
 // 辅助函数，用于确定工作目录
 function get_workdir() {
@@ -196,8 +182,32 @@ class SteamChatBot {
      */
     async logOnWithPassword() {
         while (true) {
-            const accountName = await promptUser("请输入 Steam 账户名: ");
-            const password = await promptUser("请输入 Steam 密码: ");
+            const response = await prompts(
+                [
+                    {
+                        type: "text",
+                        name: "username",
+                        message: "请输入 Steam 账户名:",
+                    },
+                    {
+                        type: "password",
+                        name: "password",
+                        message: "请输入 Steam 密码:",
+                    },
+                ],
+                {
+                    // 处理用户按 Ctrl+C 取消的情况
+                    onCancel: () => process.exit(1),
+                }
+            );
+            const accountName = response.username;
+            const password = response.password;
+
+            // 简单的校验，防止空输入导致无效请求
+            if (!accountName || !password) {
+                console.log("❌ 账户名或密码不能为空，请重新输入。");
+                continue;
+            }
 
             try {
                 // 将单次登录尝试封装在私有方法中
@@ -261,10 +271,23 @@ class SteamChatBot {
                 if (lastCodeWrong) {
                     console.warn("❌ 上一个验证码错误！请重新输入。");
                 }
-                const code = await promptUser(
-                    "请输入发送至 %s 的验证码: ",
-                    domain || "Steam 手机应用"
+                const steamGuardClient = domain
+                    ? String(domain)
+                    : "Steam手机应用";
+                const response = await prompts(
+                    [
+                        {
+                            type: "text",
+                            name: "code",
+                            message: `请输入发送至 ${steamGuardClient} 的验证码: `,
+                        },
+                    ],
+                    {
+                        // 处理用户按 Ctrl+C 取消的情况
+                        onCancel: () => process.exit(1),
+                    }
                 );
+                const code = response.code;
                 callback(code);
             };
 
