@@ -15,7 +15,7 @@ logger = get_logger(__name__)
 
 
 class ProcessManager:
-    """负责管理一个子进程的生命周期。"""
+    """负责管理一个进程的生命周期。"""
 
     def __init__(self, command: list[str]):
         self.command = command
@@ -23,52 +23,55 @@ class ProcessManager:
         self.lock = threading.Lock()
 
     def is_running(self) -> bool:
-        """检查子进程当前是否正在运行。"""
+        """检查进程当前是否正在运行。"""
         with self.lock:
             return self.process is not None and self.process.poll() is None
 
     def is_running_unsafe(self) -> bool:
         """
-        检查子进程当前是否正在运行。
+        检查进程当前是否正在运行。
         该方法不安全，调用前应确保已持有 `self.lock`
         """
         return self.process is not None and self.process.poll() is None
 
     def start(self):
-        """启动子进程。"""
+        """启动进程。"""
         with self.lock:
             if self.is_running_unsafe():
                 logger.warning("进程已在运行，无需重复启动。")
                 return
 
-            logger.info(f"正在启动子进程: {' '.join(self.command)}")
+            logger.info(f"正在启动进程: {' '.join(self.command)}")
             try:
                 # CREATE_NEW_PROCESS_GROUP 可以避免主进程的 Ctrl+C 信号传递给子进程
                 self.process = subprocess.Popen(
                     self.command, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
                 )
-                logger.info(f"子进程已启动，PID: {self.process.pid}")
+                logger.debug(f"进程已启动，PID: {self.process.pid}")
             except FileNotFoundError:
                 logger.error(f"启动失败: 未找到可执行文件: {self.command[0]}")
                 self.process = None
             except Exception as e:
-                logger.error(f"启动子进程时发生未知错误: {e}")
+                logger.error(f"启动进程时发生未知错误: {e}")
                 self.process = None
 
     def stop(self):
-        """停止子进程。"""
+        """停止进程。"""
         with self.lock:
             if not self.process or not self.is_running_unsafe():
                 return
 
             proc_to_kill = self.process
-            logger.info(f"正在尝试终止进程 (PID: {proc_to_kill.pid})...")
+            logger.info(f"正在终止进程 (PID: {proc_to_kill.pid})...")
             try:
                 # signal.CTRL_BREAK_EVENT 仅在Windows上定义
                 stop_sig = getattr(signal, "CTRL_BREAK_EVENT", signal.SIGINT)
                 proc_to_kill.send_signal(stop_sig)
-                proc_to_kill.wait(timeout=2)
-                logger.info(f"进程 {proc_to_kill.pid} 已成功终止。")
+                return_code = proc_to_kill.wait(timeout=2)
+                if isinstance(return_code, int):
+                    logger.debug(f"进程 {proc_to_kill.pid} 已成功终止。")
+                else:
+                    raise TimeoutError(f"等待进程 {proc_to_kill.pid} 终止超时")
             except Exception:
                 logger.warning(f"终止进程 {proc_to_kill.pid} 失败，将执行强制终止。")
                 proc_to_kill.kill()
@@ -246,7 +249,7 @@ class Supervisor(threading.Thread):
 
             if not is_service_healthy:
                 if self.is_first_check:
-                    logger.info("首次启动，正在初始化 Steam Bot 后端...")
+                    logger.debug("首次启动，正在初始化 Steam Bot 后端...")
                 else:
                     logger.warning("检测到 Steam Bot 后端已关闭或不健康。正在尝试重启...")
 
@@ -256,7 +259,7 @@ class Supervisor(threading.Thread):
                 # 等待服务在重启后变得健康
                 if self._wait_for_health(timeout=30):
                     if not self.initial_health_event.is_set():
-                        logger.info("后端首次进入健康状态。")
+                        logger.debug("后端首次进入健康状态。")
                         self.initial_health_event.set()
                 else:
                     logger.error("后端重启后未能在30秒内进入健康状态，将稍后重试。")
