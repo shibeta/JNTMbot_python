@@ -301,6 +301,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         从暂停菜单导航至'进入在线模式'的菜单。
 
         :raises ``UIElementNotFound(UIElement.ONLINE_MODE_TAB)``: 找不到在线模式选择卡
+        :raises ``UIElementNotFound(UIElement.PAUSE_MENU)``: 打开暂停菜单失败
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         logger.info("动作: 正在导航至在线模式菜单...")
@@ -327,8 +328,9 @@ class LifecycleWorkflow(_BaseWorkflow):
         如果不在菜单中，其行为是未定义的。
 
         :raises ``UIElementNotFound(UIElement.ONLINE_MODE_TAB)``: 找不到在线模式选择卡
-        :raises ``UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.BAD_PCSETTING_BIN)``: 无法进入在线模式，因为pcsetting.bin故障
-        :raises ``UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.MAIN_MENU)``: 无法进入在线模式，因为被回退到主菜单
+        :raises ``UIElementNotFound(UIElement.PAUSE_MENU)``: 打开暂停菜单失败
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.BAD_PCSETTING_BIN)``: 无法进入在线模式，因为pcsetting.bin故障
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.MAIN_MENU)``: 无法进入在线模式，因为被回退到主菜单
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         :raises ``OperationTimeout(OperationTimeoutContext.ONLINE_SESSION_JOIN)``: 等待进入在线模式超时
         """
@@ -353,8 +355,8 @@ class LifecycleWorkflow(_BaseWorkflow):
         等待进入在线模式，并处理加载过程中的各种意外情况。
 
         :raises ``OperationTimeout(OperationTimeoutContext.JOIN_ONLINE_SESSION)``: 等待进入在线模式超时
-        :raises ``UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.BAD_PCSETTING_BIN)``: 由于 pc_setting.bin 问题无法进入在线模式
-        :raises ``UnexpectedGameState(expected=GameState.IN_ONLINE_LOBBY, actual=GameState.MAIN_MENU)``: 由于网络问题等原因被回退到主菜单 (仅限增强版)
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.BAD_PCSETTING_BIN)``: 由于 pc_setting.bin 问题无法进入在线模式
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.MAIN_MENU)``: 由于网络问题等原因被回退到主菜单 (仅限增强版)
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         logger.info("正在等待进入在线模式...")

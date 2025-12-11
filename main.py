@@ -196,29 +196,21 @@ def main():
         logger.warning("未启用健康检查。")
 
     # 初始化游戏控制器
-    automator = GTAAutomator(config, ocr_engine.ocr_window, steam_bot.send_group_message)
+    automator = GTAAutomator(
+        config, ocr_engine.ocr_window, steam_bot.send_group_message, push_integration.push_message
+    )
 
     # --- 主循环 ---
     # 主循环连续出错的次数
     main_loop_consecutive_error_count = 0
-    # 是否需要降低恶意值
-    requires_reduce_bad_sport = False
+
     while True:
         try:
             # 响应暂停信号
             pause_event.wait()
 
-            # 降低恶意值和德瑞 Bot 是互斥的，只在必要时(问题玩家)执行降低恶意值
-            if not requires_reduce_bad_sport:
-                # 如果不需要降低恶意值，运行德瑞 Bot
-                automator.run_dre_bot()
-            else:
-                # 如果标记需要清除恶意值，循环清除恶意值直到方法正常返回
-                automator.reduce_bad_sport_level()
-                # 完成后取消需要降低恶意值标志
-                requires_reduce_bad_sport = False
-                # 通知已经完成降低恶意值
-                push_integration.push_message("降低恶意值完成", "Bot 将开始执行德瑞差事。")
+            # 执行一轮循环
+            automator.run_one_cycle()
 
             # 如果成功完成，重置连续错误计数器
             if main_loop_consecutive_error_count != 0:
@@ -233,33 +225,16 @@ def main():
 
             logger.error(f"主循环中发生错误: {e}", exc_info=e)
 
-            # 问题玩家根据配置决定退出还是挂机
-            if isinstance(e, UnexpectedGameState) and e.actual_state == GameState.DODGY_PLAYER_LEVEL:
-                if config.autoReduceBadSportOnDodgyPlayer:
-                    logger.info(f"检测到恶意等级过高: {e.actual_state.value}。将开始挂机以降低恶意值。")
-                    # 通知恶意值过高
-                    push_integration.push_message(
-                        f"恶意值过高({e.actual_state.value})", "Bot 将开始挂机以降低恶意值。"
-                    )
-                    # 标记需要降低恶意值
-                    requires_reduce_bad_sport = True
-                    continue
-                else:
-                    logger.info(f"检测到恶意等级过高: {e.actual_state.value}。程序将退出以保护账号安全。")
-                    automator.lifecycle_workflow.shutdown()
-                    # 通知恶意值过高
-                    push_integration.push_message(
-                        f"恶意值过高({e.actual_state.value})", "程序将退出以保护账号安全。"
-                    )
-                    return  # 退出程序
-
-            # 恶意玩家只能等到离开恶意状态，直接退出程序
-            elif isinstance(e, UnexpectedGameState) and e.actual_state == GameState.BAD_SPORT_LEVEL:
+            # 恶意/问题玩家等级过高，退出程序以保护账号安全
+            if isinstance(e, UnexpectedGameState) and e.actual_state in (
+                GameState.BAD_SPORT_LEVEL,
+                GameState.DODGY_PLAYER_LEVEL,
+            ):
                 logger.info(f"检测到恶意等级过高: {e.actual_state.value}。程序将退出以保护账号安全。")
-                automator.lifecycle_workflow.shutdown()
-                # 通知恶意值过高
+                logger.warning("提示: 如果启用了自动降低恶意值，程序会在问题玩家时自动挂机降低恶意值。")
                 push_integration.push_message(
-                    f"恶意值过高({e.actual_state.value})", "程序将退出以保护账号安全。"
+                    f"恶意值过高({e.actual_state.value})",
+                    "程序将退出以保护账号安全。\n提示: 如果启用了自动降低恶意值，程序会在问题玩家时自动挂机降低恶意值。",
                 )
                 return  # 退出程序
 
@@ -269,11 +244,11 @@ def main():
                     f"当前连续失败次数 {main_loop_consecutive_error_count}，阈值 {config.mainLoopConsecutiveErrorThreshold}。"
                 )
                 if main_loop_consecutive_error_count > config.mainLoopConsecutiveErrorThreshold:
-                    logger.error("超过连续失败阈值，程序将退出...")
+                    logger.error("超过连续失败阈值，程序退出...")
                     # 运行超过 pushActivationDelay 分钟则推送消息
                     if time.monotonic() - global_start_time > config.pushActivationDelay * 60:
                         push_integration.push_message(
-                            "超过连续失败阈值，程序将退出", f"最后一次错误: {e} \n{traceback.format_exc()}"
+                            "超过连续失败阈值，程序退出", f"最后一次错误: {e} \n{traceback.format_exc()}"
                         )
                     return  # 退出程序
 

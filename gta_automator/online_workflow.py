@@ -71,7 +71,7 @@ class OnlineWorkflow(_BaseWorkflow):
         """
         尝试从在线战局中切换到另一个仅邀请战局，必须在在线模式中才能工作。
 
-        :raises ``UnexpectedGameState(expected={GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, actual=GameState.UNKNOWN)``: 游戏状态未知，无法切换战局
+        :raises ``UnexpectedGameState({GameState.ONLINE_FREEMODE, GameState.IN_MISSION, GameState.ONLINE_PAUSED}, GameState.UNKNOWN)``: 切换新战局失败次数过多
         :raises ``UnexpectedGameState(GameState.ONLINE_PAUSED, GameState.UNKNOWN)``: 游戏卡死，无法切换战局
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法切换战局
         """
@@ -109,7 +109,9 @@ class OnlineWorkflow(_BaseWorkflow):
 
         # 如果所有策略用尽，抛出异常
         logger.error("切换新战局失败次数过多，认为游戏正处于未知状态。")
-        raise UnexpectedGameState({GameState.ONLINE_FREEMODE, GameState.IN_MISSION}, GameState.UNKNOWN)
+        raise UnexpectedGameState(
+            {GameState.ONLINE_FREEMODE, GameState.IN_MISSION, GameState.ONLINE_PAUSED}, GameState.UNKNOWN
+        )
 
     def get_bad_sport_level(self) -> str:
         """
@@ -119,6 +121,7 @@ class OnlineWorkflow(_BaseWorkflow):
         :return: 恶意等级字符串，如 "清白玩家", "问题玩家", "恶意玩家"
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
+        :raises ``UIElementNotFound(UIElement.PAUSE_MENU)``: 打开暂停菜单失败
         """
         logger.info("动作: 正在获取当前角色的恶意值...")
         # 打开暂停菜单并导航到玩家列表
@@ -154,7 +157,7 @@ class OnlineWorkflow(_BaseWorkflow):
         :param float afk_time: 要挂机的时间(秒)
         :param float online_check_interval: 每隔多久检查一次是否在线上(秒)
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
-        :raises ``UnexpectedGameState(expected={GameState.ONLINE_FREEMODE, actual=GameState.IN_MISSION}, GameState.UNKNOWN)``: 离开了在线战局
+        :raises ``UnexpectedGameState(expected={GameState.ONLINE_FREEMODE, GameState.IN_MISSION}, actual=GameState.UNKNOWN)``: 离开了在线战局
         """
         end_time = time.monotonic() + afk_time
         while True:

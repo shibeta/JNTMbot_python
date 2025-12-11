@@ -1,3 +1,4 @@
+from enum import Enum, auto
 import time
 from typing import Any, Callable, Optional
 
@@ -16,6 +17,11 @@ from .job_workflow import JobWorkflow
 logger = get_logger(__name__)
 
 
+class BotMode(Enum):
+    DRE = auto()  # 德瑞 Bot
+    RECOVERY = auto()  # 恢复模式 (挂机降低恶意值)
+
+
 class GTAAutomator:
     """
     用于自动化操作 GTA V 的类。
@@ -26,6 +32,7 @@ class GTAAutomator:
         config: Config,
         ocr_func: OcrFuncProtocol,
         send_steam_message_func: Callable[[str], Any],
+        push_message_func: Callable[[str, str], Any],
         gamepad: Optional[GamepadSimulator] = None,
     ):
         # 初始化底层模块
@@ -38,12 +45,52 @@ class GTAAutomator:
         self.online_workflow = OnlineWorkflow(screen, player_input, process, config)
         self.job_workflow = JobWorkflow(screen, player_input, process, config, send_steam_message_func)
 
+        # 初始化时，状态为德瑞 Bot
+        self.bot_mode: BotMode = BotMode.DRE
+
+        # 用于推送消息的方法
+        self.push_message = push_message_func
+
         # 上一次恶意值检查结果为清白玩家的时间戳，None 表示尚未进行过恶意值检查
         self._last_clean_player_verified_timestamp: Optional[float] = None
         # 恶意值检查间隔 (秒)
         self.bad_sport_check_interval: float = 3600
+        # 问题玩家是否自动挂机降恶意值
+        self.recovery_on_dodgy_player = config.autoReduceBadSportOnDodgyPlayer
         # 降低恶意值时，挂机结束的目标时间戳，None 表示当前没有正在进行的挂机任务
-        self._afk_target_timestamp: Optional[float] = None
+        self._recovery_target_timestamp: Optional[float] = None
+        # 降低恶意值时，总挂机目标: 20 小时
+        self._recovery_total_duration = 20 * 3600
+        # 降低恶意值时，单次挂机的时长: 10 分钟
+        self._recovery_chunk_size = 10 * 60
+
+    def run_one_cycle(self):
+        """
+        统一的入口方法，根据当前模式执行一个“周期”的任务:
+        - 如果是德瑞 Bot 模式，执行一轮差事。
+        - 如果是恢复模式，执行一段短时间的挂机。
+
+        :raises ``UnexpectedGameState(actual=GameState.OFF)``: 在自动化任务中，游戏意外关闭
+        :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.BAD_SPORT_LEVEL)``: 恶意等级为恶意玩家
+        :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.DODGY_PLAYER_LEVEL)``: 恶意等级为问题玩家
+        :raises ``UnexpectedGameState({GameState.ONLINE_FREEMODE, GameState.IN_MISSION, GameState.ONLINE_PAUSED}, GameState.UNKNOWN)``: 切换新战局失败次数过多
+        :raises ``UnexpectedGameState(GameState.ONLINE_PAUSED, GameState.UNKNOWN)``: 游戏卡死，无法切换战局
+        :raises ``UnexpectedGameState(expected={GameState.ONLINE_FREEMODE, GameState.IN_MISSION}, actual=GameState.UNKNOWN)``: 挂机时离开了在线战局
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.UNKNOWN)``: 启动游戏失败
+        :raises ``UIElementNotFound(UIElement.PAUSE_MENU)``: 打开暂停菜单失败
+        :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
+        :raises ``UIElementNotFound(UIElement.JOB_TRIGGER_POINT)``: 无法找到任务触发点
+        :raises ``UIElementNotFound(UIElement.JOB_SETUP_PANEL)``: 在等待玩家和启动差事阶段，意外离开了任务面板
+        :raises ``OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)``: 等待在事务所床上复活超时
+        :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)``: 等待差事面板打开超时
+        """
+        # 确保游戏基础状态
+        game_restarted = self.setup()
+
+        if self.bot_mode == BotMode.DRE:
+            self._run_dre_cycle(game_restarted)
+        elif self.bot_mode == BotMode.RECOVERY:
+            self._run_recovery_cycle()
 
     def setup(self):
         """
@@ -65,6 +112,140 @@ class GTAAutomator:
         logger.info("初始化 GTA V 完成。")
         return True
 
+    def _run_dre_cycle(self, game_restarted: bool):
+        """
+        执行一轮完整的德瑞 Bot 循环逻辑:
+        1. 启动游戏并确保进入在线模式。
+        2. 检查恶意值(按需)
+        3. 切换战局
+        3. 执行一轮德瑞差事。
+
+        :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.BAD_SPORT_LEVEL)``: 恶意等级为恶意玩家
+        :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.DODGY_PLAYER_LEVEL)``: 恶意等级为问题玩家
+        :raises ``UnexpectedGameState({GameState.ONLINE_FREEMODE, GameState.IN_MISSION, GameState.ONLINE_PAUSED}, GameState.UNKNOWN)``: 切换新战局失败次数过多
+        :raises ``UnexpectedGameState(GameState.ONLINE_PAUSED, GameState.UNKNOWN)``: 游戏卡死，无法切换战局
+        :raises ``UnexpectedGameState(actual=GameState.OFF)``: 在自动化任务中，游戏意外关闭
+        :raises ``OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)``: 等待在事务所床上复活超时
+        :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)``: 等待差事面板打开超时
+        :raises ``UIElementNotFound(UIElement.JOB_SETUP_PANEL)``: 在等待玩家和启动差事阶段，意外离开了任务面板
+        :raises ``UIElementNotFound(UIElement.PAUSE_MENU)``: 打开暂停菜单失败
+        :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
+        :raises ``UIElementNotFound(UIElement.JOB_TRIGGER_POINT)``: 无法找到任务触发点
+        """
+        logger.info("动作: 正在开始新一轮德瑞 Bot 任务...")
+        # 按需检查恶意值
+        if self._should_check_bad_sport(game_restarted):
+            try:
+                self._perform_bad_sport_check()
+            except UnexpectedGameState as e:
+                # 捕获恶意玩家异常，并切换到恢复模式
+                if e.actual_state == GameState.DODGY_PLAYER_LEVEL:
+                    if self.recovery_on_dodgy_player:
+                        # 如果启用自动挂机降恶意值，切换到恢复模式
+                        logger.warning(f"检测到问题玩家状态，切换至恢复模式。")
+                        self.push_message("恶意值过高(问题玩家)", "Bot 将开始挂机以降低恶意值。")
+                        self.bot_mode = BotMode.RECOVERY
+                        self._recovery_target_timestamp = None  # 重置计时
+                        return  # 结束本轮循环，下次调用将进入 RECOVERY 分支
+                    else:
+                        # 如果未启用自动挂机降恶意值，退出
+                        self.lifecycle_workflow.shutdown()
+                        raise
+                elif e.actual_state == GameState.BAD_SPORT_LEVEL:
+                    # 恶意玩家只能退出
+                    self.lifecycle_workflow.shutdown()
+                    raise
+
+        # 切换到新战局
+        try:
+            self.online_workflow.start_new_match()
+        except UnexpectedGameState as e:
+            if (
+                e.expected == {GameState.ONLINE_FREEMODE, GameState.IN_MISSION}
+                and e.actual_state == GameState.UNKNOWN
+            ):
+                # 开始新战局时，用尽全部恢复策略后仍无法切换战局
+                logger.error("初始化游戏时，切换战局失败次数过多，退出游戏。")
+                self.lifecycle_workflow.shutdown()
+            raise
+
+        # 等待复活
+        try:
+            self.job_workflow.wait_for_respawn()
+        except OperationTimeout as e:
+            if e.context == OperationTimeoutContext.RESPAWN_IN_AGENCY:
+                # 等待复活超时，为避免无法进入线上模式等严重错误，退出游戏
+                logger.error("初始化游戏时，等待在事务所复活超时，退出游戏。")
+                self.lifecycle_workflow.shutdown()
+            raise
+
+        # 执行德瑞 Bot 差事
+        self.play_dre_job()
+
+        logger.info("本轮德瑞 Bot 任务成功完成。")
+
+    def _run_recovery_cycle(self):
+        """
+        执行一轮恢复逻辑，支持断点续传。
+        1. 初始化挂机时间
+        2. 检查恶意值，恶意玩家抛出异常
+        3. 挂机
+
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        :raises ``UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.BAD_SPORT_LEVEL)``: 恶意等级为恶意玩家
+        :raises ``UnexpectedGameState(expected={GameState.ONLINE_FREEMODE, GameState.IN_MISSION}, actual=GameState.UNKNOWN)``: 离开了在线战局
+        :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
+        """
+        logger.info("动作: 正在挂机以降低恶意值...")
+
+        # 初始化或恢复计时器
+        if self._recovery_target_timestamp is None:
+            self._recovery_target_timestamp = time.monotonic() + self._recovery_total_duration
+            logger.info(f"开启新的恶意值恢复任务，目标时长: {self._recovery_total_duration/3600:.1f} 小时")
+
+        remaining = self._recovery_target_timestamp - time.monotonic()
+
+        # 检查是否完成
+        if remaining <= 0:
+            logger.info("恶意值恢复时间已达标，切换回德瑞 Bot 模式。")
+            self.push_message("降低恶意值完成", "Bot 将恢复执行德瑞差事。")
+            self.bot_mode = BotMode.DRE
+            self._recovery_target_timestamp = None
+            return
+
+        # 检查是否为恶意玩家，恶意玩家无法降低恶意值
+        logger.info("正在检查恶意值...")
+        try:
+            bad_sport_level = self.online_workflow.get_bad_sport_level()
+        except UIElementNotFound as e:
+            if e.element_not_found == UIElement.BAD_SPORT_LEVEL_INDICATOR:
+                logger.error("检查恶意值失败，退出游戏。")
+                self.lifecycle_workflow.shutdown()
+            raise
+        if bad_sport_level == "恶意玩家":
+            logger.error("当前恶意等级为恶意玩家，无法降低恶意值，退出游戏。")
+            # 清空挂机目标计时器
+            self._afk_target_timestamp = None
+            self.lifecycle_workflow.shutdown()
+            raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.BAD_SPORT_LEVEL)
+
+        # 其他恶意等级无条件执行挂机
+        logger.info(f"当前恶意等级为 {bad_sport_level}，开始挂机以降低恶意值。")
+
+        # 执行挂机
+        # 每次只挂机 _recovery_chunk_size (例如10分钟) 或者 剩余时间
+        current_chunk = min(self._recovery_chunk_size, remaining)
+
+        logger.info(f"执行恢复模式挂机: {current_chunk/60:.1f} 分钟 (总剩余: {remaining/3600:.2f} 小时)")
+
+        try:
+            self.online_workflow.afk(current_chunk)
+        except UnexpectedGameState as e:
+            # 挂机期间离开了在线模式
+            # 下一次执行时会自动断点续传
+            logger.warning("挂机过程中游戏状态异常。")
+            raise e
+
     def play_dre_job(self):
         """
         执行德瑞差事的任务流程:
@@ -75,10 +256,12 @@ class GTAAutomator:
         5. 检查是否在任务中
 
         :raises ``UnexpectedGameState(actual=GameState.OFF)``: 在自动化任务中，游戏意外关闭
-        :raises ``OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)``: 等待在事务所床上复活超时
+        :raises ``UnexpectedGameState(GameState.ONLINE_PAUSED, GameState.UNKNOWN)``: 游戏卡死，无法切换战局
+        :raises ``UnexpectedGameState({GameState.ONLINE_FREEMODE, GameState.IN_MISSION, GameState.ONLINE_PAUSED}, GameState.UNKNOWN)``: 切换新战局失败次数过多
+        :raises ``UIElementNotFound(UIElement.JOB_SETUP_PANEL)``: 在等待玩家和启动差事阶段，意外离开了任务面板
         :raises ``UIElementNotFound(UIElement.JOB_TRIGGER_POINT)``: 无法找到任务触发点
         :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)``: 等待差事面板打开超时
-        :raises ``UIElementNotFound(UIElement.JOB_SETUP_PANEL)``: 在等待玩家和启动差事阶段，意外离开了任务面板
+        :raises ``OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)``: 等待在事务所床上复活超时
         """
         # 移动到任务触发点
         self.job_workflow.navigate_from_bed_to_job_point()
@@ -196,6 +379,7 @@ class GTAAutomator:
         :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.BAD_SPORT_LEVEL)``: 恶意等级为恶意玩家
         :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.DODGY_PLAYER_LEVEL)``: 恶意等级为问题玩家
         :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
+        :raises ``UIElementNotFound(UIElement.PAUSE_MENU)``: 打开暂停菜单失败
         """
         logger.info("正在检查恶意值...")
         try:
@@ -218,138 +402,3 @@ class GTAAutomator:
 
         # 检查通过，更新时间戳
         self._last_clean_player_verified_timestamp = time.monotonic()
-
-    def run_dre_bot(self):
-        """
-        执行一轮完整的德瑞 Bot 任务:
-        1. 启动游戏并确保进入在线模式。
-        2. 检查恶意值(按需)
-        3. 执行一轮德瑞差事。
-
-        :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.BAD_SPORT_LEVEL)``: 恶意等级为恶意玩家
-        :raises ``UnexpectedGameState(expected=GameState.CLEAN_PLAYER_LEVEL, actual=GameState.DODGY_PLAYER_LEVEL)``: 恶意等级为问题玩家
-        :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
-        :raises ``UnexpectedGameState(expected={GameState.IN_ONLINE_LOBBY, GameState.IN_MISSION}, actual=GameState.UNKNOWN)``: 切换战局时失败
-        :raises ``UnexpectedGameState(actual=GameState.OFF)``: 在自动化任务中，游戏意外关闭
-        :raises ``OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)``: 等待在事务所床上复活超时
-        :raises ``UIElementNotFound(UIElement.JOB_TRIGGER_POINT)``: 无法找到任务触发点
-        :raises ``OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_OPEN)``: 等待差事面板打开超时
-        :raises ``UIElementNotFound(UIElement.JOB_SETUP_PANEL)``: 在等待玩家和启动差事阶段，意外离开了任务面板
-        """
-        logger.info("动作: 正在开始新一轮德瑞 Bot 任务...")
-        # 确保游戏就绪，即在在线模式中
-        game_restarted = self.setup()
-
-        # 按需检查恶意值
-        if self._should_check_bad_sport(game_restarted):
-            self._perform_bad_sport_check()
-
-        # 切换到新战局
-        try:
-            self.online_workflow.start_new_match()
-        except UnexpectedGameState as e:
-            if (
-                e.expected == {GameState.ONLINE_FREEMODE, GameState.IN_MISSION}
-                and e.actual_state == GameState.UNKNOWN
-            ):
-                # 开始新战局时，用尽全部恢复策略后仍无法切换战局
-                logger.error("初始化游戏时，切换战局失败次数过多，退出游戏。")
-                self.lifecycle_workflow.shutdown()
-            raise
-
-        # 等待复活
-        try:
-            self.job_workflow.wait_for_respawn()
-        except OperationTimeout as e:
-            if e.context == OperationTimeoutContext.RESPAWN_IN_AGENCY:
-                # 等待复活超时，为避免无法进入线上模式等严重错误，退出游戏
-                logger.error("初始化游戏时，等待在事务所复活超时，退出游戏。")
-                self.lifecycle_workflow.shutdown()
-            raise
-
-        # 执行德瑞bot任务
-        self.play_dre_job()
-
-        logger.info("本轮德瑞 Bot 任务成功完成。")
-
-    def reduce_bad_sport_level(self):
-        """
-        挂机 20 小时来降低恶意值。支持断点续传。
-
-        如果在挂机过程中抛出异常，再次调用此方法会自动计算剩余时间继续挂机。
-
-        任务成功完成后，会自动重置内部计时器。
-
-        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
-        :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
-        :raises ``UnexpectedGameState(expected={GameState.ONLINE_FREEMODE, actual=GameState.IN_MISSION}, GameState.UNKNOWN)``: 离开了在线战局
-        """
-        TOTAL_AFK_DURATION = 20 * 3600  # 总挂机目标: 20 小时
-        AFK_CHUNK_SIZE = 10 * 60  # 单次 AFK 指令的时长: 10 分钟
-
-        logger.info("动作: 正在挂机以降低恶意值...")
-        # 确保游戏在在线模式
-        self.setup()
-
-        # 检查是否为恶意玩家，恶意玩家无法降低恶意值
-        logger.info("正在检查恶意值...")
-        try:
-            bad_sport_level = self.online_workflow.get_bad_sport_level()
-        except UIElementNotFound as e:
-            if e.element_not_found == UIElement.BAD_SPORT_LEVEL_INDICATOR:
-                logger.error("检查恶意值失败，退出游戏。")
-                self.lifecycle_workflow.shutdown()
-            raise
-        if bad_sport_level == "恶意玩家":
-            logger.error("当前恶意等级为恶意玩家，无法降低恶意值，退出游戏。")
-            # 清空挂机目标计时器
-            self._afk_target_timestamp = None
-            self.lifecycle_workflow.shutdown()
-            raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.BAD_SPORT_LEVEL)
-
-        # 其他恶意等级无条件执行挂机
-        logger.info(f"当前恶意等级为 {bad_sport_level}，开始挂机以降低恶意值。")
-
-        # 设定或恢复目标时间
-        if self._afk_target_timestamp is None:
-            # 新的任务
-            self._afk_target_timestamp = time.monotonic() + TOTAL_AFK_DURATION
-            logger.info(f"开始新的挂机任务，目标时长: {TOTAL_AFK_DURATION / 3600:.2f} 小时。")
-        else:
-            # 断点续传
-            remaining = self._afk_target_timestamp - time.monotonic()
-            if remaining > 0:
-                logger.info(f"检测到未完成的挂机任务，继续执行。剩余时间: {remaining / 3600:.2f} 小时。")
-            else:
-                logger.info("检测到挂机任务时间已在中断期间耗尽。")
-
-        # 循环挂机
-        while True:
-            # 基于时间戳计时挂机
-            remaining_time = self._afk_target_timestamp - time.monotonic()
-            # 时间到则退出循环
-            if remaining_time <= 0:
-                logger.info("挂机时间已达标。")
-                break
-
-            # 计算本次挂机时长：取 默认块时长 与 剩余总时长 的较小值
-            # 确保最后一次挂机不会超出总时长
-            current_chunk = min(AFK_CHUNK_SIZE, remaining_time)
-
-            try:
-                # 记录进度
-                logger.info(
-                    f"剩余需挂机: {remaining_time / 3600:.2f} 小时。执行 AFK 动作 {int(current_chunk)} 秒..."
-                )
-                # 挂机
-                self.online_workflow.afk(current_chunk)
-
-            except UnexpectedGameState as e:
-                if e.actual_state == GameState.UNKNOWN:
-                    logger.warning("挂机时意外离开了战局，退出游戏。")
-                    self.lifecycle_workflow.shutdown()
-                raise
-
-        # 挂机完成，重置计时器
-        self._afk_target_timestamp = None
-        logger.info("已完成降低恶意值工作流程。")
