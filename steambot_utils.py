@@ -435,6 +435,22 @@ class SteamBot:
         except:
             return {"loggedIn": False, "name": ""}
 
+    def get_last_send_system_time(self):
+        """
+        返回上次发送消息时的本地时间
+
+        :return float: 秒数形式的浮点时间
+        """
+        return self.last_send_system_time
+
+    def get_last_send_monotonic_time(self):
+        """
+        返回上次发送消息时的单调时间
+
+        :return float: 秒数形式的浮点时间
+        """
+        return self.last_send_monotonic_time
+
     def reset_send_timer(self):
         """重置上次发送消息的时间戳为当前时间。"""
         self.last_send_monotonic_time = time.monotonic()
