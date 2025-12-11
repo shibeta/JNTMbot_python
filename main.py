@@ -184,21 +184,26 @@ def main():
         logger.error(f"初始化消息推送失败: {e}", exc_info=e)
         return
 
+    # 初始化游戏控制器
+    automator = GTAAutomator(
+        config, ocr_engine.ocr_window, steam_bot.send_group_message, push_integration.push_message
+    )
+
     # 初始化健康检查
     if config.enableHealthCheck:
         logger.warning(f"已启用健康检查。正在初始化监控模块...")
         health_check_exit_func = partial(exit_main_process, os.getpid())
         monitor = HealthMonitor(
-            steam_bot, pause_event, health_check_exit_func, push_integration.push_message, config
+            config,
+            steam_bot.get_last_send_system_time,
+            steam_bot.get_last_send_monotonic_time,
+            pause_event,
+            health_check_exit_func,
+            push_integration.push_message,
+            automator.is_in_recovery_mode,
         )
-        monitor.start()
     else:
         logger.warning("未启用健康检查。")
-
-    # 初始化游戏控制器
-    automator = GTAAutomator(
-        config, ocr_engine.ocr_window, steam_bot.send_group_message, push_integration.push_message
-    )
 
     # --- 主循环 ---
     # 主循环连续出错的次数
@@ -225,7 +230,7 @@ def main():
 
             logger.error(f"主循环中发生错误: {e}", exc_info=e)
 
-            # 恶意/问题玩家等级过高，退出程序以保护账号安全
+            # 恶意/问题玩家，退出程序
             if isinstance(e, UnexpectedGameState) and e.actual_state in (
                 GameState.BAD_SPORT_LEVEL,
                 GameState.DODGY_PLAYER_LEVEL,
