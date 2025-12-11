@@ -286,7 +286,7 @@ class SteamChatBot {
                 }
                 const steamGuardClient = domain
                     ? String(domain)
-                    : "Steam手机应用";
+                    : "Steam 手机应用";
                 const response = await prompts(
                     [
                         {
