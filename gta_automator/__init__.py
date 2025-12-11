@@ -64,6 +64,13 @@ class GTAAutomator:
         # 降低恶意值时，单次挂机的时长: 10 分钟
         self._recovery_chunk_size = 10 * 60
 
+    def is_in_recovery_mode(self):
+        """
+        判断当前是否处于恢复模式（挂机模式）。
+        用于健康检查时抑制 Steam 消息超时报警。
+        """
+        return self.bot_mode == BotMode.RECOVERY
+
     def run_one_cycle(self):
         """
         统一的入口方法，根据当前模式执行一个“周期”的任务:
