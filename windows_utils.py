@@ -207,15 +207,12 @@ def get_primary_monitor_dpi_scale():
     )
 
 
-def find_window(
-    window_class: Optional[str] = None, window_title: Optional[str] = None, process_name: Optional[str] = None
-):
+def find_window(window_class: Optional[str] = None, window_title: Optional[str] = None):
     """
-    通过窗口类名, 窗口标题和进程名查找窗口，返回窗口句柄和进程ID。
+    通过窗口类名, 窗口标题查找窗口，返回窗口句柄和进程ID。
 
     :param window_class: 窗口类名，可选，与 window_title 至少要提供一个
     :param window_title: 窗口标题，可选，与 window_class 至少要提供一个
-    :param process_name: 进程名称，可选，不提供时将跳过进程名称验证
     :return: 如果找到符合条件的窗口，返回 (hwnd, pid) 元组，否则返回 None
     """
     if window_class is None and window_title is None:
@@ -224,19 +221,12 @@ def find_window(
 
     # 使用 FindWindow 直接查找窗口
     hwnd = win32gui.FindWindow(window_class, window_title)
-
     if hwnd == 0:
         return None
 
     # 获取窗口对应进程的 PID
-    try:
-        _, pid = win32process.GetWindowThreadProcessId(hwnd)
-        # 检查进程标题
-        if process_name is not None:
-            proc = psutil.Process(pid)
-            if proc.name().lower() != process_name.lower():
-                return None
-    except (psutil.NoSuchProcess, psutil.AccessDenied):
+    _, pid = win32process.GetWindowThreadProcessId(hwnd)
+    if pid == 0:
         return None
 
     return hwnd, pid
@@ -329,15 +319,13 @@ def ensure_window_thread_resumed(hwnd: int):
     MAX_RESUME_ATTEMPTS = 5
     logger.info(f"正在尝试恢复线程 {thread_id} (窗口 {hwnd}) 运行...")
 
-    for _ in range( MAX_RESUME_ATTEMPTS):
+    for _ in range(MAX_RESUME_ATTEMPTS):
         try:
             previous_suspend_count = resume_thread(thread_id)
 
             if previous_suspend_count == 0:
                 # 如果之前的挂起计数0，那么现在肯定是0。
-                logger.info(
-                    f"线程 {thread_id} 已确认恢复运行。"
-                )
+                logger.info(f"线程 {thread_id} 已确认恢复运行。")
                 return
 
         except ResumeException as e:

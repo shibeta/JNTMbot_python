@@ -61,7 +61,7 @@ class GameProcess:
             logger.debug(f"使用传入的窗口句柄: {self.hwnd}, 进程ID: {self.pid} 更新进程信息。")
             self.hwnd, self.pid = hwnd, pid
         else:
-            info = find_window(self.GTA_WINDOW_CLASS_NAME, self.GTA_WINDOW_TITLE, self.GTA_PROCESS_NAME)
+            info = find_window(self.GTA_WINDOW_CLASS_NAME, self.GTA_WINDOW_TITLE)
             if info:
                 self.hwnd, self.pid = info
                 logger.info(f"更新 GTA V 进程信息完成。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
@@ -126,9 +126,7 @@ class GameProcess:
         检查游戏是否启动。
         **注意这个方法不会检查或修改对象记录的游戏信息，需要手动更新**。
         """
-        window_info = find_window(
-            GameProcess.GTA_WINDOW_CLASS_NAME, GameProcess.GTA_WINDOW_TITLE, GameProcess.GTA_PROCESS_NAME
-        )
+        window_info = find_window(GameProcess.GTA_WINDOW_CLASS_NAME, GameProcess.GTA_WINDOW_TITLE)
         if window_info:
             return True
         else:
