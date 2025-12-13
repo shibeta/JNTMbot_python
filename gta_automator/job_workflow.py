@@ -153,7 +153,7 @@ class JobWorkflow(_BaseWorkflow):
             self.config.playerJoiningTimeout,
         )
 
-    def wait_for_respawn(self):
+    def wait_for_respawn_in_agency(self):
         """
         等待玩家在事务所的床上复活。
 

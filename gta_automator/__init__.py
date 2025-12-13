@@ -178,7 +178,7 @@ class GTAAutomator:
 
         # 等待复活
         try:
-            self.job_workflow.wait_for_respawn()
+            self.job_workflow.wait_for_respawn_in_agency()
         except OperationTimeout as e:
             if e.context == OperationTimeoutContext.RESPAWN_IN_AGENCY:
                 # 等待复活超时，为避免无法进入线上模式等严重错误，退出游戏
@@ -332,7 +332,7 @@ class GTAAutomator:
                 # 切换战局
                 try:
                     self.online_workflow.start_new_match()
-                    self.job_workflow.wait_for_respawn()
+                    self.job_workflow.wait_for_respawn_in_agency()
                     return  # 切换战局成功，结束当前差事流程
 
                 except UnexpectedGameState as e:
