@@ -113,7 +113,7 @@ class GTAAutomator:
             return False
 
         # 如果游戏未就绪，重启游戏
-        logger.warning("游戏状态错误，将重启游戏。")
+        logger.warning("游戏状态不正常，将重启游戏。")
         self.lifecycle_workflow.restart()
 
         logger.info("初始化 GTA V 完成。")
