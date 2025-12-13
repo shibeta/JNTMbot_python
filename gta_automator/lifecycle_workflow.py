@@ -361,7 +361,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         """
         logger.info("正在等待进入在线模式...")
         start_time = time.monotonic()
-        end_time = start_time + 300  # 5分钟超时
+        end_time = start_time + self.config.onlineModeLoadingTimeout
         has_triggered_single_session = False
 
         while time.monotonic() < end_time:

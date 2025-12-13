@@ -162,7 +162,9 @@ class JobWorkflow(_BaseWorkflow):
         """
         logger.info("等待在事务所床上复活...")
 
-        if not self.wait_for_state(self.screen.is_respawned_in_agency, timeout=60):
+        if not self.wait_for_state(
+            self.screen.is_respawned_in_agency, timeout=self.config.respawnInAgencyTimeout
+        ):
             raise OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)
         logger.info("在事务所床上复活成功。")
 

@@ -73,7 +73,10 @@ class Config:
             "value": 5,
             "comment": "卡单延迟时间 (秒)",
         },
-        "autoReduceBadSportOnDodgyPlayer": {"value": True, "comment": "当bot变成问题玩家后是否自动挂机清除恶意值。设置为False后变成问题玩家会退出程序。"},
+        "autoReduceBadSportOnDodgyPlayer": {
+            "value": True,
+            "comment": "当bot变成问题玩家后是否自动挂机清除恶意值。设置为False后变成问题玩家会退出程序。",
+        },
         "manualMoveToPoint": {
             "value": False,
             "comment": "禁用在事务所内起床后自动移动到任务触发点，改为要求用户手动将角色移动到任务触发点",
@@ -129,6 +132,14 @@ class Config:
         "playerJoiningTimeout": {"value": 120, "comment": "等待正在加入玩家超时重开时间 (秒)"},
         "startMatchDelay": {"value": 15, "comment": "开始差事等待延迟 (秒)"},
         "exitMatchTimeout": {"value": 120, "comment": "等待差事启动落地超时时间 (秒)(防止卡在启动战局中)"},
+        "respawnInAgencyTimeout": {
+            "value": 120,
+            "comment": "等待在事务所复活超时时间 (秒)(防止切换战局时卡云)",
+        },
+        "onlineModeLoadingTimeout": {
+            "value": 300,
+            "comment": "等待从线下进入线上和通过Steam加入战局落地超时时间 (秒)(防止在线模式加载时卡云)",
+        },
         "ocrArgs": {
             "value": r'--models=".\models" --det=ch_PP-OCRv4_det_infer.onnx --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx --keys=dict_chinese.txt --padding=70 --maxSideLen=1024 --boxScoreThresh=0.5 --boxThresh=0.3 --unClipRatio=1.6 --doAngle=0 --mostAngle=0 --numThread=1',
             "comment": "RapidOCR的启动参数",
@@ -207,6 +218,8 @@ class Config:
         playerJoiningTimeout: int
         startMatchDelay: int
         exitMatchTimeout: int
+        respawnInAgencyTimeout: int
+        onlineModeLoadingTimeout: int
         ocrArgs: str
         msgOpenJobPanel: str
         msgMatchPanelTimeout: str

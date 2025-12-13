@@ -78,6 +78,10 @@ playerJoiningTimeout: 120
 startMatchDelay: 15
 # 等待差事启动落地超时时间 (秒)(防止卡在启动战局中)
 exitMatchTimeout: 120
+# 等待在事务所复活超时时间 (秒)(防止切换战局时卡云)
+respawnInAgencyTimeout: 120
+# 等待从线下进入线上和通过Steam加入战局落地超时时间 (秒)(防止在线模式加载时卡云)
+onlineModeLoadingTimeout: 300
 # RapidOCR的启动参数
 ocrArgs: --models=".\models" --det=ch_PP-OCRv4_det_infer.onnx 
   --cls=ch_ppocr_mobile_v2.0_cls_infer.onnx --rec=rec_ch_PP-OCRv4_infer.onnx 
