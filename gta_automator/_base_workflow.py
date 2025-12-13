@@ -120,7 +120,7 @@ class _BaseWorkflow:
         return True
 
     def wait_for_state(
-        self, check_function, timeout: int, check_interval: float = 1.0, game_has_started: bool = True
+        self, check_function, timeout: float, check_interval: float = 1.0, game_has_started: bool = True
     ) -> bool:
         """
         通用等待函数，在超时前反复检查某个状态。如果游戏窗口不存在，会停止检查并抛出异常。
