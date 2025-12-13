@@ -19,7 +19,7 @@ class SteamChatBot {
     constructor(proxy = null) {
         var steamUserOptions = {
             autoRelogin: true,
-            protocol: SteamUser.EConnectionProtocol.Auto,
+            webCompatibilityMode: true,
         };
         if (proxy) {
             const proxy_lower = proxy.toLowerCase();
