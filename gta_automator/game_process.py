@@ -49,6 +49,10 @@ class GameProcess:
         # 确保程序退出时 GTA V 进程不会被挂起
         atexit.register(self.resume)
 
+        # 查找已经打开的 GTA V 窗口
+        self.update_info()
+        self.resume()
+
     def update_info(self, hwnd: Optional[int] = None, pid: Optional[int] = None):
         """
         传入窗口句柄和 PID ，更新对象的信息。

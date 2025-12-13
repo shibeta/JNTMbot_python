@@ -19,11 +19,10 @@ class LifecycleWorkflow(_BaseWorkflow):
 
         :return: 如果游戏已启动并进入在线模式则返回 True，否则返回 False
         """
-        if not self.process.is_game_started():
+        # 检查窗口句柄有效性以判断游戏是否启动
+        if not self.process.is_hwnd_valid():
             return False
 
-        # 更新游戏进程信息
-        self.process.update_info()
         # 确保进程未被挂起
         self.process.resume()
 
