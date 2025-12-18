@@ -20,7 +20,7 @@ echo.
 
 :: 查找 MSI 安装文件
 echo 正在查找驱动安装程序...
-set "RELEASE_MSI_PATH=%~dp0vgamepad\win\vigem\install\x64\ViGEmBusSetup_x64.msi"
+set "RELEASE_MSI_PATH=%~dp0resources\vgamepad\win\vigem\install\x64\ViGEmBusSetup_x64.msi"
 set "SOURCE_MSI_PATH=%~dp0assets\ViGEmBusSetup_x64.msi"
 set "MSI_PATH="
 
