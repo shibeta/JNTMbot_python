@@ -111,7 +111,7 @@ class GameAction:
         time.sleep(0.5)  # 多等一会
         self.confirm()  # 进入"进入在线模式"选项卡
 
-    def navigate_to_switch_session_tab_in_onlinemode(self):
+    def navigate_to_switch_session_tab_in_online_pausemenu(self):
         """在在线模式的暂停菜单中，导航到'寻找新战局'选项卡"""
         self.next_page()  # 选中在线选择卡
         self.confirm()  # 打开在线选择卡
@@ -121,7 +121,7 @@ class GameAction:
         time.sleep(0.5)  # 多等一会
         self.confirm()  # 进入"切换会话"选项卡
 
-    def navigate_to_player_list_tab_in_onlinemode(self):
+    def navigate_to_player_list_tab_in_online_pausemenu(self):
         """在在线模式的暂停菜单中，导航到'玩家'选项卡"""
         self.next_page()  # 选中在线选择卡
         self.confirm()  # 打开在线选择卡

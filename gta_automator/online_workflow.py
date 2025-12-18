@@ -30,7 +30,7 @@ class OnlineWorkflow(_BaseWorkflow):
 
         # 尝试打开切换战局菜单
         logger.info("动作: 正在打开切换战局菜单...")
-        self.action.navigate_to_switch_session_tab_in_onlinemode()
+        self.action.navigate_to_switch_session_tab_in_online_pausemenu()
 
         # 检查切换战局菜单是否被打开
         if not self.screen.is_on_go_online_menu():
@@ -126,7 +126,7 @@ class OnlineWorkflow(_BaseWorkflow):
         logger.info("动作: 正在获取当前角色的恶意值...")
         # 打开暂停菜单并导航到玩家列表
         self.open_pause_menu()
-        self.action.navigate_to_player_list_tab_in_onlinemode()
+        self.action.navigate_to_player_list_tab_in_online_pausemenu()
         time.sleep(0.5)  # 等待玩家列表加载
         # 读取恶意等级
         bad_sport_level = self.screen.get_bad_sport_level_of_first_player_in_list()
