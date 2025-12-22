@@ -28,7 +28,7 @@ class ArgumentParser:
     """
 
     def __init__(self):
-        self.parser = argparse.ArgumentParser()
+        self.parser = argparse.ArgumentParser(description="德瑞BOT自动化脚本")
         self._add_arguments()
 
     def _add_arguments(self):
