@@ -118,12 +118,16 @@ jobs:
           $releaseDir = "./dist/${{ env.PRODUCT_NAME }}"
           Write-Host "Organizing files into $releaseDir"
 
-          # 复制 vgamepad 驱动文件和 DLL
-          Write-Host "Copying vgamepad data..."
+          # 复制 vgamepad DLL
+          Write-Host "Copying vgamepad DLL..."
           $vgamepadPkgPath = python -c "import vgamepad, os; print(os.path.dirname(vgamepad.__file__))"
-          $vigemDataPath = Join-Path $vgamepadPkgPath "win\vigem"
-          Write-Host "VGAMEPAD_VIGEM_PATH: $vigemDataPath"
-          Copy-Item -Path "$vigemDataPath" -Destination "$releaseDir/resources/vgamepad/win/vigem" -Recurse -Force
+          $vigemDLLPath = Join-Path $vgamepadPkgPath "win\vigem\client"
+          Write-Host "VGAMEPAD_VIGEM_DLL_PATH: $vigemDLLPath"
+          Copy-Item -Path "$vigemDLLPath" -Destination "$releaseDir/resources/vgamepad/win/vigem/client" -Recurse -Force
+
+          # 复制 ViGEmBus 驱动安装程序
+          Write-Host "Copying ViGEmBus Driver Installer..."
+          Copy-Item -Path "./assets/ViGEmBusSetup_x64.msi" -Destination "$releaseDir/虚拟手柄驱动.msi" -Force
 
           # 复制配置文件
           Write-Host "Copying config file..."
