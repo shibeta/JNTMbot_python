@@ -125,6 +125,7 @@ jobs:
           # 复制 README 文件
           Write-Host "Copying readme file..."
           Copy-Item -Path "./README.md" -Destination "$releaseDir/帮助文档.md" -Force
+          Copy-Item -Path "./README.md" -Destination "$releaseDir/帮助文档.txt" -Force
 
       - name: Upload Python artifact
         uses: actions/upload-artifact@v4
