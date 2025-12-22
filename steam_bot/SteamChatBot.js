@@ -88,7 +88,7 @@ class SteamChatBot {
                     this.#refreshTokenPath
                 );
             } catch (err) {
-                console.error("❌ 保存 Refresh Token 失败: %s", err);
+                console.error("❌ 保存 Refresh Token 失败:", err.message);
             }
         });
 
@@ -101,7 +101,7 @@ class SteamChatBot {
         });
 
         this.#client.on("error", (err) => {
-            console.error("❌ 客户端遇到一个错误: %s", err);
+            console.error("❌ 客户端遇到一个错误:", err);
         });
     }
 
@@ -166,7 +166,7 @@ class SteamChatBot {
         })();
 
         try {
-            await this.#loginPromise;
+            this.#loginPromise;
         } finally {
             // 无论成功或失败，完成后都必须释放锁
             this.#loginPromise = null;
@@ -369,95 +369,122 @@ class SteamChatBot {
             id: group.group_summary.chat_group_id,
         }));
     }
-
     /**
-     * 以异步非阻塞（即发即忘）的方式向指定群组的指定频道发送消息。
-     * 此方法会立即返回，而消息将在后台发送。
-     * @param {string} groupId - 目标群组的 64 位 ID
-     * @param {string} channelName - 目标频道的名称
-     * @param {string} message - 要发送的消息
-     * @returns {Promise<void>} 此 Promise 在消息被提交发送后立即 resolve，不代表消息已成功送达。
-     * @throws {Error} 如果在发送前找不到群组或频道，则会抛出错误。
+     * [私有] 获取群组状态数据
+     * 负责处理网络请求、超时判断以及验证 Bot 是否在群组中。
+     * @param {string} groupId
+     * @returns {Promise<Object>} 返回群组的详细状态对象 (包含 chat_rooms 等)
      */
-    async sendGroupMessage(groupId, channelName, message) {
-        this.#ensureLoggedIn();
-
-        let chatId;
+    async #fetchGroupState(groupId) {
+        let groupStateResponse;
         try {
-            const groupStateResponse =
-                await this.#client.chat.setSessionActiveGroups([groupId]);
-
-            // 检查 Bot 是否在目标群组中
-            let targetGroupState = null;
-            if (groupStateResponse.chat_room_groups[groupId]) {
-                targetGroupState = groupStateResponse.chat_room_groups[groupId];
-            }
-
-            if (!targetGroupState) {
-                const errorMsg = `找不到群组 ID: ${groupId}。请确认机器人是该群组成员。`;
-                console.error("💥 %s", errorMsg);
-                throw new Error("%s", errorMsg);
-            }
-
-            // 检查目标频道是否存在
-            const targetChannel = targetGroupState.chat_rooms.find(
-                (room) => room.chat_name === channelName
+            // 发起网络请求
+            groupStateResponse = await this.#client.chat.setSessionActiveGroups(
+                [groupId]
             );
-
-            if (!targetChannel) {
-                const errorMsg = `在群组 "${targetGroupState.header_state.chat_name}" 中找不到频道: "${channelName}"。`;
-                console.error("💥 %s", errorMsg);
-                throw new Error("%s", errorMsg);
-            }
-
-            chatId = targetChannel.chat_id;
         } catch (error) {
-            // 获取群组信息超时
             if (error.message === "Request timed out") {
-                error.message =
-                    "请求群组元数据超时，请检查网络连接和代理是否正常。";
+                throw new Error("请求群组元数据超时，请检查网络连接。");
             }
-            console.error(
-                "💥 在准备向群组 %s 发送消息时出错: %s",
-                groupId,
-                error.message
-            );
             throw error;
         }
 
+        // 检查返回数据中是否包含目标群组
+        const targetGroupState = groupStateResponse.chat_room_groups[groupId];
+
+        if (!targetGroupState) {
+            throw new Error(
+                `找不到群组 ID: ${groupId}。请确认机器人是该群组成员。`
+            );
+        }
+
+        return targetGroupState;
+    }
+
+    /**
+     * 获取指定群组的所有频道列表
+     * @param {string} groupId
+     * @returns {Promise<Array<{name: string, id: string}>>}
+     */
+    async getGroupChannels(groupId) {
+        this.#ensureLoggedIn();
+
+        // 1. 调用公共方法获取群组状态
+        const groupState = await this.#fetchGroupState(groupId);
+
+        // 2. 映射结果
+        return groupState.chat_rooms.map((room) => ({
+            name: room.chat_name,
+            id: String(room.chat_id),
+        }));
+    }
+
+    /**
+     * 以异步非阻塞（即发即忘）的方式向指定群组的指定频道发送消息。
+     * @param {string} groupId - 目标群组的 ID
+     * @param {string} channelId - 目标频道的 ID
+     * @param {string} message - 要发送的消息
+     * @returns {Promise<void>}
+     */
+    async sendGroupMessage(groupId, channelId, message) {
+        this.#ensureLoggedIn();
+
+        try {
+            // 激活群组会话
+            const groupState = await this.#fetchGroupState(groupId);
+
+            // 验证频道 ID 是否存在于该群组中
+            const targetChannel = groupState.chat_rooms.find(
+                (room) => String(room.chat_id) === String(channelId)
+            );
+
+            if (!targetChannel) {
+                throw new Error(
+                    `在群组 "${String(
+                        groupState.header_state.chat_name
+                    )}" 中找不到 ID 为 "${channelId}" 的频道。`
+                );
+            }
+        } catch (error) {
+            console.error(
+                "💥 在准备向群组 %s 发送消息时出错:",
+                groupId,
+                error.message
+            );
+            throw error; // 抛出错误，终止发送
+        }
+
+        // 发送消息
         this.#client.chat
-            .sendChatMessage(groupId, chatId, message)
+            .sendChatMessage(groupId, channelId, message)
             .then((result) => {
                 console.log(
-                    "✅ 消息已成功送达至群组 %s (频道: %s)。",
+                    "✅ 消息已成功送达至群组 %s (频道ID: %s)。",
                     groupId,
-                    channelName
+                    channelId
                 );
             })
             .catch((error) => {
-                // 等待发送确认超时
                 if (error.message === "Request timed out") {
                     console.warn(
-                        "⚠️ 对群组 %s (频道: %s) 的消息发送确认超时，但消息可能已发出。",
+                        "⚠️ 对群组 %s (频道ID: %s) 的消息发送确认超时，但消息可能已发出。",
                         groupId,
-                        channelName
+                        channelId
                     );
                 } else {
-                    // 其他类型的错误
                     console.error(
-                        "💥 发送消息到群组 %s (频道: %s) 时发生未知错误: %s",
+                        "💥 发送消息到群组 %s (频道ID: %s) 时发生错误:",
                         groupId,
-                        channelName,
+                        channelId,
                         error
                     );
                 }
             });
 
-        // 立即返回，并告知调用者任务已提交
         console.log(
-            "✅ 已提交向群组 %s (频道: %s) 发送消息的请求。",
+            "✅ 已提交向群组 %s (频道ID: %s) 发送消息的请求。",
             groupId,
-            channelName
+            channelId
         );
     }
 

@@ -19,7 +19,7 @@ const proxyArg = process.argv.find((arg) => arg.startsWith("--proxy="));
 const proxy = proxyArg ? proxyArg.split("=")[1] : null;
 
 if (proxy) {
-    console.log("🚀 使用代理服务器: %s",proxy);
+    console.log("🚀 使用代理服务器: %s", proxy);
 } else {
     console.log("🚀 未指定代理服务器。");
 }
@@ -107,7 +107,7 @@ app.post("/login", async (req, res) => {
             message: "已成功触发登录流程。",
         });
     } catch (error) {
-        console.error("💥 API 触发的登录失败:", error);
+        console.error("💥 登录过程中发生错误:", error);
         res.status(500).json({
             error: "登录过程中发生错误。",
             details: error.message,
@@ -137,6 +137,48 @@ app.get("/userinfo", async (req, res) => {
 });
 
 /**
+ * 获取指定群组的所有频道列表
+ */
+app.get("/group-channels", async (req, res) => {
+    if (!bot.isLoggedIn().loggedIn) {
+        return res
+            .status(401)
+            .json({ error: "操作失败: Bot 尚未登录。", details: "无" });
+    }
+
+    const { groupId } = req.query;
+
+    if (!groupId) {
+        return res.status(400).json({
+            error: "请求参数无效。",
+            details: "URL查询参数中必须包含 'groupId'。",
+        });
+    }
+
+    try {
+        const channels = await bot.getGroupChannels(groupId);
+        res.status(200).json({
+            groupId: groupId,
+            channels: channels,
+            count: channels.length,
+        });
+    } catch (error) {
+        console.error("💥 获取群组频道列表时发生错误:", error);
+        // 如果是群组找不到，返回 404 或者 400
+        if (error.message.includes("找不到群组 ID")) {
+            return res.status(404).json({
+                error: "找不到指定的群组。",
+                details: error.message,
+            });
+        }
+        res.status(500).json({
+            error: "获取频道列表时发生内部错误。",
+            details: error.message,
+        });
+    }
+});
+
+/**
  * 提交发送群组消息的请求
  */
 app.post("/send-message", async (req, res) => {
@@ -147,21 +189,23 @@ app.post("/send-message", async (req, res) => {
     }
 
     console.log("原始请求体 (解析后):", req.body);
-    const { groupId, channelName, message } = req.body;
+    const { groupId, channelId, message } = req.body;
 
     // 参数校验
-    if (!groupId || !channelName || !message) {
+    if (!groupId || !channelId || !message) {
         return res.status(400).json({
             error: "请求体无效。",
-            details: "必须包含 'groupId', 'channelName', 和 'message'。",
+            details: "必须包含 'groupId', 'channelId', 和 'message'。",
         });
     }
 
     try {
         console.log(
-            "💬 收到API请求: 向群组[%s]的频道[%s]发送消息...", groupId, channelName
+            "💬 收到API请求: 向群组[%s]的频道[%s]发送消息...",
+            groupId,
+            channelId
         );
-        await bot.sendGroupMessage(groupId, channelName, message);
+        await bot.sendGroupMessage(groupId, channelId, message);
         console.log("✅ 发送任务已成功提交。");
         res.status(202).json({
             success: true,
@@ -170,13 +214,19 @@ app.post("/send-message", async (req, res) => {
     } catch (error) {
         // 根据错误类型返回具体的状态码
         if (error.message.includes("找不到群组")) {
-            console.warn("⚠️ 提交发送任务时, 找不到指定的群组: %s", error.message);
+            console.warn(
+                "⚠️ 提交发送任务时, 找不到指定的群组: %s",
+                error.message
+            );
             res.status(400).json({
                 error: "找不到指定的群组。",
                 details: error.message,
             });
         } else if (error.message.includes("找不到频道")) {
-            console.warn("⚠️ 提交发送任务时, 找不到指定的频道: %s", error.message);
+            console.warn(
+                "⚠️ 提交发送任务时, 找不到指定的频道: %s",
+                error.message
+            );
             res.status(400).json({
                 error: "找不到指定的频道。",
                 details: error.message,
@@ -189,7 +239,7 @@ app.post("/send-message", async (req, res) => {
             });
         } else {
             // 其他在准备阶段可能发生的未知错误
-            console.error("💥 提交发送任务时发生内部错误: %s", error.message);
+            console.error("💥 提交发送任务时发生内部错误:", error);
             res.status(500).json({
                 error: "提交发送任务时，发生内部错误。",
                 details: error.message,
@@ -223,7 +273,7 @@ app.post("/logout", async (req, res) => {
             });
         }
     } catch (error) {
-        console.error("💥 在登出过程中发生错误: %s", error);
+        console.error("💥 在登出过程中发生错误:", error);
         res.status(500).json({
             success: false,
             message: "登出过程中发生内部错误。",
@@ -250,15 +300,17 @@ app.use((err, req, res, next) => {
 const server = app.listen(PORT, HOST, () => {
     console.log("\n✅ HTTP 后端已启动，监听于 http://%s:%s", HOST, PORT);
     console.log(
-        "🔑 请在请求的 Authorization Header 中使用 Bearer Token: %s", AUTH_TOKEN
+        "🔑 请在请求的 Authorization Header 中使用 Bearer Token: %s",
+        AUTH_TOKEN
     );
     console.log("\n--- 可用API端点 ---");
-    console.log("GET  /health       - 获取后端状态");
-    console.log("GET  /status       - 获取登录状态");
-    console.log("POST /login        - (重新)触发登录流程");
-    console.log("GET  /userinfo     - 获取当前登录的用户信息");
-    console.log("POST /send-message - 发送群组消息");
-    console.log("POST /logout       - 从 Steam 登出");
+    console.log("GET  /health          - 获取后端状态");
+    console.log("GET  /status          - 获取登录状态");
+    console.log("POST /login           - (重新)触发登录流程");
+    console.log("GET  /userinfo        - 获取当前登录的用户信息");
+    console.log("GET  /group-channels  - 获取指定群组的频道列表");
+    console.log("POST /send-message    - 发送群组消息");
+    console.log("POST /logout          - 从 Steam 登出");
     console.log("-------------------\n");
 });
 
@@ -279,6 +331,7 @@ process.on("SIGINT", () => {
 bot.smartLogOn().catch((err) => {
     // 初始登录失败时记录错误，服务器仍会启动，但大部分接口会返回“未登录”
     console.error(
-        "💥 初始登录尝试失败: %s。服务器将继续运行，请通过 API 检查状态。", err.message
+        "💥 初始登录尝试失败: %s。服务器将继续运行，请通过 API 检查状态。",
+        err.message
     );
 });

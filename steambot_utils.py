@@ -95,8 +95,8 @@ class SteamBotApiClient:
         self, request_func: Callable[..., requests.Response], *args, **kwargs
     ) -> requests.Response:
         """
-        一个包装器，用于执行需要认证的API请求。
-        如果请求因401 Unauthorized失败，它会自动尝试重新登录并重试一次。
+        一个包装器，用于执行需要认证的 API 请求。
+        如果请求因 401 Unauthorized 失败，它会自动尝试重新登录并重试一次。
 
         :raises ``requests.HTTPError``: 请求出错
         """
@@ -122,7 +122,10 @@ class SteamBotApiClient:
 
     @staticmethod
     def _make_request(request_func: Callable[..., requests.Response], *args, **kwargs) -> requests.Response:
-        """发送请求，并处理异常"""
+        """
+        一个包装器，用于执行普通的 API 请求。
+        包含异常处理部分，可以自动将后端的错误信息抛出为 Python 异常
+        """
         try:
             response = request_func(*args, **kwargs)
             response.raise_for_status()
@@ -196,16 +199,16 @@ class SteamBotApiClient:
         )
         return response.json()
 
-    def send_group_message(self, group_id: str, channel_name: str, message: str):
+    def send_group_message(self, group_id: str, channel_id: str, message: str):
         """
-        调用 /send-message API，向某群组ID的某频道发送消息。
+        调用 /send-message API，向某群组ID的某频道ID发送消息。
         """
         if not message:
             return
 
         payload = {
             "groupId": group_id,
-            "channelName": channel_name,
+            "channelId": channel_id,  # 变更点
             "message": message,
         }
 
@@ -224,6 +227,26 @@ class SteamBotApiClient:
         self._make_authenticated_request(
             requests.post, f"{self.base_url}/logout", headers=self.headers, timeout=(5, 10)
         )
+
+    def get_group_channels(self, group_id: str) -> list[dict[str, str]]:
+        """
+        调用 /group-channels API，获取指定群组的文字频道列表。
+
+        :param group_id: 目标群组的 ID
+        :return: 包含频道信息的字典列表 [{"name": "...", "id": "..."}, ...]
+        """
+        payload = {"groupId": group_id}
+
+        response = self._make_authenticated_request(
+            requests.get,
+            f"{self.base_url}/group-channels",
+            params=payload,
+            headers=self.headers,
+            timeout=(5, 10),
+        )
+
+        # 返回 JSON 中的 channels 列表
+        return response.json().get("channels", [])
 
 
 class Supervisor(threading.Thread):
@@ -320,26 +343,8 @@ class SteamBot:
             time.sleep(5)
         logger.info("Steam Bot 后端登录成功。")
 
-        # 验证 Steam Bot 能否访问配置中的群组ID
-        try:
-            bot_userinfo = self.get_userinfo()
-        except Exception as e:
-            raise Exception("获取 Steam 用户信息失败") from e
-
-        logger.info(f"登录的 Steam 用户名: {bot_userinfo['name']}")
-        for group in bot_userinfo["groups"]:
-            if config.steamGroupId == group["id"]:
-                logger.info(f"Bot发车信息将发送到 {group['name']} ({group['id']}) 群组。")
-                break
-        else:
-            logger.error(f"配置中的 Steam 群组 ID ({config.steamGroupId})无效，或者 Bot 不在该群组中。")
-            logger.error("================Bot 所在的群组列表=================")
-            for group in bot_userinfo["groups"]:
-                logger.error(f"  - {group['name']} (ID: {group['id']})")
-            logger.error("=================================================")
-            logger.error(f"请将正确的群组ID填入 {self.config.config_filepath} 中的 steamGroupId。")
-
-            raise ValueError(f"配置中的 Steam 群组 ID ({config.steamGroupId})无效，或者 Bot 不在该群组中")
+        # 验证群组ID和频道名称是否有效
+        self.verify_group_config()
 
         logger.info("Steam Bot 后端初始化完成。")
 
@@ -384,6 +389,71 @@ class SteamBot:
 
         return command
 
+    def verify_group_config(self, config: Optional[Config] = None):
+        """
+        验证配置中的 Steam 群组 ID 和频道名称是否有效。
+        如果无效，将抛出异常
+
+        :param config: 可选的配置对象，不提供时将使用 self 的配置
+        :raise ValueError: 群组 ID 或频道名称无效
+        :raise Exception: 验证时出错
+        """
+        if config is None:
+            config = self.config
+
+        # 获取 Steam 用户信息和群组列表
+        try:
+            bot_userinfo = self.get_userinfo()
+        except Exception as e:
+            raise Exception("获取 Steam 用户信息失败") from e
+
+        logger.info(f"登录的 Steam 用户名: {bot_userinfo['name']}")
+
+        # 验证 Steam Bot 能否访问配置中的群组ID
+        for group in bot_userinfo["groups"]:
+            if config.steamGroupId == group["id"]:
+                # 获取频道列表
+                try:
+                    channel_list = self.get_group_channels(config.steamGroupId)
+                except Exception as e:
+                    raise Exception("获取群组频道列表失败") from e
+                # 验证 Steam 群组中含有配置中的聊天频道
+                for channel in channel_list:
+                    if config.steamChannelId == channel["id"]:
+                        logger.info(
+                            f"Bot发车信息将发送到 {group['name']} ({group['id']}) 群组中的 {channel["name"]} ({channel['id']}) 频道。"
+                        )
+                        # 在这里返回
+                        return
+                else:
+                    logger.error(
+                        f"配置中的 Steam 群组频道 ID ({config.steamChannelId})无效，群组 {group['name']} 中找不到该频道。"
+                    )
+                    logger.error("================ 当前群组可用频道 =================")
+                    if not channel_list:
+                        logger.error("  (没有找到任何频道，可能是权限不足或这是一个纯语音群组)")
+                    for channel in channel_list:
+                        logger.error(
+                            f"  - {channel['name'] if channel['name'] else "主频道"} (ID: {channel['id']})"
+                        )
+                    logger.error("=================================================")
+                    logger.error(
+                        f"请将正确的频道 ID 填入 {self.config.config_filepath} 中的 steamChannelId 。"
+                    )
+
+                    raise ValueError(f"配置中的 Steam 群组频道 ID ({config.steamChannelId})无效")
+        else:
+            logger.error(f"配置中的 Steam 群组 ID ({config.steamGroupId})无效，Bot 不在该群组中。")
+            logger.error("=============== Bot 所在的群组列表 ================")
+            if not bot_userinfo["groups"]:
+                logger.error("  (列表为空，Bot 没有加入任何群组)")
+            for group in bot_userinfo["groups"]:
+                logger.error(f"  - {group['name']} (ID: {group['id']})")
+            logger.error("=================================================")
+            logger.error(f"请将正确的群组ID填入 {self.config.config_filepath} 中的 steamGroupId 。")
+
+            raise ValueError(f"配置中的 Steam 群组 ID ({config.steamGroupId})无效")
+
     def send_group_message(self, message: str):
         """
         发送消息到群组。
@@ -393,9 +463,7 @@ class SteamBot:
         """
         logger.info(f'正在向Steam群组 "{self.config.steamGroupId}" 发送消息...')
         try:
-            self.api_client.send_group_message(
-                self.config.steamGroupId, self.config.steamChannelName, message
-            )
+            self.api_client.send_group_message(self.config.steamGroupId, self.config.steamChannelId, message)
             logger.info("已提交消息发送任务。")
             self.last_send_monotonic_time = time.monotonic()
             self.last_send_system_time = time.time()
@@ -474,3 +542,16 @@ class SteamBot:
         if hasattr(self, "process_manager") and self.process_manager is not None:
             self.process_manager.stop()
         logger.info("Steam Bot 已成功关闭。")
+
+    def get_group_channels(self, group_id: str):
+        """
+        获取群组中的文字频道列表。
+        请求出错时，将抛出异常。
+
+        :param group_id: 群组ID
+        :return: [{"name": 频道名称, "id": 频道ID}, ...]
+        """
+        try:
+            return self.api_client.get_group_channels(group_id)
+        except Exception as e:
+            raise Exception(f"获取群组(ID:{group_id})中的频道列表时发生异常: {e}") from e
