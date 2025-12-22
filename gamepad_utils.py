@@ -33,7 +33,7 @@ except Exception as e:
                 logger.warning(
                     f'安装驱动失败，请尝试手动运行程序目录下的 "{INSTALL_VIGEMBUS_DRIVER_BAT_PATH}" 来安装驱动。'
                 )
-                input("按 Enter 键退出...")
+                input("\n按 Enter 键退出...")
                 sys.exit(1)
             logger.info("驱动安装开始，程序将在 5 秒后退出...")
             time.sleep(5)
@@ -41,7 +41,7 @@ except Exception as e:
         else:
             logger.info("您选择了取消。程序无法继续运行。")
             logger.info(f'请运行程序目录下的 "{INSTALL_VIGEMBUS_DRIVER_BAT_PATH}" 来安装驱动。')
-            input("按 Enter 键退出...")
+            input("\n按 Enter 键退出...")
             sys.exit(1)
     else:
         raise

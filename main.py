@@ -99,6 +99,7 @@ def main():
         command_line_args = arg_manager.parse()
     except argparse.ArgumentError as e:
         logger.error(f"解析命令行参数时出错: {e}", exc_info=e)
+        input("\n按 Enter 键退出...")
         return
 
     # 加载配置
@@ -108,6 +109,7 @@ def main():
         logger.info("配置加载成功。")
     except Exception as e:
         logger.error(f"加载配置失败: {e}", exc_info=e)
+        input("\n按 Enter 键退出...")
         return
 
     # 初始化日志
@@ -159,6 +161,7 @@ def main():
         ocr_engine = OCREngine(ocrArgs)
     except Exception as e:
         logger.error(f"初始化 OCR 引擎失败: {e}", exc_info=e)
+        input("\n按 Enter 键退出...")
         return
 
     # 初始化 Steam Bot
@@ -166,8 +169,14 @@ def main():
         try:
             logger.info("正在初始化 Steam Bot ...")
             steam_bot = SteamBot(config)
+        except ValueError as e:
+            # 配置文件中的值错误，无须打印错误堆栈。
+            logger.error(f"初始化 Steam Bot 失败: {e}")
+            input("\n按 Enter 键退出...")
+            return
         except Exception as e:
             logger.error(f"初始化 Steam Bot 失败: {e}", exc_info=e)
+            input("\n按 Enter 键退出...")
             return
     else:
         logger.info("正在初始化 Steam Automation ...")
@@ -175,6 +184,7 @@ def main():
             steam_bot = SteamAutomation(config.AlterMessagingMethodWindowTitle)
         except Exception as e:
             logger.error(f"初始化 Steam Automation 失败: {e}", exc_info=e)
+            input("\n按 Enter 键退出...")
             return
 
     # 初始化消息推送
@@ -182,6 +192,7 @@ def main():
         push_integration = UniPush(config, steam_bot.get_login_status().get("name", "N/A"))
     except Exception as e:
         logger.error(f"初始化消息推送失败: {e}", exc_info=e)
+        input("\n按 Enter 键退出...")
         return
 
     # 初始化游戏控制器
