@@ -1,11 +1,4 @@
 @echo off
-:: 检查管理员权限，如果不是，则提权并重新运行
->nul 2>&1 reg query "HKU\S-1-5-19"
-if '%errorlevel%' NEQ '0' (
-    powershell -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
-    exit /b
-)
-
 :: 设置环境
 chcp 65001 >nul
 pushd "%~dp0"
