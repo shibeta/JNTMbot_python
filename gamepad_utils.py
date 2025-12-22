@@ -1,6 +1,7 @@
 from __future__ import annotations
 import enum
 import sys
+import os
 import copy
 import time
 from typing import Callable, Optional, Union
@@ -13,37 +14,35 @@ from logger import get_logger
 
 logger = get_logger(__name__)
 
-# 导入 vgamepad
+# ViGEmBus 驱动安装脚本
+INSTALL_VIGEMBUS_DRIVER_BAT_PATH = "install_vigembus.bat"
+
+# 导入 vgamepad, 处理驱动安装
 try:
     import vgamepad as vg
-
-    # import vgamepad.win.virtual_gamepad as vg_internal
-
-    # # 向 VBus 的 __del__ 方法中添加模块 vigem_client 是否存在的检查
-    # # 用于解决 Nuitka 打包后 Vbus 在销毁时报错:
-    # # Exception ignored in: <compiled_function VBus.__del__ at 0x00000259A2A32D40>
-    # #     File "<workdir>\vgamepad\win\virtual_gamepad.py", line 44, in __del__
-    # # AttributeError: 'NoneType' object has no attribute 'vigem_disconnect'
-
-    # # 在应用此补丁前，VBus 的 __del__ 方法:
-    # # def __del__(self):
-    # #     vcli.vigem_disconnect(self._busp)
-    # #     vcli.vigem_free(self._busp)
-
-    # def __safe_vbus_del(self):
-    #     # 检查 vigem_client 模块是否存在
-    #     if vg_internal.vcli is not None:
-    #         vg_internal.vcli.vigem_disconnect(self._busp)
-    #         vg_internal.vcli.vigem_free(self._busp)
-
-    # vg_internal.VBus.__del__ = __safe_vbus_del
 
 except Exception as e:
     if "VIGEM_ERROR_BUS_NOT_FOUND" in str(e):
         logger.error("没有安装 ViGEmBus 驱动，或驱动未正确运行。")
-        logger.info('请运行程序目录下的 "install_vigembus.bat" 来安装驱动。')
-        input("按 Enter 键退出...")
-        sys.exit(1)
+        choice = input("是否立即安装驱动？(Y/N): ").strip().lower()
+        if choice == "y":
+            try:
+                os.startfile(INSTALL_VIGEMBUS_DRIVER_BAT_PATH)
+            except Exception as e:
+                logger.error(f"驱动安装出错: {e}")
+                logger.warning(
+                    f'安装驱动失败，请尝试手动运行程序目录下的 "{INSTALL_VIGEMBUS_DRIVER_BAT_PATH}" 来安装驱动。'
+                )
+                input("按 Enter 键退出...")
+                sys.exit(1)
+            logger.info("驱动安装开始，程序将在 5 秒后退出...")
+            time.sleep(5)
+            sys.exit(0)
+        else:
+            logger.info("您选择了取消。程序无法继续运行。")
+            logger.info(f'请运行程序目录下的 "{INSTALL_VIGEMBUS_DRIVER_BAT_PATH}" 来安装驱动。')
+            input("按 Enter 键退出...")
+            sys.exit(1)
     else:
         raise
 
