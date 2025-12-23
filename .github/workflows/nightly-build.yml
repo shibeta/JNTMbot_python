@@ -100,6 +100,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Pre-check Import
+        shell: pwsh
+        run: |
+          Write-Host "Checking if steambot_utils can be imported..."
+          # 这一步会检查语法错误和编码错误
+          python -c "import sys; sys.path.append('.'); import steambot_utils; print('Import Successful')"
+
       - name: Generate PyInstaller Version Info
         shell: pwsh
         run: |
@@ -116,8 +123,10 @@ jobs:
         run: |
           pyi-makespec `
           --onedir --optimize 2 --console `
+          --noconfirm --debug imports `
           --contents-directory resources `
           --hidden-import steambot_utils `
+          --paths . `
           --icon ./assets/johnny_guns.ico `
           --version-file ./version_file.txt `
           --name ${{ env.PRODUCT_NAME }} `
@@ -125,7 +134,17 @@ jobs:
 
       - name: Package with PyInstaller
         shell: pwsh
-        run: pyinstaller "${{ env.PRODUCT_NAME }}.spec" --noconfirm
+        run: pyinstaller "${{ env.PRODUCT_NAME }}.spec"
+
+      - name: Debug - Print PyInstaller Warnings
+        shell: pwsh
+        run: |
+          $warnFile = "./build/${{ env.PRODUCT_NAME }}/warn-${{ env.PRODUCT_NAME }}.txt"
+          if (Test-Path $warnFile) {
+            Write-Host "=== PyInstaller Warning File Content ==="
+            Get-Content $warnFile
+            Write-Host "======================================"
+          }
 
       - name: Bundle runtime dependencies and documentation
         shell: pwsh
