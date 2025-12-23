@@ -421,7 +421,7 @@ class SteamBot:
                 for channel in channel_list:
                     if config.steamChannelId == channel["id"]:
                         logger.info(
-                            f"Bot发车信息将发送到 {group['name']} ({group['id']}) 群组中的 {channel["name"]} ({channel['id']}) 频道。"
+                            f"Bot发车信息将发送到 {group['name']} ({group['id']}) 群组中的 {channel['name']} ({channel['id']}) 频道。"
                         )
                         # 在这里返回
                         return
@@ -434,7 +434,7 @@ class SteamBot:
                         logger.error("  (没有找到任何频道，可能是权限不足或这是一个纯语音群组)")
                     for channel in channel_list:
                         logger.error(
-                            f"  - {channel['name'] if channel['name'] else "主频道"} (ID: {channel['id']})"
+                            f"  - {channel['name'] if channel['name'] else '主频道'} (ID: {channel['id']})"
                         )
                     logger.error("=================================================")
                     logger.error(
