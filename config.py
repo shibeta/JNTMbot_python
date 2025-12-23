@@ -77,7 +77,7 @@ class Config:
             "comment": "面板消失后，卡单延迟时间 (秒)",
         },
         "delaySuspendTimeJobStart": {
-            "value": 15,
+            "value": 10,
             "comment": "任务启动玩家落地后，卡单延迟时间 (秒)",
         },
         "autoReduceBadSportOnDodgyPlayer": {
