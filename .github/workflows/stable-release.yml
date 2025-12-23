@@ -95,6 +95,16 @@ jobs:
         shell: pwsh
         run: pyinstaller "${{ env.PRODUCT_NAME }}.spec" --noconfirm
 
+      - name: Debug - Print PyInstaller Warnings
+        shell: pwsh
+        run: |
+          $warnFile = "./build/${{ env.PRODUCT_NAME }}/warn-${{ env.PRODUCT_NAME }}.txt"
+          if (Test-Path $warnFile) {
+            Write-Host "=== PyInstaller Warning File Content ==="
+            Get-Content $warnFile
+            Write-Host "======================================"
+          }
+
       - name: Bundle runtime dependencies and documentation
         shell: pwsh
         run: |
