@@ -1,3 +1,5 @@
 -r requirements.txt
+setuptools
+wheel
 pyinstaller
 pyinstaller_versionfile
