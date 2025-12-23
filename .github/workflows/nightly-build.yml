@@ -124,6 +124,7 @@ jobs:
           pyi-makespec `
           --onedir --optimize 2 --console `
           --contents-directory resources `
+          --debug imports `
           --hidden-import steambot_utils `
           --paths . `
           --icon ./assets/johnny_guns.ico `
@@ -133,7 +134,7 @@ jobs:
 
       - name: Package with PyInstaller
         shell: pwsh
-        run: pyinstaller "${{ env.PRODUCT_NAME }}.spec" --noconfirm --debug=imports
+        run: pyinstaller "${{ env.PRODUCT_NAME }}.spec" --noconfirm 
 
       - name: Debug - Print PyInstaller Warnings
         shell: pwsh
