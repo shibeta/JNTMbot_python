@@ -72,9 +72,13 @@ class Config:
             "comment": "初始化GTA时重启GTA失败的阈值，连续重启失败超过该次数将抛出异常。设置为<=1则重启失败立即抛出异常",
         },
         "suspendGTATime": {"value": 13, "comment": "卡单持续时间 (秒)"},
-        "delaySuspendTime": {
+        "delaySuspendTimePanelDisappear": {
             "value": 5,
-            "comment": "卡单延迟时间 (秒)",
+            "comment": "面板消失后，卡单延迟时间 (秒)",
+        },
+        "delaySuspendTimeJobStart": {
+            "value": 15,
+            "comment": "任务启动玩家落地后，卡单延迟时间 (秒)",
         },
         "autoReduceBadSportOnDodgyPlayer": {
             "value": True,
@@ -200,7 +204,8 @@ class Config:
         mainLoopConsecutiveErrorThreshold: int
         restartGTAConsecutiveFailThreshold: int
         suspendGTATime: int
-        delaySuspendTime: int
+        delaySuspendTimePanelDisappear: int
+        delaySuspendTimeJobStart: int
         autoReduceBadSportOnDodgyPlayer: bool
         manualMoveToPoint: bool
         startOnAllJoined: bool

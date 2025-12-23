@@ -36,8 +36,10 @@ mainLoopConsecutiveErrorThreshold: 10
 restartGTAConsecutiveFailThreshold: 5
 # 卡单持续时间 (秒)
 suspendGTATime: 13
-# 卡单延迟时间 (秒)
-delaySuspendTime: 5
+# 面板消失后，卡单延迟时间 (秒)
+delaySuspendTimePanelDisappear: 5
+# 任务启动玩家落地后，卡单延迟时间 (秒)
+delaySuspendTimeJobStart: 15
 # 当bot变成问题玩家后是否自动挂机清除恶意值。设置为False后变成问题玩家会退出程序。
 autoReduceBadSportOnDodgyPlayer: true
 # 禁用在事务所内起床后自动移动到任务触发点，改为要求用户手动将角色移动到任务触发点

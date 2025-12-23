@@ -401,8 +401,8 @@ class JobWorkflow(_BaseWorkflow):
             raise OperationTimeout(OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR)
 
         # 首次卡单
-        logger.info(f"面板已消失。{self.config.delaySuspendTime} 秒后将卡单。")
-        time.sleep(self.config.delaySuspendTime)
+        logger.info(f"面板已消失。{self.config.delaySuspendTimePanelDisappear} 秒后将卡单。")
+        time.sleep(self.config.delaySuspendTimePanelDisappear)
         self.glitch_single_player_session()
 
         # 等待人物落地
@@ -416,8 +416,8 @@ class JobWorkflow(_BaseWorkflow):
                 raise OperationTimeout(OperationTimeoutContext.CHARACTER_LAND)
 
         # 再次卡单
-        logger.info(f"人物已落地。{10 + self.config.delaySuspendTime} 秒后将卡单。")
-        time.sleep(10 + self.config.delaySuspendTime)
+        logger.info(f"人物已落地。{self.config.delaySuspendTimeJobStart} 秒后将卡单。")
+        time.sleep(self.config.delaySuspendTimeJobStart)
         self.glitch_single_player_session()
 
     def verify_mission_status_after_glitch(self):
