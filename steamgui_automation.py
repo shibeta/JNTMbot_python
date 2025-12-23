@@ -14,7 +14,8 @@ class SteamAutomation:
         self.last_send_monotonic_time = time.monotonic()  # 上次向 Steam 发送消息的相对时间
         self.last_send_system_time = time.time()  # 上次向 Steam 发送消息的系统时间，仅作参考
 
-        logger.info("正在检查 Steam 聊天窗口是否打开...")
+        logger.info("正在检查 Steam 聊天窗口...")
+        # 聊天窗口是否打开
         try:
             chat_window = self.find_steam_chat_window()
             logger.info(f"已找到 Steam 聊天窗口: {chat_window.Name} 。")
@@ -23,6 +24,14 @@ class SteamAutomation:
             logger.warning(
                 "Steam Automation 需要手动打开 Steam 群组聊天窗口，请确保 Steam 群组聊天窗口已经打开。"
             )
+            raise
+        
+        # 窗口中能否找到文本输入框
+        try:
+            self.find_input_field(chat_window)
+        except Exception as e:
+            logger.error(f"找到了 Steam 聊天窗口，但{e}。")
+            logger.warning("未找到聊天窗口输入框，请关闭 Steam 聊天窗口再重新打开。")
             raise
 
         logger.info("Steam Automation 初始化完成。")
@@ -36,6 +45,23 @@ class SteamAutomation:
 
         return chat_window
 
+    @staticmethod
+    def find_input_field(steam_chat_window: auto.WindowControl):
+        """
+        查找 Steam 聊天窗口中的文本输入框
+        """
+        # 文本输入框没有特征，基于发送按钮辅助定位文本输入框
+        # 文本输入框 <- 发送包按钮
+        send_button = steam_chat_window.ButtonControl(Name="发送")
+        if send_button is None or not send_button.Exists():
+            raise Exception("未找到辅助定位文本输入框用的表情包按钮")
+
+        input_field = send_button.GetPreviousSiblingControl()
+        if input_field is None or not input_field.Exists():
+            raise Exception("未找到文本输入框")
+
+        return input_field
+
     def send_group_message(self, message: str):
         """
         查找 Steam 聊天窗口，并发送消息。
@@ -47,7 +73,6 @@ class SteamAutomation:
         try:
             # 记录发送消息前激活的控件，发送消息后切换回该控件
             original_focused_control = auto.GetFocusedControl()
-
         except:
             original_focused_control = None
 
@@ -55,20 +80,13 @@ class SteamAutomation:
             # 寻找 Steam 聊天窗口
             chat_window = self.find_steam_chat_window()
 
+            # 处理窗口以准备查找元素
             chat_window.SwitchToThisWindow()  # 从最小化恢复
             chat_window.SetFocus()  # 将窗口放置在前台，否则查找元素会出错
             time.sleep(0.5)  # 等待窗口绘制
 
-            # 文本输入框没有特征，基于表情包按钮辅助定位文本输入框
-            # 文本输入框 <- 表情包按钮
-            # 不用发送按钮定位是因为有时找不到发送按钮
-            emoji_button = chat_window.ButtonControl(Name="表情包")
-            if emoji_button is None or not emoji_button.Exists():
-                raise Exception("未找到辅助定位用的表情包按钮")
-
-            input_field = emoji_button.GetPreviousSiblingControl()
-            if input_field is None or not input_field.Exists():
-                raise Exception("未找到文本输入框")
+            # 寻找文本输入框
+            input_field = self.find_input_field(chat_window)
 
             # 由于文本输入框不是 EditControl，只能手动输入内容
             input_field.SetFocus()
