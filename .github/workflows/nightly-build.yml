@@ -123,7 +123,6 @@ jobs:
         run: |
           pyi-makespec `
           --onedir --optimize 2 --console `
-          --noconfirm --debug imports `
           --contents-directory resources `
           --hidden-import steambot_utils `
           --paths . `
@@ -134,7 +133,7 @@ jobs:
 
       - name: Package with PyInstaller
         shell: pwsh
-        run: pyinstaller "${{ env.PRODUCT_NAME }}.spec"
+        run: pyinstaller "${{ env.PRODUCT_NAME }}.spec" --noconfirm --debug=imports
 
       - name: Debug - Print PyInstaller Warnings
         shell: pwsh
