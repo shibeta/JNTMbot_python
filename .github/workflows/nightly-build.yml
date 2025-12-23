@@ -66,6 +66,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Debug - List files
+        shell: pwsh
+        run: |
+          Write-Host "Listing files in root directory:"
+          Get-ChildItem -Path .
+          
+          Write-Host "Checking specifically for steambot_utils:"
+          if (Test-Path "steambot_utils.py") { 
+            Write-Host "FOUND: steambot_utils.py" 
+          } else { 
+            Write-Host "ERROR: steambot_utils.py NOT FOUND!" 
+            Get-ChildItem -Filter "*steam*" # 看看是不是名字写错了
+          }
+
       # 静默安装 ViGEmBus 驱动，避免卡在 pip install vgamepad
       - name: Install ViGEmBus Driver from local MSI
         shell: pwsh
@@ -103,6 +117,7 @@ jobs:
           pyi-makespec `
           --onedir --optimize 2 --console `
           --contents-directory resources `
+          --hidden-import steambot_utils `
           --icon ./assets/johnny_guns.ico `
           --version-file ./version_file.txt `
           --name ${{ env.PRODUCT_NAME }} `
