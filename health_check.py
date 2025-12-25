@@ -116,7 +116,7 @@ class HealthMonitor(threading.Thread):
             return
 
         is_healthy_now = True
-        unhealthy_reason = None
+        unhealthy_reason_list = []
         # 检查上次向 Steam 发送消息时间
         if self.enable_steam_chat_timeout:
             last_send_monotonic_time = self.get_last_steam_message_send_monotonic_time()
@@ -126,11 +126,11 @@ class HealthMonitor(threading.Thread):
 
             if elapsed_time > self.steam_chat_timeout_threshold * 60:
                 is_healthy_now = False
-                unhealthy_reason = "SteamChatTimeout"
+                unhealthy_reason_list.append("SteamChatTimeout")
 
         # --- 状态转换逻辑 ---
         if self._is_healthy_on_last_check and not is_healthy_now:
-            self._on_become_unhealthy(unhealthy_reason)
+            self._on_become_unhealthy(unhealthy_reason_list)
         elif not self._is_healthy_on_last_check and is_healthy_now:
             self._on_become_healthy()
         elif not is_healthy_now:
@@ -141,20 +141,28 @@ class HealthMonitor(threading.Thread):
         # 更新状态以备下次检查
         self._is_healthy_on_last_check = is_healthy_now
 
-    def _on_become_unhealthy(self, reason: Optional[str] = None):
+    def _on_become_unhealthy(self, reason_list: list[str]):
         """从健康变为不健康时触发。"""
-        # 发送通知
-        if reason == "SteamChatTimeout":
+        # 处理各种错误原因
+        unhealthy_detail_list = []
+        if "SteamChatTimeout" in reason_list:
+            reason_list.remove("SteamChatTimeout")
             logger.warning(
                 f"Bot 状态变为不健康。原因: 超过 {self.steam_chat_timeout_threshold} 分钟未通过 Steam 发送消息。"
             )
             last_send_system_time = datetime.fromtimestamp(self.get_last_steam_message_send_time())
             formatted_time = last_send_system_time.strftime("%Y-%m-%d %H:%M:%S")
-            msg = f"Bot 超过 {self.steam_chat_timeout_threshold} 分钟未向 Steam 发送消息。上一次发送时间为 {formatted_time}。"
-        else:
-            msg = f"未知原因: {reason}"
+            unhealthy_detail_list.append(
+                f"Bot 超过 {self.steam_chat_timeout_threshold} 分钟未向 Steam 发送消息。上一次发送时间为 {formatted_time}。"
+            )
 
-        self.__send_notification("状态变为不健康", msg)
+        if reason_list:
+            unhealthy_detail_list.append(f"未知原因: {", ".join(reason_list)}")
+
+        if not unhealthy_detail_list:
+            unhealthy_detail_list.append("未提供错误原因")
+
+        self.__send_notification("状态变为不健康", "\n".join(unhealthy_detail_list))
         # 按需退出
         if self.enable_exit_on_unhealthy:
             logger.error("检测到 Bot 不健康且已配置为自动退出，程序将关闭。")
