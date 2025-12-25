@@ -164,7 +164,7 @@ class SteamBotApiClient:
         """
         try:
             response = self._make_request(
-                requests.get, f"{self.base_url}/status", headers=self.headers, timeout=5
+                requests.get, f"{self.base_url}/status", headers=self.headers, timeout=(5, 20)
             )
 
             # 如果是 200 OK，表示已登录
@@ -185,7 +185,7 @@ class SteamBotApiClient:
         调用 /login API，让 Bot 进行登录操作。
         """
         response = self._make_request(
-            requests.post, f"{self.base_url}/login", headers=self.headers, timeout=(5, 30)
+            requests.post, f"{self.base_url}/login", headers=self.headers, timeout=(5, 20)
         )
 
     def get_userinfo(self) -> dict:
@@ -224,6 +224,7 @@ class SteamBotApiClient:
         """
         调用 /logout API，让 Bot 进行登出操作。
         """
+        # 超时时间为 10 秒，比其他方法短，减少退出时的等待时间
         self._make_authenticated_request(
             requests.post, f"{self.base_url}/logout", headers=self.headers, timeout=(5, 10)
         )
@@ -242,7 +243,7 @@ class SteamBotApiClient:
             f"{self.base_url}/group-channels",
             params=payload,
             headers=self.headers,
-            timeout=(5, 10),
+            timeout=(5, 20),
         )
 
         # 返回 JSON 中的 channels 列表
