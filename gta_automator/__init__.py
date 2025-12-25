@@ -249,8 +249,9 @@ class GTAAutomator:
             self.online_workflow.afk(current_chunk)
         except UnexpectedGameState as e:
             # 挂机期间离开了在线模式
-            # 下一次执行时会自动断点续传
             logger.warning("挂机过程中游戏状态异常。")
+            # 下一次执行时，重新挂机本段时间
+            self._recovery_target_timestamp = self._recovery_target_timestamp + current_chunk
             raise e
 
     def play_dre_job(self):
