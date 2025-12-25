@@ -373,7 +373,7 @@ class SteamChatBot {
      * [私有] 获取群组状态数据
      * 负责处理网络请求、超时判断以及验证 Bot 是否在群组中。
      * @param {string} groupId
-     * @returns {Promise<Object>} 返回群组的详细状态对象 (包含 chat_rooms 等)
+     * @returns {Promise<SteamUser.SteamChatRoomClient.ChatRoomGroupState>} 返回群组的详细状态对象 (包含 chat_rooms 等)
      */
     async #fetchGroupState(groupId) {
         let groupStateResponse;
@@ -404,18 +404,19 @@ class SteamChatBot {
     /**
      * 获取指定群组的所有频道列表
      * @param {string} groupId
-     * @returns {Promise<Array<{name: string, id: string}>>}
+     * @returns {Promise<Array<{name: string, id: string, isVoiceChannel: bool}>>} 数组<{频道名称, ID, 是否为语音频道}>
      */
     async getGroupChannels(groupId) {
         this.#ensureLoggedIn();
 
-        // 1. 调用公共方法获取群组状态
+        // 获取群组状态
         const groupState = await this.#fetchGroupState(groupId);
 
-        // 2. 映射结果
+        // 获取频道列表
         return groupState.chat_rooms.map((room) => ({
             name: room.chat_name,
             id: String(room.chat_id),
+            isVoiceChannel: room.voice_allowed,
         }));
     }
 
