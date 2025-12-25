@@ -111,8 +111,9 @@ class HealthMonitor(threading.Thread):
     def _perform_check(self):
         """执行单次健康检查的核心逻辑。"""
         # 是否该跳过检查
-        if self.should_suppress_check_func and self.should_suppress_check_func():
+        if self.should_suppress_check_func is not None and self.should_suppress_check_func():
             logger.debug("健康检查被抑制，跳过本次 Steam 健康检查。")
+            return
 
         is_healthy_now = True
         unhealthy_reason = None
