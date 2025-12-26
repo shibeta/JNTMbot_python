@@ -10,7 +10,19 @@ function get_workdir() {
     const isPkg = typeof process.pkg !== "undefined";
     return isPkg ? path.dirname(process.execPath) : path.join(__dirname, "../");
 }
-
+/**
+ * SteamChatBot - Steam 聊天机器人类
+ *
+ * 提供与 Steam 客户端交互的功能，包括登录、群组管理、消息发送等。
+ * 支持使用 Refresh Token 或账户密码进行登录。
+ *
+ * @class SteamChatBot
+ * @example
+ * const bot = new SteamChatBot();
+ * await bot.smartLogOn();
+ * const userInfo = await bot.getCurrentUserInfo();
+ * await bot.sendGroupMessage(groupId, channelId, "Hello!");
+ */
 class SteamChatBot {
     #client; // 被封装的client实体
     #loginPromise = null;
@@ -106,7 +118,95 @@ class SteamChatBot {
     }
 
     /**
-     * 更智能的登录方法
+     * 请求从控制台输入 Steam 用户名和密码
+     * @returns {Promise<{username: string, password: string}>}
+     */
+    async promptUsernameAndPassword() {
+        while (true) {
+            const response = await prompts(
+                [
+                    {
+                        type: "text",
+                        name: "username",
+                        message: "请输入 Steam 账户名:",
+                        validate: (value) => {
+                            if (!value || value.trim() === "") {
+                                return "❌ 账户名不能为空，请重试";
+                            }
+                            return true;
+                        },
+                    },
+                    {
+                        type: "password",
+                        name: "password",
+                        message: "请输入 Steam 密码:",
+                        validate: (value) => {
+                            if (!value || value.trim() === "") {
+                                return "❌ 密码不能为空，请重试";
+                            }
+                            return true;
+                        },
+                    },
+                ],
+                {
+                    // 当用户取消时，让当前的 promise 结束
+                    onCancel: async () => {
+                        console.log("Ctrl+C 被按下，清空输入...");
+                        return false;
+                    },
+                }
+            );
+
+            if (!response.username || !response.password) {
+                continue;
+            } else {
+                return {
+                    username: response.username,
+                    password: response.password,
+                };
+            }
+        }
+    }
+
+    /**
+     * 请求从控制台输入 Steam 令牌码
+     * @param {string} codeSource - Steam 验证码来源
+     * @returns {Promise<string>}
+     */
+    async promptGuardCode(codeSource) {
+        while (true) {
+            const response = await prompts(
+                [
+                    {
+                        type: "text",
+                        name: "guardCode",
+                        message: `请输入发送至 ${codeSource} 的验证码:`,
+                        validate: (value) => {
+                            if (!value || value.trim() === "") {
+                                return "❌ 验证码不能为空，请重试";
+                            }
+                            return true;
+                        },
+                    },
+                ],
+                {
+                    // 当用户取消时，让当前的 promise 结束
+                    onCancel: async () => {
+                        console.log("Ctrl+C 被按下，清空输入...");
+                        return false;
+                    },
+                }
+            );
+
+            if (response.guardCode) {
+                return response.guardCode;
+            } else {
+                continue;
+            }
+        }
+    }
+    /**
+     * 智能的登录方法
      * 优先使用 refresh token，失败或文件不存在则回退到账户密码登录。
      * @returns {Promise<void>} 当登录成功时 resolve
      */
@@ -194,36 +294,15 @@ class SteamChatBot {
      * @returns {Promise<void>}
      */
     async logOnWithPassword() {
+        // 不断尝试登录直到登录成功或者发僧不可恢复的错误
         while (true) {
-            const response = await prompts(
-                [
-                    {
-                        type: "text",
-                        name: "username",
-                        message: "请输入 Steam 账户名:",
-                    },
-                    {
-                        type: "password",
-                        name: "password",
-                        message: "请输入 Steam 密码:",
-                    },
-                ],
-                {
-                    // 处理用户按 Ctrl+C 取消的情况
-                    onCancel: () => process.exit(1),
-                }
-            );
+            // 从终端读入用户名和密码
+            const response = await this.promptUsernameAndPassword();
             const accountName = response.username;
             const password = response.password;
 
-            // 简单的校验，防止空输入导致无效请求
-            if (!accountName || !password) {
-                console.log("❌ 账户名或密码不能为空，请重新输入。");
-                continue;
-            }
-
             try {
-                // 将单次登录尝试封装在私有方法中
+                // 登录尝试
                 await this._attemptPasswordLogin(accountName, password);
                 // 如果 _attemptPasswordLogin 成功 resolve，说明登录成功，直接返回
                 return;
@@ -282,25 +361,14 @@ class SteamChatBot {
 
             onSteamGuard = async (domain, callback, lastCodeWrong) => {
                 if (lastCodeWrong) {
-                    console.warn("❌ 上一个验证码错误！请重新输入。");
+                    console.warn("❌ 上一个验证码无效！请重新输入。");
                 }
                 const steamGuardClient = domain
                     ? String(domain)
                     : "Steam 手机应用";
-                const response = await prompts(
-                    [
-                        {
-                            type: "text",
-                            name: "code",
-                            message: `请输入发送至 ${steamGuardClient} 的验证码: `,
-                        },
-                    ],
-                    {
-                        // 处理用户按 Ctrl+C 取消的情况
-                        onCancel: () => process.exit(1),
-                    }
-                );
-                const code = response.code;
+
+                // 从终端读入 Steam 验证码
+                const code = await this.promptGuardCode(steamGuardClient);
                 callback(code);
             };
 
@@ -526,7 +594,7 @@ class SteamChatBot {
     }
 
     /**
-     * 内部方法，确保refresh token格式为json
+     * 内部方法，确保refresh token格式为base64编码的json
      */
     #isTokenPotentiallyValid(token) {
         if (typeof token !== "string" || !token) {
