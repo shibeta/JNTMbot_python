@@ -75,9 +75,7 @@ def exit_main_process(main_pid: int):
 
     logger.debug(f"正在向主进程 {main_pid} 发送退出信号...")
     try:
-        # signal.CTRL_BREAK_EVENT 仅在Windows上定义
-        sig = getattr(signal, "CTRL_BREAK_EVENT", signal.SIGINT)
-        os.kill(main_pid, sig)
+        os.kill(main_pid, signal.SIGTERM)
     except (ProcessLookupError, OSError) as e:
         logger.error(f"发送退出信号失败，主进程可能已退出。错误: {e}")
     except Exception as e:
