@@ -6,12 +6,25 @@ import time
 import atexit
 from typing import Callable, Optional
 import requests
+from requests.exceptions import JSONDecodeError
 
 from config import Config
 from logger import get_logger
 from windows_utils import get_system_proxy
 
 logger = get_logger(__name__)
+
+
+class SteamBotApiError(Exception):
+    """
+    SteamBotApiClient 异常类。
+    用于封装后端返回的错误，并隐藏 requests 内部冗长的堆栈信息。
+    """
+
+    def __init__(self, message: str, response: Optional[requests.Response] = None):
+        self.response = response
+        self.status_code = response.status_code if response is not None else None
+        super().__init__(message)
 
 
 class ProcessManager:
@@ -98,24 +111,29 @@ class SteamBotApiClient:
         一个包装器，用于执行需要认证的 API 请求。
         如果请求因 401 Unauthorized 失败，它会自动尝试重新登录并重试一次。
 
-        :raises ``requests.HTTPError``: 请求出错
+        :raises SteamBotApiError: 请求出错
         """
         try:
-            # 第一次尝试
             return self._make_request(request_func, *args, **kwargs)
-        except requests.HTTPError as e:
-            # 检查是否是 401 Unauthorized 错误
-            if e.response.status_code == 401:
+        except SteamBotApiError as e:
+            # 401 Unauthorized 错误，尝试重新登录，然后重新请求
+            if e.status_code == 401:
                 logger.warning("请求失败（401 Unauthorized），检测到后端未登录。正在尝试重新登录...")
-                # 重新登录
                 try:
                     self.login()
-                except Exception as login_e:
-                    # 抛出重新登录时的错误
-                    raise
+                except SteamBotApiError as login_e:
+                    logger.error(f"重新登录失败: {login_e}", exc_info=login_e)
+                    # 抛出原始的未登录异常
+                    raise e from None
 
-                # 重试原始请求
-                return self._make_request(request_func, *args, **kwargs)
+                # 重试请求
+                logger.info("重新登录成功，正在重试请求...")
+                try:
+                    return self._make_request(request_func, *args, **kwargs)
+                except SteamBotApiError as retry_e:
+                    # 已知的 401 错误无须包含在错误堆栈中，丢弃上一次请求的错误堆栈
+                    raise retry_e from None
+
             else:
                 # 如果是其他HTTP错误，直接抛出
                 raise
@@ -124,29 +142,35 @@ class SteamBotApiClient:
     def _make_request(request_func: Callable[..., requests.Response], *args, **kwargs) -> requests.Response:
         """
         一个包装器，用于执行普通的 API 请求。
-        包含异常处理部分，可以自动将后端的错误信息抛出为 Python 异常
+        自动将后端的错误信息抛出为 SteamBotApiError 异常
+
+        :raises SteamBotApiError: 请求出错
         """
         try:
             response = request_func(*args, **kwargs)
             response.raise_for_status()
             return response
-        except requests.HTTPError as e:
-            # 如果是HTTP错误，使用响应体生成错误信息
-            if e.response is not None:
-                try:
-                    error_info = e.response.json()
-                    error_message = f"{error_info['error']} 错误详情: {error_info['details']}"
-                except:
-                    # 未能生成错误信息则使用响应体作为异常信息
-                    e.args = (e.response.text,) + e.args[1:]
-                    raise
-                else:
-                    # 成功生成错误信息则使用错误信息作为异常信息
-                    e.args = (error_message,) + e.args[1:]
-                    raise
+        except requests.RequestException as e:
+            error_message = f"请求发生错误: {str(e)}"
+            if hasattr(e, "response"):
+                response = e.response
             else:
-                # 没有响应体时抛出原始异常
-                raise
+                response = None
+
+            # 尝试从响应体解析更具体的错误信息
+            if response is not None:
+                try:
+                    error_info = response.json()
+                    err_code = error_info.get("error", "Unknown Error")
+                    err_details = error_info.get("details", response.text)
+                    error_message = f"API 错误 [{response.status_code}]: {err_code} - {err_details}"
+                except (JSONDecodeError, ValueError):
+                    # JSON 解析失败，回退到使用原始文本
+                    # 截断消息以防日志爆炸
+                    error_message = f"API 错误 [{response.status_code}] (非JSON响应{', 已截断' if len(response.text) > 200 else ''}): {response.text[:200]}"
+
+            # 丢弃原始的 requests/urllib3 堆栈
+            raise SteamBotApiError(error_message, response) from None
 
     def is_healthy(self) -> bool:
         """检查后端服务的健康状况。这个方法不会抛出任何异常。"""
@@ -161,6 +185,7 @@ class SteamBotApiClient:
         调用 /status API，获取Bot的登录状态。
 
         :return: {"loggedIn":布尔值表示的是否登录, "name":登录的用户名，未登录时为空字符串}
+        :raises SteamBotApiError: 请求出错
         """
         try:
             response = self._make_request(
@@ -183,6 +208,8 @@ class SteamBotApiClient:
     def login(self):
         """
         调用 /login API，让 Bot 进行登录操作。
+
+        :raises SteamBotApiError: 请求出错
         """
         response = self._make_request(
             requests.post, f"{self.base_url}/login", headers=self.headers, timeout=(5, 20)
@@ -193,6 +220,7 @@ class SteamBotApiClient:
         调用 /userinfo API，获取Bot的用户名，SteamID，群组列表。
 
         :return: {"name": 用户名, "steamID": SteamID, "groups":[{"name": 群组名, "id": 群组ID},...]}
+        :raises SteamBotApiError: 请求出错
         """
         response = self._make_authenticated_request(
             requests.get, f"{self.base_url}/userinfo", headers=self.headers, timeout=(5, 20)
@@ -202,13 +230,12 @@ class SteamBotApiClient:
     def send_group_message(self, group_id: str, channel_id: str, message: str):
         """
         调用 /send-message API，向某群组ID的某频道ID发送消息。
-        """
-        if not message:
-            return
 
+        :raises SteamBotApiError: 请求出错
+        """
         payload = {
             "groupId": group_id,
-            "channelId": channel_id,  # 变更点
+            "channelId": channel_id,
             "message": message,
         }
 
@@ -223,6 +250,8 @@ class SteamBotApiClient:
     def logout(self):
         """
         调用 /logout API，让 Bot 进行登出操作。
+
+        :raises SteamBotApiError: 请求出错
         """
         # 超时时间为 10 秒，比其他方法短，减少退出时的等待时间
         self._make_authenticated_request(
@@ -235,6 +264,7 @@ class SteamBotApiClient:
 
         :param group_id: 目标群组的 ID
         :return: 包含频道信息的字典列表 [{"name": "...", "id": "...", "isVoiceChannel": True/False}, ...]
+        :raises SteamBotApiError: 请求出错
         """
         payload = {"groupId": group_id}
 
@@ -315,6 +345,15 @@ class SteamBot:
     """
 
     def __init__(self, config: Config):
+        """
+        初始化 SteamBot，启动后端子进程和守护线程，并等待登录完成
+
+        :param config: 配置对象
+        :raises ``TimeoutError``: 等待客户端子进程就绪超时
+        :raises ``FileNotFoundError``: 未找到后端可执行文件或脚本
+        :raise ``ValueError``: 群组 ID 或频道名称无效
+        :raise ``Exception``: 验证群组 ID 和频道 ID 时，后端请求出错
+        """
         self.config = config
         self.last_send_monotonic_time = time.monotonic()  # 上次向 Steam 发送消息的相对时间
         self.last_send_system_time = time.time()  # 上次向 Steam 发送消息的系统时间，仅作参考
@@ -340,7 +379,7 @@ class SteamBot:
             raise TimeoutError("启动超时，未能在 30 秒内准备就绪。")
 
         # 等待 Steam Bot 完成登录，无限期等待
-        while self.api_client.get_login_status()["loggedIn"] != True:
+        while self.get_login_status()["loggedIn"] != True:
             time.sleep(5)
         logger.info("Steam Bot 后端登录成功。")
 
@@ -393,12 +432,11 @@ class SteamBot:
 
     def verify_group_config(self, config: Optional[Config] = None):
         """
-        验证配置中的 Steam 群组 ID 和频道名称是否有效。
-        如果无效，将抛出异常
+        验证配置中的 Steam 群组 ID 和频道名称是否有效。无效将抛出异常
 
         :param config: 可选的配置对象，不提供时将使用 self 的配置
-        :raise ValueError: 群组 ID 或频道名称无效
-        :raise Exception: 验证时出错
+        :raise ``ValueError``: 群组 ID 或频道名称无效
+        :raise ``Exception``: 请求出错
         """
         if config is None:
             config = self.config
@@ -460,31 +498,53 @@ class SteamBot:
     def send_group_message(self, message: str):
         """
         发送消息到群组。
-        请求出错时，将抛出异常。
 
         :param message: 消息字符串
+        :raises ``Exception``: 请求出错
         """
-        logger.info(f'正在向Steam群组 "{self.config.steamGroupId}" 发送消息...')
+
+        logger.info(
+            f"正在向 Steam 群组 ({self.config.steamGroupId}) 的频道 ({self.config.steamChannelId}) 发送消息..."
+        )
+        if not message:
+            logger.info(f'消息内容: "{message}"')
+        else:
+            logger.warning("消息内容为空，跳过发送。")
+            self.reset_send_timer()
+            return
+
         try:
             self.api_client.send_group_message(self.config.steamGroupId, self.config.steamChannelId, message)
             logger.info("已提交消息发送任务。")
-            self.last_send_monotonic_time = time.monotonic()
-            self.last_send_system_time = time.time()
+            self.reset_send_timer()
         except Exception as e:
-            logger.error(f'向Steam群组 "{self.config.steamGroupId}" 发送消息失败: {e}', exc_info=e)
+            logger.error(f'向 Steam 群组 "{self.config.steamGroupId}" 发送消息失败: {e}', exc_info=e)
             raise
 
     def get_userinfo(self) -> dict:
         """
         获取用户信息，包括用户名，SteamID，群组列表。
-        请求出错时，将抛出异常。
 
         :return: {"name": 用户名, "steamID": SteamID, "groups":[{"name": 群组名, "id": 群组ID},...]}
+        :raises ``Exception``: 请求出错
         """
         try:
             return self.api_client.get_userinfo()
         except Exception as e:
             raise Exception(f"获取用户信息时发生异常: {e}") from e
+
+    def get_group_channels(self, group_id: str):
+        """
+        获取群组中的文字频道列表。
+
+        :param group_id: 群组ID
+        :return: [{"name": 频道名称字符串, "id": 频道ID字符串, "isVoiceChannel": 语音频道为True，其他为False}, ...]
+        :raises ``Exception``: 请求出错
+        """
+        try:
+            return self.api_client.get_group_channels(group_id)
+        except Exception as e:
+            raise Exception(f"获取群组(ID:{group_id})中的频道列表时发生异常: {e}") from e
 
     def login(self):
         """
@@ -545,16 +605,3 @@ class SteamBot:
         if hasattr(self, "process_manager") and self.process_manager is not None:
             self.process_manager.stop()
         logger.info("Steam Bot 已成功关闭。")
-
-    def get_group_channels(self, group_id: str):
-        """
-        获取群组中的文字频道列表。
-        请求出错时，将抛出异常。
-
-        :param group_id: 群组ID
-        :return: [{"name": 频道名称字符串, "id": 频道ID字符串, "isVoiceChannel": 语音频道为True，其他为False}, ...]
-        """
-        try:
-            return self.api_client.get_group_channels(group_id)
-        except Exception as e:
-            raise Exception(f"获取群组(ID:{group_id})中的频道列表时发生异常: {e}") from e
