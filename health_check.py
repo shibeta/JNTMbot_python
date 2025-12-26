@@ -58,7 +58,7 @@ class HealthMonitor(threading.Thread):
         # 从config对象中解构配置
         self.check_interval = config.healthCheckInterval  # 分钟
         self.steam_chat_timeout_threshold = config.healthCheckSteamChatTimeoutThreshold  # 分钟
-        self.enable_exit_on_unhealthy = config.enableExitOnUnhealthy
+        self.exit_on_unhealthy = config.enableExitOnUnhealthy
 
         # 使能: 检查上次发送 Steam 消息时间
         self.enable_steam_chat_timeout = True
@@ -73,7 +73,7 @@ class HealthMonitor(threading.Thread):
         logger.info(f"健康检查已配置：每 {self.check_interval} 分钟检查一次。")
         if self.enable_steam_chat_timeout:
             logger.info(f"不健康阈值：连续 {self.steam_chat_timeout_threshold} 分钟未发送消息。")
-        if self.enable_exit_on_unhealthy:
+        if self.exit_on_unhealthy:
             logger.warning("不健康时自动退出程序功能：已启用。")
         else:
             logger.info("不健康时自动退出程序功能：已禁用。")
@@ -164,7 +164,7 @@ class HealthMonitor(threading.Thread):
 
         self.__send_notification("状态变为不健康", "\n".join(unhealthy_detail_list))
         # 按需退出
-        if self.enable_exit_on_unhealthy:
+        if self.exit_on_unhealthy:
             logger.error("检测到 Bot 不健康且已配置为自动退出，程序将关闭。")
             self.exit_func()
 
@@ -181,7 +181,7 @@ class HealthMonitor(threading.Thread):
                 f"Bot 状态不健康。原因: 超过 {self.steam_chat_timeout_threshold} 分钟未通过 Steam 发送消息。"
             )
         # 按需退出
-        if self.enable_exit_on_unhealthy:
+        if self.exit_on_unhealthy:
             logger.error("检测到 Bot 不健康且已配置为自动退出，程序将关闭。")
             self.exit_func()
 
