@@ -157,7 +157,7 @@ class HealthMonitor(threading.Thread):
             )
 
         if reason_list:
-            unhealthy_detail_list.append(f"未知原因: {", ".join(reason_list)}")
+            unhealthy_detail_list.append(f"未知原因: {', '.join(reason_list)}")
 
         if not unhealthy_detail_list:
             unhealthy_detail_list.append("未提供错误原因")
