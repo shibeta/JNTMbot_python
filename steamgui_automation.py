@@ -25,7 +25,7 @@ class SteamAutomation:
                 "Steam Automation 需要手动打开 Steam 群组聊天窗口，请确保 Steam 群组聊天窗口已经打开。"
             )
             raise
-        
+
         # 窗口中能否找到文本输入框
         try:
             self.find_input_field(chat_window)
@@ -50,6 +50,11 @@ class SteamAutomation:
         """
         查找 Steam 聊天窗口中的文本输入框
         """
+        # 处理窗口以准备查找元素
+        steam_chat_window.SwitchToThisWindow()  # 从最小化恢复
+        steam_chat_window.SetFocus()  # 将窗口放置在前台，否则查找元素会出错
+        time.sleep(0.5)  # 等待窗口绘制
+
         # 文本输入框没有特征，基于发送按钮辅助定位文本输入框
         # 文本输入框 <- 发送包按钮
         send_button = steam_chat_window.ButtonControl(Name="发送")
@@ -62,14 +67,46 @@ class SteamAutomation:
 
         return input_field
 
+    def send_message_to_steam_chat_window(self, message: str):
+        """
+        查找 Steam 聊天窗口，并发送消息。
+
+        :param str message: 发送的文本消息内容
+        :raises Exception: 查找窗口或发送消息失败
+        """
+        if not message:
+            return
+
+        # 寻找 Steam 聊天窗口
+        chat_window = self.find_steam_chat_window()
+
+        # 寻找文本输入框
+        input_field = self.find_input_field(chat_window)
+
+        # 由于文本输入框不是 EditControl，只能手动输入内容
+        input_field.SetFocus()
+        input_field.SendKeys(message)
+        time.sleep(0.1)
+
+        # 按下回车以发送消息
+        input_field.SetFocus()
+        input_field.SendKeys("{Enter}")
+
     def send_group_message(self, message: str):
         """
         查找 Steam 聊天窗口，并发送消息。
 
-        :param str window_title_substring: 窗口标题的一部分，支持正则。比如: 群组名
         :param str message: 发送的文本消息内容
         :raises Exception: 查找窗口或发送消息失败
         """
+        logger.info(f'正在向 Steam 聊天窗口 "{self.window_title_substring}" 发送消息...')
+        if not message:
+            logger.info(f'消息内容: "{message}"')
+        else:
+            logger.warning("消息内容为空，跳过发送。")
+            self.reset_send_timer()
+            return
+
         try:
             # 记录发送消息前激活的控件，发送消息后切换回该控件
             original_focused_control = auto.GetFocusedControl()
@@ -77,29 +114,9 @@ class SteamAutomation:
             original_focused_control = None
 
         try:
-            # 寻找 Steam 聊天窗口
-            chat_window = self.find_steam_chat_window()
-
-            # 处理窗口以准备查找元素
-            chat_window.SwitchToThisWindow()  # 从最小化恢复
-            chat_window.SetFocus()  # 将窗口放置在前台，否则查找元素会出错
-            time.sleep(0.5)  # 等待窗口绘制
-
-            # 寻找文本输入框
-            input_field = self.find_input_field(chat_window)
-
-            # 由于文本输入框不是 EditControl，只能手动输入内容
-            input_field.SetFocus()
-            input_field.SendKeys(message)
-            time.sleep(0.1)
-
-            # 按下回车以发送消息
-            input_field.SetFocus()
-            input_field.SendKeys("{Enter}")
-
-            logger.info(f"成功发送消息: '{message}'")
-            self.last_send_monotonic_time = time.monotonic()
-            self.last_send_system_time = time.time()
+            self.send_message_to_steam_chat_window(message)
+            logger.info(f"消息发送成功。")
+            self.reset_send_timer()
 
         except Exception as e:
             raise Exception(f"使用 Steam GUI 向群组发送消息时出错: {e}") from e
