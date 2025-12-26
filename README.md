@@ -1,7 +1,7 @@
 # JNTMbot - GTAOL 德瑞差事自动化脚本
 
 ![License](https://img.shields.io/github/license/shibeta/JNTMbot_python)
-![Python Version](https://img.shields.io/badge/python-3.11+-blue.svg)
+![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)
 ![Node.js Version](https://img.shields.io/badge/node.js-22+-green.svg)
 
 [![稳定版](https://github.com/shibeta/JNTMbot_python/actions/workflows/stable-release.yml/badge.svg)](https://github.com/shibeta/JNTMbot_python/releases/latest)
@@ -52,7 +52,7 @@
 -   **从源码运行**:
     -   Windows 10 Build 18362 (即 19H1) 或更高版本
     -   GTA5 增强版 (不支持传承版)
-    -   Python >= 3.11
+    -   Python >= 3.12
     -   Node.js >= v22.0
 
 ## 🚀 安装与运行
