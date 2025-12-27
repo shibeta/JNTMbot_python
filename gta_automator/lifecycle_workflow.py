@@ -328,10 +328,11 @@ class LifecycleWorkflow(_BaseWorkflow):
 
         :raises ``UIElementNotFound(UIElement.ONLINE_MODE_TAB)``: 找不到在线模式选择卡
         :raises ``UIElementNotFound(UIElement.PAUSE_MENU)``: 打开暂停菜单失败
-        :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.BAD_PCSETTING_BIN)``: 无法进入在线模式，因为pcsetting.bin故障
-        :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.MAIN_MENU)``: 无法进入在线模式，因为被回退到主菜单
+        :raises ``OperationTimeout(OperationTimeoutContext.JOIN_ONLINE_SESSION)``: 等待进入在线模式超时
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.BAD_PCSETTING_BIN)``: 由于 pc_setting.bin 问题无法进入在线模式
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.MAIN_MENU)``: 进入在线模式时，由于网络问题等原因被回退到主菜单 (仅限增强版)
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_SERVICE_POLICY_PAGE, actual=GameState.UNKNOWN)``: 处理在线服务政策页面时，无法确定当前所在的页
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
-        :raises ``OperationTimeout(OperationTimeoutContext.ONLINE_SESSION_JOIN)``: 等待进入在线模式超时
         """
         logger.info("动作: 正在进入在线模式...")
 
@@ -356,6 +357,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         :raises ``OperationTimeout(OperationTimeoutContext.JOIN_ONLINE_SESSION)``: 等待进入在线模式超时
         :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.BAD_PCSETTING_BIN)``: 由于 pc_setting.bin 问题无法进入在线模式
         :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.MAIN_MENU)``: 由于网络问题等原因被回退到主菜单 (仅限增强版)
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_SERVICE_POLICY_PAGE, actual=GameState.UNKNOWN)``: 处理在线服务政策页面时，无法确定当前所在的页
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         logger.info("正在等待进入在线模式...")
@@ -405,6 +407,8 @@ class LifecycleWorkflow(_BaseWorkflow):
         :return: 没有发现在线服务政策页面时返回 False，发现并确认在线服务政策页面时返回 True
         :raises ``OperationTimeout(OperationTimeoutContext.DOWNLOAD_POLICY)``: 下载在线服务政策超时
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_SERVICE_POLICY_PAGE, actual=GameState.UNKNOWN)``: 
+            无法确定当前页面，页面结构与方法定义的两条政策页面不一致
         """
         # 不在在线服务政策页面，直接返回
         if not self.screen.is_on_online_service_policy_page(ocr_text):
@@ -418,18 +422,23 @@ class LifecycleWorkflow(_BaseWorkflow):
         # 目前有两条在线服务政策，第一条是隐私政策，第二条是服务条款
         # 尝试点击确认键，看看是否还停留在在线服务政策页面
         self.action.confirm()
-        # 如果不在在线服务政策页面，说明点到条款里了
         ocr_result = self.screen.ocr_game_window(0, 0, 0.7, 0.3)
+
         if not self.screen.is_on_online_service_policy_page(ocr_result):
-            # 如果在隐私政策中，返回并下移两次，选中"我已确认"
+            # 如果不在在线服务政策页面，说明点到条款里了
             if self.screen.is_on_privacy_policy_page(ocr_result):
+                # 如果在隐私政策中，返回并下移两次，选中"我已确认"
                 self.action.back()
                 self.action.down()
                 self.action.down()
-            # 如果在服务条款中，返回并下移一次，选中"我已确认"
             elif self.screen.is_on_term_of_service_page(ocr_result):
+                # 如果在服务条款中，返回并下移一次，选中"我已确认"
                 self.action.back()
                 self.action.down()
+            else:
+                # 如果都不在，说明R星新增了别的条款
+                logger.error("无法确认在线服务政策，页面不兼容。请向开发者反馈该问题。")
+                raise UnexpectedGameState(GameState.ONLINE_SERVICE_POLICY_PAGE, GameState.UNKNOWN)
 
         # 以上步骤会选中"我已确认"选项，进行确认并提交
         self.action.confirm()
@@ -446,9 +455,11 @@ class LifecycleWorkflow(_BaseWorkflow):
         该方法只能在游戏启动后才能运行，因为游戏未启动时使用 steam://rungame/ 会出现一个程序无法处理的弹窗。
 
         :param steam_jvp: URL 编码后的 steam_jvp 参数
-        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动所以无法加入战局
         :raises ``OperationTimeout(OperationTimeoutContext.ONLINE_SESSION_JOIN)``: 加入战局时超时
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.BAD_PCSETTING_BIN)``: 由于 pc_setting.bin 问题无法进入在线模式
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.MAIN_MENU)``: 由于网络问题等原因被回退到主菜单 (仅限增强版)
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_SERVICE_POLICY_PAGE, actual=GameState.UNKNOWN)``: 处理在线服务政策页面时，无法确定当前所在的页
         """
         logger.info(f"动作: 正在加入战局: {steam_jvp}")
 

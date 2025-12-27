@@ -41,6 +41,7 @@ class GameState(enum.Enum):
     BAD_SPORT_LEVEL = "恶意玩家"
     DODGY_PLAYER_LEVEL = "问题玩家"
     CLEAN_PLAYER_LEVEL = "清白玩家"
+    ONLINE_SERVICE_POLICY_PAGE = "在线服务政策页面"
 
 
 class UIElement(enum.Enum):
