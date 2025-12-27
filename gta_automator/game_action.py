@@ -115,9 +115,11 @@ class GameAction:
         """在在线模式的暂停菜单中，导航到'寻找新战局'选项卡"""
         self.next_page()  # 选中在线选择卡
         self.confirm()  # 打开在线选择卡
+        time.sleep(0.5)  # 多等一会
         # 选中"寻找新战局"
         for _ in range(5):
             self.up()
+            time.sleep(0.5)  # 多等一会
         time.sleep(0.5)  # 多等一会
         self.confirm()  # 进入"切换会话"选项卡
 
@@ -125,9 +127,11 @@ class GameAction:
         """在在线模式的暂停菜单中，导航到'玩家'选项卡"""
         self.next_page()  # 选中在线选择卡
         self.confirm()  # 打开在线选择卡
+        time.sleep(0.5)  # 多等一会
         # 选中"玩家"
         for _ in range(4):
             self.down()
+            time.sleep(0.5)  # 多等一会
         time.sleep(0.5)  # 多等一会
         self.confirm()  # 进入"玩家"选项卡
 
