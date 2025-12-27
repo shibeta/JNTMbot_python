@@ -100,7 +100,7 @@ class SteamAutomation:
         :raises Exception: 查找窗口或发送消息失败
         """
         logger.info(f'正在向 Steam 聊天窗口 "{self.window_title_substring}" 发送消息...')
-        if not message:
+        if message:
             logger.info(f'消息内容: "{message}"')
         else:
             logger.warning("消息内容为空，跳过发送。")

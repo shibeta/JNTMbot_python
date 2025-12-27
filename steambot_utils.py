@@ -504,7 +504,7 @@ class SteamBot:
         logger.info(
             f"正在向 Steam 群组 ({self.config.steamGroupId}) 的频道 ({self.config.steamChannelId}) 发送消息..."
         )
-        if not message:
+        if message:
             logger.info(f'消息内容: "{message}"')
         else:
             logger.warning("消息内容为空，跳过发送。")
