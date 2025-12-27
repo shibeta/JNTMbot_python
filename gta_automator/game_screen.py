@@ -219,7 +219,7 @@ class GameScreen:
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         if ocr_text is None:
-            ocr_text = self.ocr_game_window(0.75, 0.2, 0.25, 0.3)
+            ocr_text = self.ocr_game_window(0.5, 0, 0.5, 0.5)
 
         if "清白" in ocr_text:
             return "清白玩家"
@@ -238,7 +238,12 @@ class GameScreen:
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         return self.search_text(
-            GameScreenTextPatterns.IS_ON_MAINMENU_BRIGHTNESS_OR_WARNING_PAGE, ocr_text, 0.25, 0.4, 0.5, 0.2
+            GameScreenTextPatterns.IS_ON_MAINMENU_BRIGHTNESS_OR_WARNING_PAGE,
+            ocr_text,
+            0.5,
+            0.8,
+            0.5,
+            0.2,
         )
 
     def is_on_mainmenu_gtaplus_advertisement_page(self, ocr_text: Optional[str] = None) -> bool:
@@ -287,7 +292,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self.search_text("在线模式", ocr_text, 0, 0, 0.4, 0.1)
+        return self.search_text("在线模式", ocr_text, 0, 0, 0.5, 0.1)
 
     def is_respawned_in_agency(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -351,7 +356,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self.search_text(GameScreenTextPatterns.IS_JOB_STARTING, ocr_text, 0, 0.8, 1, 0.2)
+        return self.search_text(GameScreenTextPatterns.IS_JOB_STARTING, ocr_text, 0.5, 0.8, 0.5, 0.2)
 
     def is_on_warning_page(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -376,7 +381,7 @@ class GameScreen:
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         return self.search_text(
-            GameScreenTextPatterns.IS_CONFIRM_OPTION_AVAILABLE, ocr_text, 0.75, 0.8, 0.25, 0.2
+            GameScreenTextPatterns.IS_CONFIRM_OPTION_AVAILABLE, ocr_text, 0.5, 0.8, 0.5, 0.2
         )
 
     def is_on_bad_pcsetting_warning_page(self, ocr_text: Optional[str] = None) -> bool:
@@ -393,7 +398,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self.search_text("在线服务政策", ocr_text, 0, 0, 0.7, 0.3)
+        return self.search_text("在线服务政策", ocr_text, 0, 0, 0.7, 0.5)
 
     def is_online_service_policy_loaded(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -417,7 +422,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self.search_text("隐私政策", ocr_text, 0, 0, 0.7, 0.3)
+        return self.search_text("隐私政策", ocr_text, 0, 0, 0.7, 0.5)
 
     def is_on_term_of_service_page(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -425,7 +430,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self.search_text("服务条款", ocr_text, 0, 0, 0.7, 0.3)
+        return self.search_text("服务条款", ocr_text, 0, 0, 0.7, 0.5)
 
     def is_on_pause_menu(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -433,7 +438,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self.search_text(GameScreenTextPatterns.IS_ON_PAUSE_MENU, ocr_text, 0, 0.1, 0.5, 0.3)
+        return self.search_text(GameScreenTextPatterns.IS_ON_PAUSE_MENU, ocr_text, 0, 0.1, 0.5, 0.4)
 
     def is_on_story_pause_menu(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -441,7 +446,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self.search_text(GameScreenTextPatterns.IS_ON_STORY_PAUSE_MENU, ocr_text, 0.1, 0.1, 0.7, 0.3)
+        return self.search_text(GameScreenTextPatterns.IS_ON_STORY_PAUSE_MENU, ocr_text, 0, 0.1, 0.8, 0.4)
 
     def is_on_online_pause_menu(self, ocr_text: Optional[str] = None) -> bool:
         """
@@ -449,7 +454,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self.search_text(GameScreenTextPatterns.IS_ON_ONLINE_PAUSE_MENU, ocr_text, 0.1, 0.1, 0.5, 0.3)
+        return self.search_text(GameScreenTextPatterns.IS_ON_ONLINE_PAUSE_MENU, ocr_text, 0, 0.1, 0.8, 0.4)
 
     def is_on_go_online_menu(self, ocr_text: Optional[str] = None) -> bool:
         """
