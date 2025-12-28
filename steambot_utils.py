@@ -83,8 +83,8 @@ class ProcessManager:
                     logger.debug(f"进程 {proc_to_kill.pid} 已成功终止。")
                 else:
                     raise TimeoutError(f"等待进程 {proc_to_kill.pid} 终止超时")
-            except Exception:
-                logger.warning(f"终止进程 {proc_to_kill.pid} 失败，将执行强制终止。")
+            except Exception as e:
+                logger.warning(f"终止进程 {proc_to_kill.pid} 失败: {e} ，将执行强制终止。")
                 proc_to_kill.kill()
             finally:
                 self.process = None
