@@ -77,7 +77,7 @@ class ProcessManager:
             proc_to_kill = self.process
             logger.info(f"正在终止进程 (PID: {proc_to_kill.pid})...")
             try:
-                proc_to_kill.send_signal(signal.SIGINT)
+                proc_to_kill.send_signal(signal.SIGTERM)
                 return_code = proc_to_kill.wait(timeout=2)
                 if isinstance(return_code, int):
                     logger.debug(f"进程 {proc_to_kill.pid} 已成功终止。")
