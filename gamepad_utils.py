@@ -1,7 +1,9 @@
 from __future__ import annotations
 import enum
+import subprocess
 import sys
 import os
+from pathlib import Path
 import copy
 import time
 from typing import Callable, Optional, Union
@@ -14,8 +16,131 @@ from logger import get_logger
 
 logger = get_logger(__name__)
 
-# ViGEmBus 驱动安装脚本
-INSTALL_VIGEMBUS_DRIVER_BAT_PATH = "install_vigembus.bat"
+# ViGEmBus 驱动安装程序路径
+VIGEMBUS_DRIVER_PATH_LIST = [
+    "虚拟手柄驱动ViGEmBusSetup_x64.msi",  # 从发行版运行
+    "assets/虚拟手柄驱动ViGEmBusSetup_x64.msi",  # 从源码运行
+]
+
+
+def get_vbus_driver_path():
+    """
+    查找 ViGEmBus 驱动安装程序路径。
+
+    驱动程序可能的路径定义在全局变量 VIGEMBUS_DRIVER_PATH_LIST 中
+    """
+    # 获取程序运行的基础目录
+    base_dir = Path(__file__).resolve(strict=True).parent
+
+    # 驱动程序可能存在的路径
+    possible_paths = [base_dir.joinpath(path) for path in VIGEMBUS_DRIVER_PATH_LIST]
+    base_dir.joinpath()
+
+    for path in possible_paths:
+        if path.is_file():
+            return path
+
+    logger.error("未能在以下预期位置找到驱动安装程序:")
+    for path in possible_paths:
+        logger.error(f"  - {path}")
+
+    return None
+
+
+def install_driver(msi_path):
+    """
+    调用 msiexec 安装 MSI 文件
+    """
+    logger.info(f"正在启动安装程序包: {msi_path}")
+    logger.info(f'请在安装程序中勾选同意用户条款，并点击"Install"。')
+    logger.info(f'如果弹出UAC用户账户控制窗口，请选择"是"。')
+
+    try:
+        # 调用 msiexec
+        # /package 表示安装
+        # subprocess.run 会等待到安装完成
+        result = subprocess.run(["msiexec", "/package", msi_path], shell=True)
+
+        # 检查返回值
+        # 0 = 成功, 3010 = 成功但需要重启系统(通常驱动安装不需要重启系统，只需重启软件)
+        if result.returncode in [0, 3010]:
+            return True
+        else:
+            logger.error(f"驱动安装失败，msiexec 返回码: {result.returncode}")
+            return False
+
+    except Exception as e:
+        logger.error(f"调用安装程序时发生异常: {e}")
+        return False
+
+
+def restart_program():
+    """
+    使用 os.execl() 重启应用程序。
+
+    在重启前，会清理现有的程序资源:
+    - 触发 atexit 中注册的回调
+    - 刷新 stdout 和 stderr 缓冲区
+    """
+    logger.info("正在重启应用程序...")
+
+    # 触发 atexit 清理
+    try:
+        if hasattr(atexit, "_run_exitfuncs"):
+            atexit._run_exitfuncs()
+    except Exception as e:
+        logger.error(f"执行 atexit 退出回调时发生异常: {e}")
+
+    # 刷新 IO 缓冲区
+    sys.stdout.flush()
+    sys.stderr.flush()
+
+    # 重启
+    python = sys.executable
+    try:
+        os.execl(python, python, *sys.argv)
+    except OSError as e:
+        logger.error(f"重启失败: {e}")
+        input("请手动重启程序。按 Enter 键退出...")
+        sys.exit(1)
+
+
+def setup_vigembus_driver():
+    """
+    询问用户是否安装 ViGEmBus 驱动，然后重启应用程序
+    """
+    choice = input("是否启动驱动安装程序？(Y/N): ").strip().lower()
+    if choice == "y":
+        driver_path = get_vbus_driver_path()
+
+        if not driver_path:
+            logger.error("未找到驱动安装文件，请重新下载最新版应用程序。")
+            input("按 Enter 键退出...")
+            sys.exit(1)
+
+        if install_driver(driver_path):
+            logger.info("驱动安装成功！按 Enter 键重启程序...")
+            input()
+            try:
+                restart_program()
+                # 函数不会返回
+                sys.exit(1)
+            except Exception as e:
+                logger.error(f"重启失败: {e}")
+                input("请手动重启程序。按 Enter 键退出...")
+                sys.exit(1)
+        else:
+            logger.error(f"驱动安装失败。您可以尝试手动运行安装包: {driver_path}")
+            input("按 Enter 键退出...")
+            sys.exit(1)
+    else:
+        logger.info("您选择了取消。程序无法继续运行。")
+        logger.info(f"请手动运行程序目录下的驱动安装包，可能位于: ")
+        for path in VIGEMBUS_DRIVER_PATH_LIST:
+            logger.info(f"  - {path}")
+        input("\n按 Enter 键退出...")
+        sys.exit(1)
+
 
 # 导入 vgamepad, 处理驱动安装
 try:
@@ -24,25 +149,9 @@ try:
 except Exception as e:
     if "VIGEM_ERROR_BUS_NOT_FOUND" in str(e):
         logger.error("没有安装 ViGEmBus 驱动，或驱动未正确运行。")
-        choice = input("是否立即安装驱动？(Y/N): ").strip().lower()
-        if choice == "y":
-            try:
-                os.startfile(INSTALL_VIGEMBUS_DRIVER_BAT_PATH)
-            except Exception as e:
-                logger.error(f"驱动安装出错: {e}")
-                logger.warning(
-                    f'安装驱动失败，请尝试手动运行程序目录下的 "{INSTALL_VIGEMBUS_DRIVER_BAT_PATH}" 来安装驱动。'
-                )
-                input("\n按 Enter 键退出...")
-                sys.exit(1)
-            logger.info("驱动安装开始，程序将在 5 秒后退出...")
-            time.sleep(5)
-            sys.exit(0)
-        else:
-            logger.info("您选择了取消。程序无法继续运行。")
-            logger.info(f'请运行程序目录下的 "{INSTALL_VIGEMBUS_DRIVER_BAT_PATH}" 来安装驱动。')
-            input("\n按 Enter 键退出...")
-            sys.exit(1)
+        setup_vigembus_driver()
+        # 函数不会返回
+        sys.exit(1)
     else:
         raise
 
@@ -318,7 +427,9 @@ class GamepadSimulator:
             logger.error(
                 f"初始化虚拟手柄失败: {e}。请确保已安装 ViGEmBus 驱动，并且没有其他程序正在使用 ViGEmBus 模拟手柄。"
             )
-            logger.info('请运行程序目录下的 "install_vigembus.bat" 来安装驱动。')
+            setup_vigembus_driver()
+            # 函数不会返回
+            sys.exit(1)
             raise
 
     def _check_connected(self) -> bool:

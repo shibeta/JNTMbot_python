@@ -126,10 +126,6 @@ jobs:
           Write-Host "Copying config file..."
           Copy-Item -Path "./config.yaml.example" -Destination "$releaseDir/config.yaml" -Force
 
-          # 复制 VigemBus 驱动安装脚本
-          Write-Host "Copying VigemBus driver install script..."
-          Copy-Item -Path "./install_vigembus.bat" -Destination "$releaseDir/install_vigembus.bat" -Force
-
           # 复制 RapidOCR 的可执行文件和模型文件
           Write-Host "Copying RapidOCR executable file..."
           Copy-Item -Path "./RapidOCR-json.exe" -Destination "$releaseDir/RapidOCR-json.exe" -Force
