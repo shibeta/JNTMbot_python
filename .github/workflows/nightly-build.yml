@@ -70,7 +70,7 @@ jobs:
       - name: Install ViGEmBus Driver from local MSI
         shell: pwsh
         run: |
-          $msiPath = Join-Path $env:GITHUB_WORKSPACE "assets\ViGEmBusSetup_x64.msi"
+          $msiPath = Join-Path $env:GITHUB_WORKSPACE "assets\虚拟手柄驱动ViGEmBusSetup_x64.msi"
           msiexec /i "$msiPath" /qn /norestart
           Write-Host "Waiting for ViGEmBus driver to settle..."
           Start-Sleep -Seconds 5
@@ -137,7 +137,7 @@ jobs:
 
           # 复制 ViGEmBus 驱动安装程序
           Write-Host "Copying ViGEmBus Driver Installer..."
-          Copy-Item -Path "./assets/ViGEmBusSetup_x64.msi" -Destination "$releaseDir/虚拟手柄驱动.msi" -Force
+          Copy-Item -Path "./assets/虚拟手柄驱动ViGEmBusSetup_x64.msi" -Destination "$releaseDir/虚拟手柄驱动ViGEmBusSetup_x64.msi" -Force
 
           # 复制配置文件
           Write-Host "Copying config file..."

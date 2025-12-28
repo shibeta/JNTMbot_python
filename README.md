@@ -71,7 +71,7 @@
 
 3.  **安装虚拟手柄驱动**
 
-    从 [GitHub Repository](https://raw.githubusercontent.com/shibeta/JNTMbot_python/main/assets/ViGEmBusSetup_x64.msi) 或 [123 云盘](https://www.123865.com/s/05OiVv-bdsmH?pwd=bJEH) 下载并运行 `ViGEmBusSetup_x64.msi` 文件。请接受许可协议并安装该驱动以安装虚拟手柄驱动。
+    从 [GitHub Repository](https://raw.githubusercontent.com/shibeta/JNTMbot_python/main/assets/虚拟手柄驱动ViGEmBusSetup_x64.msi) 或 [123 云盘](https://www.123865.com/s/05OiVv-bdsmH?pwd=bJEH) 下载并运行 `虚拟手柄驱动ViGEmBusSetup_x64.msi` 文件。请接受许可协议并安装该驱动以安装虚拟手柄驱动。
 
 4.  **修改配置 (可选)**
 

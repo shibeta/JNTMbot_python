@@ -13,8 +13,8 @@ echo.
 
 :: 查找 MSI 安装文件
 echo 正在查找驱动安装程序...
-set "RELEASE_MSI_PATH=%~dp0虚拟手柄驱动.msi"
-set "SOURCE_MSI_PATH=%~dp0assets\ViGEmBusSetup_x64.msi"
+set "RELEASE_MSI_PATH=%~dp0虚拟手柄驱动ViGEmBusSetup_x64.msi"
+set "SOURCE_MSI_PATH=%~dp0assets\虚拟手柄驱动ViGEmBusSetup_x64.msi"
 set "MSI_PATH="
 
 :: 首先检查 Release (打包后) 的路径
@@ -32,7 +32,7 @@ if not defined MSI_PATH (
 :: 如果两个路径都找不到，则报错退出
 if not defined MSI_PATH (
     echo.
-    echo 错误：未能在以下预期位置找到 ViGEmBusSetup_x64.msi：
+    echo 错误：未能在以下预期位置找到 虚拟手柄驱动ViGEmBusSetup_x64.msi：
     echo   - %RELEASE_MSI_PATH%
     echo   - %SOURCE_MSI_PATH%
     echo.
