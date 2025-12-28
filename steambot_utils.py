@@ -381,9 +381,16 @@ class SteamBot:
             time.sleep(5)
         logger.info("Steam Bot 后端登录成功。")
 
+        # 显示登录的用户名
+        try:
+            bot_userinfo = self.get_userinfo()
+        except Exception as e:
+            raise Exception("获取 Steam 用户信息失败") from e
+        logger.info(f"登录的 Steam 用户名: {bot_userinfo['name']}")
+
         # 验证群组 ID 和频道 ID 是否有效
         logger.info("检查配置的群组 ID 和频道 ID 是否有效。。。")
-        self.verify_group_config()
+        self.verify_group_config(bot_userinfo)
 
         logger.info("Steam Bot 后端初始化完成。")
 
@@ -428,36 +435,40 @@ class SteamBot:
 
         return command
 
-    def verify_group_config(self, config: Optional[Config] = None):
+    def verify_group_config(self, userinfo: Optional[dict] = None):
         """
         验证配置中的 Steam 群组 ID 和频道名称是否有效。无效将抛出异常
 
-        :param config: 可选的配置对象，不提供时将使用 self 的配置
-        :raise ``ValueError``: 群组 ID 或频道名称无效
+        :param userinfo:
+            可选的用户信息，格式与 get_userinfo() 返回值一致。
+            不提供时将使用 self.get_userinfo() 获取
+        :raise ``ValueError``: 传入的用户信息无效
+        :raise ``TypeError``: 配置中的群组 ID 或频道名称无效
         :raise ``Exception``: 请求出错
         """
-        if config is None:
-            config = self.config
-
-        # 获取 Steam 用户信息和群组列表
-        try:
-            bot_userinfo = self.get_userinfo()
-        except Exception as e:
-            raise Exception("获取 Steam 用户信息失败") from e
-
-        logger.info(f"登录的 Steam 用户名: {bot_userinfo['name']}")
+        if userinfo is not None:
+            # 验证其含有 "groups" 键
+            if not "groups" in userinfo:
+                raise TypeError("给定的用户信息无效，应当为 get_userinfo() 的返回值")
+            bot_userinfo = userinfo
+        else:
+            # 获取 Steam 用户信息和群组列表
+            try:
+                bot_userinfo = self.get_userinfo()
+            except Exception as e:
+                raise Exception("获取 Steam 用户信息失败") from e
 
         # 验证 Steam Bot 能否访问配置中的群组ID
         for group in bot_userinfo["groups"]:
-            if config.steamGroupId == group["id"]:
+            if self.config.steamGroupId == group["id"]:
                 # 获取频道列表
                 try:
-                    channel_list = self.get_group_channels(config.steamGroupId)
+                    channel_list = self.get_group_channels(self.config.steamGroupId)
                 except Exception as e:
                     raise Exception("获取群组频道列表失败") from e
                 # 验证 Steam 群组中含有配置中的聊天频道
                 for channel in channel_list:
-                    if config.steamChannelId == channel["id"]:
+                    if self.config.steamChannelId == channel["id"]:
                         logger.info(
                             f"Bot发车信息将发送到 {group['name']} ({group['id']}) 群组中的 {channel['name']} ({channel['id']}) 频道。"
                         )
@@ -465,7 +476,7 @@ class SteamBot:
                         return
                 else:
                     logger.error(
-                        f"配置中的 Steam 群组频道 ID ({config.steamChannelId}) 无效，群组 {group['name']} 中找不到该频道。"
+                        f"配置中的 Steam 群组频道 ID ({self.config.steamChannelId}) 无效，群组 {group['name']} 中找不到该频道。"
                     )
                     logger.error("================ 当前群组可用频道 =================")
                     if not channel_list:
@@ -480,9 +491,9 @@ class SteamBot:
                         f"请将正确的频道 ID 填入 {self.config.config_filepath} 中的 steamChannelId 。"
                     )
 
-                    raise ValueError(f"配置中的 Steam 群组频道 ID ({config.steamChannelId}) 无效")
+                    raise ValueError(f"配置中的 Steam 群组频道 ID ({self.config.steamChannelId}) 无效")
         else:
-            logger.error(f"配置中的 Steam 群组 ID ({config.steamGroupId}) 无效，Bot 不在该群组中。")
+            logger.error(f"配置中的 Steam 群组 ID ({self.config.steamGroupId}) 无效，Bot 不在该群组中。")
             logger.error("=============== Bot 所在的群组列表 ================")
             if not bot_userinfo["groups"]:
                 logger.error("  (列表为空，Bot 没有加入任何群组)")
@@ -491,7 +502,7 @@ class SteamBot:
             logger.error("=================================================")
             logger.error(f"请将正确的群组ID填入 {self.config.config_filepath} 中的 steamGroupId 。")
 
-            raise ValueError(f"配置中的 Steam 群组 ID ({config.steamGroupId})无效")
+            raise ValueError(f"配置中的 Steam 群组 ID ({self.config.steamGroupId})无效")
 
     def send_group_message(self, message: str):
         """
