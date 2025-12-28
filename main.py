@@ -79,9 +79,9 @@ def exit_main_process(main_pid: int):
         logger.error(f"发送退出信号失败，主进程可能已退出。错误: {e}")
     except Exception as e:
         logger.error(f"发送退出信号时发生异常: {e}")
-
-    # 以防终端窗口不关闭，提示用户程序已退出
-    logger.info("程序已经退出，现在可以安全关闭终端窗口。")
+    finally:
+        # 以防终端窗口不关闭，提示用户程序已退出
+        logger.info("程序已经退出，现在可以安全关闭终端窗口。")
 
 
 # --- 主程序执行 ---
