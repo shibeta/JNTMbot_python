@@ -62,7 +62,7 @@ def interrupt_decorator(func):
 
 def exit_main_process(main_pid: int):
     """
-    触发 atexit 中注册的所有方法，然后向主进程发送 CTRL_BREAK_EVENT 信号。
+    触发 atexit 中注册的所有方法，然后向主进程发送 SIGTERM 信号。
 
     :param int main_pid: 主进程的 PID。可以通过在主进程中执行`os.getpid()`获取。
     """
