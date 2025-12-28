@@ -5,7 +5,7 @@ import threading
 import os
 import traceback
 from functools import wraps, partial
-from atexit import _run_exitfuncs as trigger_atexit, _clear as clear_atexit
+from atexit import _run_exitfuncs as trigger_atexit
 
 from keyboard_utils import HotKeyManager
 from logger import setup_logging, get_logger
@@ -69,7 +69,6 @@ def exit_main_process(main_pid: int):
     logger.debug("正在执行 atexit 退出回调...")
     try:
         trigger_atexit()
-        clear_atexit()
     except Exception as e:
         logger.error(f"执行 atexit 退出回调时发生异常: {e}")
 
