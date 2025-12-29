@@ -3,6 +3,10 @@ import time
 from typing import Any, List, Optional, Set, Tuple, Union, Callable, Dict
 from pynput.keyboard import Controller, KeyCode, Key, GlobalHotKeys
 
+from logger import get_logger
+
+logger = get_logger(__name__)
+
 
 class KeyboardSimulator:
     """
@@ -147,14 +151,18 @@ class HotKeyManager:
     它支持在运行时动态地添加和移除热键。
     """
 
-    def __init__(self, enable: bool = True):
+    def __init__(self, enable: bool = True, debounce_interval: float = 0.1):
         """
         初始化 HotKeyManager 实例。
 
         :param bool enable: 是否立刻启动热键监听器。默认启用
+        :param debounce_interval: 防抖时间间隔（秒）。在此时间内重复触发将被忽略。
         """
         # 是否启用
         self.enable: bool = enable
+        # 防抖间隔
+        self.debounce_interval: float = debounce_interval
+
         # 热键字符串到回调函数的映射
         self._hotkeys: Dict[str, Callable[[], Any]] = {}
         # GlobalHotKeys 对象，支持部分 threading.Thread 的特性
@@ -201,12 +209,40 @@ class HotKeyManager:
             self.enable = False
             self.__update_listener_unsafe()
 
-    def add_hotkey(self, hotkey: str, callback: Callable):
+    def add_hotkey(self, hotkey: str, callback: Callable[[], Any], debounce: Optional[float] = None):
         """
         添加或更新一个全局热键。
+
+        :param hotkey: 热键字符串, 比如 "<ctrl>+<alt>+h"
+        :param callback: 绑定至热键的无参回调函数, 有参的调用请通过 partial 包装
+        :param debounce: (可选) 防抖时间(秒)
         """
+        # 如果未传入防抖时间，使用 self 中定义的全局防抖时间
+        debounce_interval = debounce if debounce else self.debounce_interval
+
+        # 使用闭包保存该热键的上一次触发时间
+        last_triggered = [0.0]  # 实现可变的浮点对象
+
+        # 为回调函数创建包装函数，添加防抖和异常捕获
+        def callback_warpper():
+            current_time = time.monotonic()
+            # 防抖检查: 距离上次执行时间是否超过防抖阈值
+            if current_time - last_triggered[0] < debounce_interval:
+                # 未超过防抖阈值直接返回
+                return
+
+            # 更新上次执行时间
+            last_triggered[0] = current_time
+
+            try:
+                callback()
+            except Exception as e:
+                # 防止回调报错导致监听线程崩溃
+                logger.error(f"执行热键 {hotkey} 绑定的函数时发生错误: {e}", exc_info=e)
+
+        # 添加包装函数到热键映射
         with self._listener_lock:
-            self._hotkeys[hotkey] = callback
+            self._hotkeys[hotkey] = callback_warpper
             # 如果启用，更新监听器
             if self.enable:
                 self.__update_listener_unsafe()
@@ -214,6 +250,8 @@ class HotKeyManager:
     def remove_hotkey(self, hotkey: str):
         """
         移除一个已注册的全局热键。
+
+        :param hotkey: 热键字符串, 比如 "<ctrl>+<alt>+h"
         """
         with self._listener_lock:
             if hotkey in self._hotkeys:
