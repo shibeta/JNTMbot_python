@@ -1,22 +1,34 @@
 import logging
 import logging.config
 from logging.handlers import RotatingFileHandler
-import os
-from typing import Optional
+from pathlib import Path
 
 try:
     # 尝试导入 colorlog 库
     import colorlog
 except ImportError:
-    # 如果导入失败，说明库未安装，设置一个标志位
+    # 导入失败保留为 None, 稍后回退到不带颜色的日志
     colorlog = None
 
 
-# 目前设置了控制台日志和文件日志
+class UIautomationFilter(logging.Filter):
+    """
+    过滤 comtypes 的低于 WARNING 等级的日志。
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool | logging.LogRecord:
+        if "comtypes" in record.name:
+            return record.levelno >= logging.WARNING
+        return True
+
+
+# 默认日志配置字典
+# 格式化日志输出到文件和终端, 日志等级为 debug
+# 过滤器 UIautomationFilter
 DEFAULT_LOGGING_CONFIG = {
     "version": 1,
     "disable_existing_loggers": False,  # 保持为 False 以避免清除掉其他软件包添加的 logger
-    "filters": {"silence_uiautomation_less_than_info": {"()": "logger.UIautomationFilter"}},
+    "filters": {"silence_uiautomation_less_than_info": {"()": f"{__name__}.UIautomationFilter"}},
     "formatters": {
         "default": {
             "format": "[%(asctime)s] [%(levelname)s] [%(name)s] %(message)s",
@@ -63,58 +75,52 @@ DEFAULT_LOGGING_CONFIG = {
     },
 }
 
-class UIautomationFilter(logging.Filter):
-    """
-    过滤 comtypes 的低于 WARNING 等级的日志。
-    """
-    def filter(self, record: logging.LogRecord) -> bool | logging.LogRecord:
-        if "comtypes" in record.name:
-            return record.levelno >= logging.WARNING
-        return True
+if "handlers" in DEFAULT_LOGGING_CONFIG and "file" in DEFAULT_LOGGING_CONFIG["handlers"]:
+    # 如果启用了文件日志，则确保日志文件夹已创建
+    log_filename = Path(DEFAULT_LOGGING_CONFIG["handlers"]["file"]["filename"]).absolute()
+    log_dir = log_filename.parent
+    log_dir.mkdir(parents=True, exist_ok=True)
+else:
+    log_filename = None
 
-def setup_logging(log_level: Optional[str] = None):
+# 应用日志设置
+logging.config.dictConfig(DEFAULT_LOGGING_CONFIG)
+
+if log_filename:
+    logging.getLogger(__name__).info(f"程序日志将被记录到文件: {log_filename}")
+
+
+def set_loglevel(log_level: str):
     """
-    初始化或设置日志。
+    设置日志等级。
 
     :param log_level: 日志等级: 'DEBUG','INFO','WARNING','ERROR','CRITICAL'
     """
-    logging_config = DEFAULT_LOGGING_CONFIG
 
-    # 如果启用了文件日志，则确保日志文件夹已创建
-    if "handlers" in logging_config and "file" in logging_config["handlers"]:
-        log_filename = logging_config["handlers"]["file"]["filename"]
-        log_dir = os.path.dirname(log_filename)
+    # 输入验证
+    if log_level.upper() not in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
+        raise ValueError(
+            f"输入的日志等级无效: {log_level} 。日志等级应当为'DEBUG','INFO','WARNING','ERROR','CRITICAL'中的一个"
+        )
 
-        # 如果目录非空且不存在，则创建它
-        if log_dir and not os.path.exists(log_dir):
-            os.makedirs(log_dir)
+    logging_config = DEFAULT_LOGGING_CONFIG.copy()
+    logging_config["handlers"]["console"]["level"] = log_level.upper()
 
-    # 根据每个参数修改日志设置
-    if log_level:
-        if log_level.upper() in ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"):
-            logging_config["handlers"]["console"]["level"] = log_level.upper()
-        else:
-            logging.getLogger(__name__).error(
-                f"输入的日志等级无效: {log_level} 。日志等级应当为'DEBUG','INFO','WARNING','ERROR','CRITICAL'中的一个。将使用默认配置。"
-            )
+    # 添加增量标记
+    logging_config["incremental"] = True
 
     # 应用日志设置
-    logging.config.dictConfig(logging_config)
-    # logging.getLogger(__name__).info("日志模块加载完成。")
+    logging.config.dictConfig(DEFAULT_LOGGING_CONFIG)
 
 
 def get_logger(name: str) -> logging.Logger:
     """
     获取一个 logger 实例。
-    应当在 setup_logging 后执行。
 
     :param name: logger 的名称
     :return: logging.Logger
     """
     return logging.getLogger(name)
-
-
-setup_logging()
 
 
 # --- 使用示例 ---

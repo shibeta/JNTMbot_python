@@ -8,7 +8,7 @@ from functools import wraps, partial
 from atexit import _run_exitfuncs as trigger_atexit
 
 from keyboard_utils import HotKeyManager
-from logger import setup_logging, get_logger
+from logger import set_loglevel, get_logger
 from config import Config
 
 from ocr_utils import OCREngine
@@ -113,9 +113,9 @@ def main():
     # 设置日志等级
     if config.debug:
         logger.warning("启用了 DEBUG 模式，将输出更详细的日志。")
-        setup_logging(log_level="DEBUG")
+        set_loglevel(log_level="DEBUG")
     else:
-        setup_logging(log_level="INFO")
+        set_loglevel(log_level="INFO")
 
     # 初始化热键
     hotkey = HotKeyManager()
