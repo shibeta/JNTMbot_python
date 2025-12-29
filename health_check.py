@@ -32,7 +32,7 @@ class HealthMonitor(threading.Thread):
         :param get_last_steam_message_send_time: 获取上一次发送 Steam 消息的本地时间的方法
         :param get_last_steam_message_send_monotonic_time: 获取上一次发送 Steam 消息的相对时间的方法
         :param pause_event: 用于暂停健康检查线程的事件对象
-        :param exit_func: 用于退出主进程的无参方法
+        :param exit_func: 用于退出主进程的无参方法, 有参的调用请通过 partial 包装
         :param push_func: 用于推送消息的方法
             - 第一个参数接受一个字符串作为标题
             - 第二个参数接受一个字符串作为正文
