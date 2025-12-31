@@ -1,3 +1,4 @@
+from functools import wraps
 import uiautomation as auto
 import time
 
@@ -36,6 +37,65 @@ class SteamAutomation:
 
         logger.info("Steam Automation 初始化完成。")
 
+    @staticmethod
+    def _restore_focus_decorator(func):
+        """
+        用于自动还原之前激活的控件的装饰器
+        """
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            try:
+                # 记录发送消息前激活的控件，发送消息后切换回该控件
+                original_focused_control = auto.GetFocusedControl()
+            except:
+                original_focused_control = None
+
+            try:
+                return func(*args, **kwargs)
+            finally:
+                # 切换回发送消息前激活的控件
+                if original_focused_control is not None and original_focused_control.Exists():
+                    try:
+                        original_focused_control.SetFocus()
+                    except:
+                        # 某些控件（如桌面）可能无法被SetFocus
+                        pass
+
+        return wrapper
+
+    @staticmethod
+    def _set_keyboard_focus(control: auto.Control):
+        """
+        设置一个控件为键盘焦点元素。
+
+        先使用`SetFocus()`，如果未能使其`HasKeyboardFocus`，则使用`Click()`模拟点击它。
+
+        :param control: 要设置为键盘焦点的控件
+        :return: 最终控件是否成为键盘焦点
+        """
+        if not control.HasKeyboardFocus:
+            control.SetFocus()
+
+            if not control.HasKeyboardFocus:
+                logger.info("设置键盘焦点失败，将模拟点击以激活控件。")
+                SteamAutomation._click_control_seamlessly(control)
+
+            return control.HasKeyboardFocus
+        else:
+            return True
+
+    @staticmethod
+    def _click_control_seamlessly(control: auto.Control):
+        """
+        点击一个元素，然后立刻将鼠标移回点击前的位置。
+
+        :param control: 要点击的元素
+        """
+        original_cursor_pos = auto.GetCursorPos()
+        control.Click(simulateMove=False)
+        auto.SetCursorPos(*original_cursor_pos)
+
     def find_steam_chat_window(self):
         """查找 Steam 聊天窗口"""
         chat_window = auto.WindowControl(searchDepth=1, SubName=self.window_title_substring)
@@ -46,13 +106,13 @@ class SteamAutomation:
         return chat_window
 
     @staticmethod
+    @_restore_focus_decorator
     def find_input_field(steam_chat_window: auto.WindowControl):
         """
         查找 Steam 聊天窗口中的文本输入框
         """
         # 处理窗口以准备查找元素
-        steam_chat_window.SwitchToThisWindow()  # 从最小化恢复
-        steam_chat_window.SetFocus()  # 将窗口放置在前台，否则查找元素会出错
+        steam_chat_window.SwitchToThisWindow()  # 从最小化恢复，否则查找元素会出错
         time.sleep(0.5)  # 等待窗口绘制
 
         # 文本输入框没有特征，基于发送按钮辅助定位文本输入框
@@ -69,7 +129,7 @@ class SteamAutomation:
 
     def send_message_to_steam_chat_window(self, message: str):
         """
-        查找 Steam 聊天窗口，并发送消息。
+        查找 Steam 聊天窗口，并发送消息。发送消息会占用剪贴板。
 
         :param str message: 发送的文本消息内容
         :raises Exception: 查找窗口或发送消息失败
@@ -77,21 +137,47 @@ class SteamAutomation:
         if not message:
             return
 
-        # 寻找 Steam 聊天窗口
-        chat_window = self.find_steam_chat_window()
+        # 备份剪贴板
+        try:
+            previous_text = auto.GetClipboardText()
+        except:
+            logger.warning("备份剪贴板失败，剪贴板中的内容将被清空。")
+            previous_text = ""
 
-        # 寻找文本输入框
-        input_field = self.find_input_field(chat_window)
+        try:
+            # 寻找 Steam 聊天窗口
+            chat_window = self.find_steam_chat_window()
 
-        # 由于文本输入框不是 EditControl，只能手动输入内容
-        input_field.SetFocus()
-        input_field.SendKeys(message)
-        time.sleep(0.1)
+            # 寻找文本输入框
+            input_field = self.find_input_field(chat_window)
 
-        # 按下回车以发送消息
-        input_field.SetFocus()
-        input_field.SendKeys("{Enter}")
+            # 激活文本输入框
+            self._set_keyboard_focus(input_field)
 
+            try:
+                # 将消息写入剪贴板
+                auto.SetClipboardText(message)
+                # 粘贴内容
+                input_field.SendKeys("{Ctrl}v")
+            except Exception as e:
+                logger.error(f"使用剪贴板粘贴消息失败: {e}。回退到模拟输入。")
+                input_field.SendKeys(text=message, charMode=True)
+
+            # 等待 UI 响应
+            time.sleep(0.05)
+
+            # 按下回车以发送消息
+            self._set_keyboard_focus(input_field)
+            input_field.SendKeys("{Enter}")
+
+        finally:
+            if previous_text:
+                try:
+                    auto.SetClipboardText(previous_text)
+                except Exception as e:
+                    logger.error(f"还原剪贴板失败: {e}")
+
+    @_restore_focus_decorator
     def send_group_message(self, message: str):
         """
         查找 Steam 聊天窗口，并发送消息。
@@ -108,27 +194,12 @@ class SteamAutomation:
             return
 
         try:
-            # 记录发送消息前激活的控件，发送消息后切换回该控件
-            original_focused_control = auto.GetFocusedControl()
-        except:
-            original_focused_control = None
-
-        try:
             self.send_message_to_steam_chat_window(message)
             logger.info(f"消息发送成功。")
             self.reset_send_timer()
 
         except Exception as e:
             raise Exception(f"使用 Steam GUI 向群组发送消息时出错: {e}") from e
-
-        finally:
-            # 切换回发送消息前激活的控件
-            if original_focused_control is not None and original_focused_control.Exists():
-                try:
-                    original_focused_control.SetFocus()
-                except:
-                    # 某些控件（如桌面）可能无法被SetFocus
-                    pass
 
     def get_last_send_system_time(self):
         """
