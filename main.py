@@ -1,11 +1,13 @@
 import argparse
 import signal
+import sys
 import time
 import threading
 import os
 import traceback
 from functools import wraps, partial
 from atexit import _run_exitfuncs as trigger_atexit
+from typing import Callable, ParamSpec, TypeVar
 
 from keyboard_utils import HotKeyManager
 from logger import set_loglevel, get_logger
@@ -18,6 +20,10 @@ from push_utils import UniPush
 from gta_automator import GTAAutomator
 from health_check import HealthMonitor
 from gta_automator.exception import *
+
+# 用于装饰器类型注解的泛型变量
+P = ParamSpec("P")  # 捕获函数的参数列表 (args, kwargs)
+R = TypeVar("R")  # 捕获函数的返回值类型
 
 logger = get_logger("main")
 
@@ -46,16 +52,21 @@ class ArgumentParser:
         return vars(args)
 
 
-# 用于处理退出的装饰器
-def interrupt_decorator(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
+def interrupt_decorator(main_func: Callable[P, R]) -> Callable[P, R]:
+    """
+    用于处理退出的装饰器。
+    """
+
+    @wraps(main_func)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
-            return func(*args, **kwargs)
+            return main_func(*args, **kwargs)
         except KeyboardInterrupt:
             logger.warning("程序被用户中断，正在退出。")
+            sys.exit(0)
         except Exception as e:
             logger.error(f"未捕获的异常: {e}", exc_info=e)
+            sys.exit(1)
 
     return wrapper
 
