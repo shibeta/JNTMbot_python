@@ -1,10 +1,113 @@
 from functools import wraps
+from typing import Callable, TypeVar, ParamSpec
 import uiautomation as auto
+import win32clipboard
 import time
 
 from logger import get_logger
 
+# 用于装饰器类型注解的泛型变量
+P = ParamSpec("P")  # 捕获函数的参数列表 (args, kwargs)
+R = TypeVar("R")  # 捕获函数的返回值类型
+
 logger = get_logger(__name__)
+
+
+class ClipboardScope:
+    """
+    剪贴板作用域管理器。
+    进入作用域时备份剪贴板，退出时还原剪贴板。
+    基于 win32clipboard 实现底层二进制级别的备份与还原。
+    """
+
+    def __init__(self, max_retries=5, retry_interval=0.1):
+        self.max_retries = max_retries
+        self.retry_interval = retry_interval
+        self.backup_data = {}
+        self.backup_success = False
+
+    def _open_clipboard(self):
+        """尝试打开剪贴板，带有重试机制"""
+        for i in range(self.max_retries):
+            try:
+                win32clipboard.OpenClipboard()
+                return True
+            except Exception:
+                # 剪贴板可能被其他程序占用，稍作等待
+                time.sleep(self.retry_interval)
+        return False
+
+    def _backup(self):
+        """枚举并读取所有格式的剪贴板数据"""
+        try:
+            # 枚举第一个格式
+            fmt = win32clipboard.EnumClipboardFormats(0)
+            while fmt:
+                try:
+                    # 读取数据。注意：某些延迟渲染的格式可能会在这里失败或返回 None，
+                    # 对于我们也无法处理的数据，选择跳过。
+                    data = win32clipboard.GetClipboardData(fmt)
+                    self.backup_data[fmt] = data
+                except Exception as e:
+                    # 某些私有格式或锁定内存可能读取失败，忽略以保证整体流程
+                    # logger.debug(f"无法读取剪贴板格式 {fmt}: {e}")
+                    pass
+
+                # 枚举下一个格式
+                fmt = win32clipboard.EnumClipboardFormats(fmt)
+
+            self.backup_success = True
+            # logger.debug(f"成功备份了 {len(self.backup_data)} 种格式的剪贴板数据。")
+
+        except Exception as e:
+            logger.error(f"备份剪贴板时发生错误: {e}")
+
+    def _restore(self):
+        """将备份的数据写回剪贴板"""
+        if not self.backup_success or not self.backup_data:
+            return
+
+        try:
+            # 还原前必须清空
+            win32clipboard.EmptyClipboard()
+
+            for fmt, data in self.backup_data.items():
+                try:
+                    # 将数据原样写回
+                    win32clipboard.SetClipboardData(fmt, data)
+                except Exception as e:
+                    logger.warning(f"还原剪贴板格式 {fmt} 失败: {e}")
+
+            # logger.debug("剪贴板内容已还原。")
+
+        except Exception as e:
+            logger.error(f"还原剪贴板整体失败: {e}")
+
+    def __enter__(self):
+        """进入上下文：备份"""
+        if self._open_clipboard():
+            try:
+                self._backup()
+            finally:
+                # 备份完成后必须关闭，以便中间的业务逻辑可以使用剪贴板
+                win32clipboard.CloseClipboard()
+        else:
+            logger.warning("无法打开剪贴板，将跳过备份步骤（原有内容可能会丢失）。")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """退出上下文：还原"""
+        if self.backup_success:
+            # 稍微等待一下，确保之前的粘贴操作（如 Ctrl+V）已被目标程序处理完毕
+            time.sleep(0.05)
+
+            if self._open_clipboard():
+                try:
+                    self._restore()
+                finally:
+                    win32clipboard.CloseClipboard()
+            else:
+                logger.error("无法打开剪贴板，还原操作失败。")
 
 
 class SteamAutomation:
@@ -38,13 +141,13 @@ class SteamAutomation:
         logger.info("Steam Automation 初始化完成。")
 
     @staticmethod
-    def _restore_focus_decorator(func):
+    def _preserve_focus_decorator(func: Callable[P, R]) -> Callable[P, R]:
         """
         用于自动还原之前激活的控件的装饰器
         """
 
         @wraps(func)
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
                 # 记录发送消息前激活的控件，发送消息后切换回该控件
                 original_focused_control = auto.GetFocusedControl()
@@ -53,6 +156,7 @@ class SteamAutomation:
 
             try:
                 return func(*args, **kwargs)
+
             finally:
                 # 切换回发送消息前激活的控件
                 if original_focused_control is not None and original_focused_control.Exists():
@@ -61,6 +165,19 @@ class SteamAutomation:
                     except:
                         # 某些控件（如桌面）可能无法被SetFocus
                         pass
+
+        return wrapper
+
+    @staticmethod
+    def _preserve_clipboard_decorator(func: Callable[P, R]) -> Callable[P, R]:
+        """
+        用于自动还原剪贴板内容的装饰器。
+        """
+
+        @wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            with ClipboardScope():
+                return func(*args, **kwargs)
 
         return wrapper
 
@@ -106,7 +223,7 @@ class SteamAutomation:
         return chat_window
 
     @staticmethod
-    @_restore_focus_decorator
+    @_preserve_focus_decorator
     def find_input_field(steam_chat_window: auto.WindowControl):
         """
         查找 Steam 聊天窗口中的文本输入框
@@ -127,6 +244,7 @@ class SteamAutomation:
 
         return input_field
 
+    @_preserve_clipboard_decorator
     def send_message_to_steam_chat_window(self, message: str):
         """
         查找 Steam 聊天窗口，并发送消息。发送消息会占用剪贴板。
@@ -137,47 +255,32 @@ class SteamAutomation:
         if not message:
             return
 
-        # 备份剪贴板
-        try:
-            previous_text = auto.GetClipboardText()
-        except:
-            logger.warning("备份剪贴板失败，剪贴板中的内容将被清空。")
-            previous_text = ""
+        # 寻找 Steam 聊天窗口
+        chat_window = self.find_steam_chat_window()
+
+        # 寻找文本输入框
+        input_field = self.find_input_field(chat_window)
+
+        # 激活文本输入框
+        self._set_keyboard_focus(input_field)
 
         try:
-            # 寻找 Steam 聊天窗口
-            chat_window = self.find_steam_chat_window()
+            # 将消息写入剪贴板
+            auto.SetClipboardText(message)
+            # 粘贴内容
+            input_field.SendKeys("{Ctrl}v")
+        except Exception as e:
+            logger.error(f"使用剪贴板粘贴消息失败: {e}。回退到模拟输入。")
+            input_field.SendKeys(text=message, charMode=True)
 
-            # 寻找文本输入框
-            input_field = self.find_input_field(chat_window)
+        # 等待窗口响应剪贴板粘贴
+        time.sleep(0.05)
 
-            # 激活文本输入框
-            self._set_keyboard_focus(input_field)
+        # 按下回车以发送消息
+        self._set_keyboard_focus(input_field)
+        input_field.SendKeys("{Enter}")
 
-            try:
-                # 将消息写入剪贴板
-                auto.SetClipboardText(message)
-                # 粘贴内容
-                input_field.SendKeys("{Ctrl}v")
-            except Exception as e:
-                logger.error(f"使用剪贴板粘贴消息失败: {e}。回退到模拟输入。")
-                input_field.SendKeys(text=message, charMode=True)
-
-            # 等待 UI 响应
-            time.sleep(0.05)
-
-            # 按下回车以发送消息
-            self._set_keyboard_focus(input_field)
-            input_field.SendKeys("{Enter}")
-
-        finally:
-            if previous_text:
-                try:
-                    auto.SetClipboardText(previous_text)
-                except Exception as e:
-                    logger.error(f"还原剪贴板失败: {e}")
-
-    @_restore_focus_decorator
+    @_preserve_focus_decorator
     def send_group_message(self, message: str):
         """
         查找 Steam 聊天窗口，并发送消息。
@@ -228,7 +331,7 @@ class SteamAutomation:
 
 
 if __name__ == "__main__":
-    GROUP_NAME = "蠢人帮"
+    GROUP_NAME = "德瑞"
     MESSAGE_TO_SEND = "测试: 通过 UIautomation 发送 Steam 聊天消息。"
     my_steamautomation = SteamAutomation(GROUP_NAME)
     print("1秒钟后将向Steam聊天窗口发送测试消息。")
