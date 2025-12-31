@@ -38,7 +38,7 @@ class SteamAutomation:
 
     def find_steam_chat_window(self):
         """查找 Steam 聊天窗口"""
-        chat_window = auto.WindowControl(searchDepth=1, RegexName=self.window_title_substring)
+        chat_window = auto.WindowControl(searchDepth=1, SubName=self.window_title_substring)
 
         if not chat_window.Exists():
             raise Exception(f"未找到标题包含 '{self.window_title_substring}' 的窗口")
