@@ -46,28 +46,47 @@ class SteamAutomation:
     @staticmethod
     def _preserve_focus_decorator(func: Callable[P, R]) -> Callable[P, R]:
         """
-        用于自动还原之前激活的控件的装饰器
+        用于自动还原之前的键盘焦点的装饰器
         """
 
         @wraps(func)
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
             try:
-                # 记录发送消息前激活的控件，发送消息后切换回该控件
+                # 记录发送消息前的窗口句柄和键盘焦点，发送消息后切换回该控件
+                original_window_handle = auto.GetForegroundWindow()
+                if original_window_handle == 0:
+                    # 句柄无效，跳过获取键盘焦点
+                    raise ValueError(f"窗口句柄 {original_window_handle} 无效")
                 original_focused_control = auto.GetFocusedControl()
             except:
+                original_window_handle = None
                 original_focused_control = None
 
             try:
                 return func(*args, **kwargs)
 
             finally:
-                # 切换回发送消息前激活的控件
-                if original_focused_control is not None and original_focused_control.Exists():
+                if original_window_handle:
+                    # 检查当前的前台窗口和发送消息前是否是同一个窗口
                     try:
-                        original_focused_control.SetFocus()
-                    except:
-                        # 某些控件（如桌面）可能无法被SetFocus
-                        pass
+                        current_window_handle = auto.GetForegroundWindow()
+                    except Exception as e:
+                        # logger.error(f"获取前台窗口句柄失败: {e}")
+                        current_window_handle = None
+
+                    foreground_window_changed = original_window_handle != current_window_handle
+
+                    # 切换回发送消息前激活的控件
+                    if (
+                        foreground_window_changed
+                        and original_focused_control is not None
+                        and original_focused_control.Exists()
+                    ):
+                        try:
+                            original_focused_control.SetFocus()
+                        except:
+                            # 某些控件（如桌面）可能无法被SetFocus
+                            pass
 
         return wrapper
 
