@@ -1,3 +1,4 @@
+from functools import wraps
 from pathlib import Path
 from contextlib import contextmanager
 import ctypes.wintypes
@@ -11,6 +12,7 @@ import win32gui
 import win32process
 import win32api
 import win32print
+import win32clipboard
 from win32con import (
     DESKTOPHORZRES,
     SW_RESTORE,
@@ -23,9 +25,13 @@ from win32con import (
     SWP_SHOWWINDOW,
     WM_CLOSE,
 )
-from typing import Optional
+from typing import Callable, Optional, ParamSpec, TypeVar
 
 from logger import get_logger
+
+# 用于装饰器类型注解的泛型变量
+P = ParamSpec("P")  # 捕获函数的参数列表 (args, kwargs)
+R = TypeVar("R")  # 捕获函数的返回值类型
 
 logger = get_logger(__name__)
 
@@ -40,6 +46,116 @@ class ResumeException(Exception):
     """恢复进程或线程时，触发的异常"""
 
     pass
+
+
+class ClipboardScope:
+    """
+    剪贴板作用域管理器。
+    进入作用域时备份剪贴板，退出时还原剪贴板。
+    基于 win32clipboard 实现底层二进制级别的备份与还原。
+    """
+
+    def __init__(self, max_retries=5, retry_interval=0.1):
+        self.max_retries = max_retries
+        self.retry_interval = retry_interval
+        self.backup_data = {}
+        self.backup_success = False
+
+    def _open_clipboard(self):
+        """尝试打开剪贴板，带有重试机制"""
+        for _ in range(self.max_retries):
+            try:
+                win32clipboard.OpenClipboard()
+                return True
+            except Exception:
+                # 剪贴板可能被其他程序占用，稍作等待
+                time.sleep(self.retry_interval)
+        return False
+
+    def _backup(self):
+        """枚举并读取所有格式的剪贴板数据"""
+        try:
+            # 枚举第一个格式
+            fmt = win32clipboard.EnumClipboardFormats(0)
+            while fmt:
+                try:
+                    # 读取数据
+                    # 支持的数据类型有限
+                    data = win32clipboard.GetClipboardData(fmt)
+                    self.backup_data[fmt] = data
+                except Exception as e:
+                    # 某些私有格式或锁定内存可能读取失败，忽略以保证整体流程
+                    # logger.debug(f"无法读取剪贴板格式 {fmt}: {e}")
+                    pass
+
+                # 枚举下一个格式
+                fmt = win32clipboard.EnumClipboardFormats(fmt)
+
+            self.backup_success = True
+            # logger.debug(f"成功备份了 {len(self.backup_data)} 种格式的剪贴板数据。")
+
+        except Exception as e:
+            logger.error(f"备份剪贴板时发生错误: {e}")
+
+    def _restore(self):
+        """将备份的数据写回剪贴板"""
+        if not self.backup_success or not self.backup_data:
+            return
+
+        try:
+            # 还原前必须清空
+            win32clipboard.EmptyClipboard()
+
+            for fmt, data in self.backup_data.items():
+                try:
+                    # 将数据原样写回
+                    win32clipboard.SetClipboardData(fmt, data)
+                except Exception as e:
+                    logger.warning(f"还原剪贴板格式 {fmt} 失败: {e}")
+
+            # logger.debug("剪贴板内容已还原。")
+
+        except Exception as e:
+            logger.error(f"还原剪贴板整体失败: {e}")
+
+    def __enter__(self):
+        """进入上下文：备份"""
+        if self._open_clipboard():
+            try:
+                self._backup()
+            finally:
+                # 备份完成后必须关闭，以便中间的业务逻辑可以使用剪贴板
+                win32clipboard.CloseClipboard()
+        else:
+            logger.warning("无法打开剪贴板，将跳过备份步骤（原有内容可能会丢失）。")
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """退出上下文：还原"""
+        if self.backup_success:
+            # 稍微等待一下，确保之前的粘贴操作（如 Ctrl+V）已被目标程序处理完毕
+            time.sleep(0.05)
+
+            if self._open_clipboard():
+                try:
+                    self._restore()
+                finally:
+                    win32clipboard.CloseClipboard()
+            else:
+                logger.error("无法打开剪贴板，还原操作失败。")
+
+    @staticmethod
+    def _preserve_clipboard_decorator(func: Callable[P, R]) -> Callable[P, R]:
+        """
+        用于自动还原剪贴板内容的装饰器。
+        """
+
+        @wraps(func)
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+            with ClipboardScope():
+                return func(*args, **kwargs)
+
+        return wrapper
 
 
 @contextmanager
