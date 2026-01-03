@@ -133,16 +133,16 @@ def main():
 
     # 暂停/恢复热键
     pause_lock = threading.Lock()
-    pause_event = threading.Event()
-    pause_event.set()  # 初始状态为“正在运行”
+    run_control_event = threading.Event()
+    run_control_event.set()  # 初始状态为“正在运行”
 
     def toggle_pause():
         with pause_lock:
-            if pause_event.is_set():
-                pause_event.clear()  # 清除标志，进入暂停状态
+            if run_control_event.is_set():
+                run_control_event.clear()  # 清除标志，进入暂停状态
                 logger.warning("暂停/恢复热键被按下，Bot 将在本轮循环结束后暂停。按 CTRL+F9 恢复。")
             else:
-                pause_event.set()  # 设置标志，恢复运行
+                run_control_event.set()  # 设置标志，恢复运行
                 try:
                     steam_bot.reset_send_timer()
                 except NameError:
@@ -210,7 +210,7 @@ def main():
     # 初始化健康检查
     def should_suppress_health_check():
         """如果处于暂停状态，或者 Bot 在恢复模式，跳过健康检查。"""
-        if not pause_event.is_set():
+        if not run_control_event.is_set():
             return False
 
         try:
@@ -242,7 +242,7 @@ def main():
     while True:
         try:
             # 响应暂停信号
-            pause_event.wait()
+            run_control_event.wait()
 
             # 执行一轮循环
             automator.run_one_cycle()
