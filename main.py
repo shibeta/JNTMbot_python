@@ -134,7 +134,7 @@ def main():
     # 暂停/恢复热键
     pause_lock = threading.Lock()
     pause_event = threading.Event()
-    pause_event.set()  # 初始状态为“已恢复”
+    pause_event.set()  # 初始状态为“正在运行”
 
     def toggle_pause():
         with pause_lock:
@@ -208,6 +208,19 @@ def main():
     )
 
     # 初始化健康检查
+    def should_suppress_health_check():
+        """如果处于暂停状态，或者 Bot 在恢复模式，跳过健康检查。"""
+        if not pause_event.is_set():
+            return False
+
+        try:
+            if automator.is_in_recovery_mode():
+                return False
+        except Exception as e:
+            raise Exception(f"获取 Bot 工作模式出错: {e}")
+
+        return True
+
     if config.enableHealthCheck:
         logger.warning(f"已启用健康检查。正在初始化监控模块...")
         health_check_exit_func = partial(exit_main_process, os.getpid())
@@ -215,10 +228,9 @@ def main():
             config,
             steam_bot.get_last_send_system_time,
             steam_bot.get_last_send_monotonic_time,
-            pause_event,
             health_check_exit_func,
             push_integration.push_message,
-            automator.is_in_recovery_mode,
+            should_suppress_health_check,
         )
     else:
         logger.warning("未启用健康检查。")

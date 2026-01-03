@@ -20,7 +20,6 @@ class HealthMonitor(threading.Thread):
         config: Config,
         get_last_steam_message_send_time: Callable[[], float],
         get_last_steam_message_send_monotonic_time: Callable[[], float],
-        pause_event: threading.Event,
         exit_func: Callable[[], Any],
         push_func: Callable[[str, str], Any],
         should_suppress_check_func: Optional[Callable[[], bool]] = None,
@@ -31,7 +30,6 @@ class HealthMonitor(threading.Thread):
         :param config: 配置对象
         :param get_last_steam_message_send_time: 获取上一次发送 Steam 消息的本地时间的方法
         :param get_last_steam_message_send_monotonic_time: 获取上一次发送 Steam 消息的相对时间的方法
-        :param pause_event: 用于暂停健康检查线程的事件对象
         :param exit_func: 用于退出主进程的无参方法, 有参的调用请通过 partial 包装
         :param push_func: 用于推送消息的方法
             - 第一个参数接受一个字符串作为标题
@@ -51,7 +49,7 @@ class HealthMonitor(threading.Thread):
         self.exit_func = exit_func
         # 用于推送的方法，第一个参数接受一个字符串作为标题，第二个参数接受一个字符串作为正文
         self.push_func = push_func
-        # 用于判断是否应该抑制检查的无参方法，返回布尔值
+        # 用于判断是否应该暂停检查的无参方法，返回布尔值
         # 返回 True 表示应当跳过检查，False 表示应当进行检查
         self.should_suppress_check_func = should_suppress_check_func
 
@@ -67,8 +65,6 @@ class HealthMonitor(threading.Thread):
         self._is_healthy_on_last_check = True
         # 用于停止线程
         self._stop_event = threading.Event()
-        # 用于外部暂停线程
-        self.pause_event = pause_event
 
         logger.info(f"健康检查已配置：每 {self.check_interval} 分钟检查一次。")
         if self.enable_steam_chat_timeout:
@@ -90,8 +86,6 @@ class HealthMonitor(threading.Thread):
             if is_stopped:
                 break  # 如果是 stop_event 触发了 wait 的返回，则退出循环
 
-            self.pause_event.wait()  # 响应暂停事件
-
             self._perform_check()
 
     def stop(self):
@@ -111,18 +105,23 @@ class HealthMonitor(threading.Thread):
     def _perform_check(self):
         """执行单次健康检查的核心逻辑。"""
         # 是否该跳过检查
-        if self.should_suppress_check_func is not None and self.should_suppress_check_func():
-            logger.debug("健康检查被抑制，跳过本次 Steam 健康检查。")
-            return
+        if self.should_suppress_check_func is not None:
+            try:
+                if self.should_suppress_check_func():
+                    logger.debug("健康检查被抑制，跳过本次 Steam 健康检查。")
+                    return
+            except Exception as e:
+                logger.error(f"检查是否应当跳过健康检查时出错: {e} ，将进行健康检查。")
 
         is_healthy_now = True
         unhealthy_reason_list = []
+        logger.info("开始进行健康检查...")
         # 检查上次向 Steam 发送消息时间
         if self.enable_steam_chat_timeout:
             last_send_monotonic_time = self.get_last_steam_message_send_monotonic_time()
             elapsed_time = time.monotonic() - last_send_monotonic_time
             # 转换为整数以输出更好看的时间
-            logger.debug(f"健康检查：距离上次发送消息已过去 {timedelta(seconds=int(elapsed_time))}。")
+            logger.debug(f"健康检查：距离上次通过 Steam 发送消息已过去 {timedelta(seconds=int(elapsed_time))}。")
 
             if elapsed_time > self.steam_chat_timeout_threshold * 60:
                 is_healthy_now = False
