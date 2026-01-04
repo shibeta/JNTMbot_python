@@ -188,6 +188,8 @@ class SteamAutomation:
         # 按下回车以发送消息
         self._set_keyboard_focus(input_field)
         input_field.SendKeys("{Enter}")
+        # 多按一次
+        input_field.SendKeys("{Enter}")
 
     @_preserve_focus_decorator
     def send_group_message(self, message: str):
