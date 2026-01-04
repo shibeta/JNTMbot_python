@@ -154,6 +154,7 @@ class SteamAutomation:
         return input_field
 
     @ClipboardScope._preserve_clipboard_decorator
+    @_preserve_focus_decorator
     def send_message_to_steam_chat_window(self, message: str):
         """
         查找 Steam 聊天窗口，并发送消息。发送消息会占用剪贴板。
@@ -191,7 +192,6 @@ class SteamAutomation:
         # 多按一次
         input_field.SendKeys("{Enter}")
 
-    @_preserve_focus_decorator
     def send_group_message(self, message: str):
         """
         查找 Steam 聊天窗口，并发送消息。
