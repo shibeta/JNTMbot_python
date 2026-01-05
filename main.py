@@ -65,7 +65,7 @@ def interrupt_decorator(main_func: Callable[P, R]) -> Callable[P, R]:
             logger.warning("程序被用户中断，正在退出。")
             sys.exit(0)
         except Exception as e:
-            logger.error(f"未捕获的异常: {e}", exc_info=e)
+            logger.critical(f"未捕获的异常: {e}", exc_info=e)
             sys.exit(1)
 
     return wrapper
@@ -265,7 +265,7 @@ def main():
                 GameState.BAD_SPORT_LEVEL,
                 GameState.DODGY_PLAYER_LEVEL,
             ):
-                logger.info(f"检测到恶意等级过高: {e.actual_state.value}。程序将退出以保护账号安全。")
+                logger.critical(f"检测到恶意等级过高: {e.actual_state.value}。程序将退出以保护账号安全。")
                 logger.warning("提示: 如果启用了自动降低恶意值，程序会在问题玩家时自动挂机降低恶意值。")
                 push_integration.push_message(
                     f"恶意值过高({e.actual_state.value})",
@@ -279,7 +279,7 @@ def main():
                     f"当前连续失败次数 {main_loop_consecutive_error_count}，阈值 {config.mainLoopConsecutiveErrorThreshold}。"
                 )
                 if main_loop_consecutive_error_count > config.mainLoopConsecutiveErrorThreshold:
-                    logger.error("超过连续失败阈值，程序退出...")
+                    logger.critical("超过连续失败阈值，程序退出...")
                     # 运行超过 pushActivationDelay 分钟则推送消息
                     if time.monotonic() - global_start_time > config.pushActivationDelay * 60:
                         push_integration.push_message(
