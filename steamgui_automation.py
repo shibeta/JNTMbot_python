@@ -21,25 +21,7 @@ class SteamAutomation:
         self.last_send_monotonic_time = time.monotonic()  # 上次向 Steam 发送消息的相对时间
         self.last_send_system_time = time.time()  # 上次向 Steam 发送消息的系统时间，仅作参考
 
-        logger.info("正在检查 Steam 聊天窗口...")
-        # 聊天窗口是否打开
-        try:
-            chat_window = self.find_steam_chat_window()
-            logger.info(f"已找到 Steam 聊天窗口: {chat_window.Name} 。")
-        except Exception as e:
-            logger.error(f"未找到 Steam 聊天窗口: {e}。")
-            logger.warning(
-                "Steam Automation 需要手动打开 Steam 群组聊天窗口，请确保 Steam 群组聊天窗口已经打开。"
-            )
-            raise
-
-        # 窗口中能否找到文本输入框
-        try:
-            self.find_input_field(chat_window)
-        except Exception as e:
-            logger.error(f"找到了 Steam 聊天窗口，但{e}。")
-            logger.warning("未找到聊天窗口输入框，请关闭 Steam 聊天窗口再重新打开。")
-            raise
+        self.verify_steam_chat_window()
 
         logger.info("Steam Automation 初始化完成。")
 
@@ -122,6 +104,34 @@ class SteamAutomation:
         control.Click(simulateMove=False)
         auto.SetCursorPos(*original_cursor_pos)
 
+    @_preserve_focus_decorator
+    def verify_steam_chat_window(self):
+        """
+        检查是否打开了正确的 Steam 聊天窗口。
+        如果一切正常函数将返回 None，否则会抛出异常。
+
+        :raises ``Exception``: 未找到窗口标题正确的 Steam 聊天窗口，或者无法定位文本输入框
+        """
+        logger.info("正在检查 Steam 聊天窗口...")
+        # 聊天窗口是否打开
+        try:
+            chat_window = self.find_steam_chat_window()
+            logger.info(f"已找到 Steam 聊天窗口: {chat_window.Name} 。")
+        except Exception as e:
+            logger.error(f"未找到 Steam 聊天窗口: {e}。")
+            logger.warning(
+                "Steam Automation 需要手动打开 Steam 群组聊天窗口，请确保 Steam 群组聊天窗口已经打开。"
+            )
+            raise
+
+        # 窗口中能否找到文本输入框
+        try:
+            self.find_input_field(chat_window)
+        except Exception as e:
+            logger.error(f"找到了 Steam 聊天窗口，但{e}。")
+            logger.warning("未找到聊天窗口输入框，请关闭 Steam 聊天窗口再重新打开。")
+            raise
+
     def find_steam_chat_window(self):
         """查找 Steam 聊天窗口"""
         chat_window = auto.WindowControl(searchDepth=1, SubName=self.window_title_substring)
@@ -132,7 +142,6 @@ class SteamAutomation:
         return chat_window
 
     @staticmethod
-    @_preserve_focus_decorator
     def find_input_field(steam_chat_window: auto.WindowControl):
         """
         查找 Steam 聊天窗口中的文本输入框
