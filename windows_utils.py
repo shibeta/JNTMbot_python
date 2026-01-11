@@ -25,7 +25,7 @@ from win32con import (
     SWP_SHOWWINDOW,
     WM_CLOSE,
 )
-from typing import Callable, Optional, ParamSpec, TypeVar
+from typing import Callable, Optional, ParamSpec, TypeVar, Concatenate
 
 from logger import get_logger
 
@@ -55,79 +55,133 @@ class ClipboardScope:
     基于 win32clipboard 实现底层二进制级别的备份与还原。
     """
 
+    # 定义 Windows 剪贴板常量，用于应用程序定义的 GDI 对象剪贴板格式
+    CF_GDIOBJFIRST = 0x0300
+    CF_GDIOBJLAST = 0x03FF
+
+    # 不支持备份的单点格式集合 (GDI句柄、元文件句柄、显示格式等)
+    unsupported_formats = {
+        win32clipboard.CF_BITMAP,
+        win32clipboard.CF_PALETTE,
+        win32clipboard.CF_ENHMETAFILE,
+        win32clipboard.CF_METAFILEPICT,
+        win32clipboard.CF_OWNERDISPLAY,
+        win32clipboard.CF_DSPBITMAP,
+        win32clipboard.CF_DSPENHMETAFILE,
+        win32clipboard.CF_DSPMETAFILEPICT,
+        win32clipboard.CF_DSPTEXT,
+    }
+
+    # 不支持备份的格式范围列表 [(min, max), ...]
+    unsupported_ranges = [
+        (CF_GDIOBJFIRST, CF_GDIOBJLAST),  # 应用程序定义的 GDI 对象
+    ]
+
     def __init__(self, max_retries=5, retry_interval=0.1):
         self.max_retries = max_retries
         self.retry_interval = retry_interval
         self.backup_data = {}
         self.backup_success = False
 
-    def _open_clipboard(self):
-        """尝试打开剪贴板，带有重试机制"""
-        for _ in range(self.max_retries):
+    @staticmethod
+    def _clipboard_guard(
+        func: Callable[Concatenate["ClipboardScope", P], R],
+    ) -> Callable[Concatenate["ClipboardScope", P], R]:
+        """用于打开和关闭剪贴板的装饰器"""
+
+        @wraps(func)
+        def wrapper(self: "ClipboardScope", *args: P.args, **kwargs: P.kwargs) -> R:
+            # 打开剪贴板，多次重试
+            is_opened = False
+            for _ in range(self.max_retries):
+                try:
+                    win32clipboard.OpenClipboard()
+                    is_opened = True
+                    break
+                except Exception:
+                    # 剪贴板可能被其他程序占用，稍作等待
+                    time.sleep(self.retry_interval)
+
+            if not is_opened:
+                raise Exception("无法打开剪贴板")
+
             try:
-                win32clipboard.OpenClipboard()
+                return func(self, *args, **kwargs)
+            finally:
+                # 确保剪贴板关闭
+                win32clipboard.CloseClipboard()
+
+        return wrapper
+
+    def _should_skip_format(self, fmt: int) -> bool:
+        """
+        判断指定的格式是否应该被跳过（不做备份）。
+
+        :param fmt: 剪贴板格式，定义在 https://learn.microsoft.com/en-us/windows/win32/dataxchg/standard-clipboard-formats
+        :return: True: 不支持的格式，应当跳过; False: 支持的格式，应当备份
+        """
+        # 检查单点集合
+        if fmt in self.unsupported_formats:
+            return True
+
+        # 检查范围集合
+        for start, end in self.unsupported_ranges:
+            if start <= fmt <= end:
                 return True
-            except Exception:
-                # 剪贴板可能被其他程序占用，稍作等待
-                time.sleep(self.retry_interval)
+
         return False
 
+    @_clipboard_guard
     def _backup(self):
         """枚举并读取所有格式的剪贴板数据"""
-        try:
-            # 枚举第一个格式
-            fmt = win32clipboard.EnumClipboardFormats(0)
-            while fmt:
+        # 枚举第一个格式
+        fmt = win32clipboard.EnumClipboardFormats(0)
+        while fmt != 0:
+            # 检查是否应当跳过该类型
+            if not self._should_skip_format(fmt):
                 try:
                     # 读取数据
-                    # 支持的数据类型有限
                     data = win32clipboard.GetClipboardData(fmt)
                     self.backup_data[fmt] = data
                 except Exception as e:
                     # 某些私有格式或锁定内存可能读取失败，忽略以保证整体流程
                     # logger.debug(f"无法读取剪贴板格式 {fmt}: {e}")
                     pass
+            else:
+                # logger.debug(f"跳过不支持的格式: {fmt}")
+                pass
 
-                # 枚举下一个格式
-                fmt = win32clipboard.EnumClipboardFormats(fmt)
+            # 枚举下一个格式
+            fmt = win32clipboard.EnumClipboardFormats(fmt)
 
-            self.backup_success = True
-            # logger.debug(f"成功备份了 {len(self.backup_data)} 种格式的剪贴板数据。")
+        self.backup_success = True
+        # logger.debug(f"成功备份了 {len(self.backup_data)} 种格式的剪贴板数据。")
 
-        except Exception as e:
-            logger.error(f"备份剪贴板时发生错误: {e}")
-
+    @_clipboard_guard
     def _restore(self):
         """将备份的数据写回剪贴板"""
         if not self.backup_success or not self.backup_data:
             return
 
-        try:
-            # 还原前必须清空
-            win32clipboard.EmptyClipboard()
+        # 还原前必须清空
+        win32clipboard.EmptyClipboard()
 
-            for fmt, data in self.backup_data.items():
-                try:
-                    # 将数据原样写回
-                    win32clipboard.SetClipboardData(fmt, data)
-                except Exception as e:
-                    logger.warning(f"还原剪贴板格式 {fmt} 失败: {e}")
+        for fmt, data in self.backup_data.items():
+            try:
+                # 将数据原样写回
+                win32clipboard.SetClipboardData(fmt, data)
+            except Exception as e:
+                logger.warning(f"还原格式为 {fmt} 的数据失败: {e} ，跳过该格式。")
 
-            # logger.debug("剪贴板内容已还原。")
-
-        except Exception as e:
-            logger.error(f"还原剪贴板整体失败: {e}")
+        # logger.debug("剪贴板内容已还原。")
 
     def __enter__(self):
         """进入上下文：备份"""
-        if self._open_clipboard():
-            try:
-                self._backup()
-            finally:
-                # 备份完成后必须关闭，以便中间的业务逻辑可以使用剪贴板
-                win32clipboard.CloseClipboard()
-        else:
-            logger.warning("无法打开剪贴板，将跳过备份步骤（原有内容可能会丢失）。")
+        try:
+            self._backup()
+        except Exception as e:
+            logger.warning(f"备份剪贴板整体失败: {e} ，原有内容可能会丢失。")
+
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -136,13 +190,10 @@ class ClipboardScope:
             # 稍微等待一下，确保之前的粘贴操作（如 Ctrl+V）已被目标程序处理完毕
             time.sleep(0.05)
 
-            if self._open_clipboard():
-                try:
-                    self._restore()
-                finally:
-                    win32clipboard.CloseClipboard()
-            else:
-                logger.error("无法打开剪贴板，还原操作失败。")
+            try:
+                self._restore()
+            except Exception as e:
+                logger.error(f"还原剪贴板整体失败: {e} ，原有内容可能会丢失。")
 
     @staticmethod
     def _preserve_clipboard_decorator(func: Callable[P, R]) -> Callable[P, R]:
