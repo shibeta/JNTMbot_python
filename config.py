@@ -136,7 +136,7 @@ class Config:
         },
         "lobbyCheckLoopTime": {"value": 1, "comment": "差事面板玩家加入状态检测间隔时间 (秒)"},
         "matchPanelTimeout": {"value": 180, "comment": "面板无人加入时重开时间 (秒)"},
-        "playerJoiningTimeout": {"value": 120, "comment": "等待正在加入玩家超时重开时间 (秒)"},
+        "playerJoiningTimeout": {"value": 60, "comment": "等待正在加入玩家超时重开时间 (秒)"},
         "startMatchDelay": {"value": 15, "comment": "开始差事等待延迟 (秒)"},
         "exitMatchTimeout": {"value": 120, "comment": "等待差事启动落地超时时间 (秒)(防止卡在启动战局中)"},
         "respawnInAgencyTimeout": {

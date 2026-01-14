@@ -75,7 +75,7 @@ lobbyCheckLoopTime: 1
 # 面板无人加入时重开时间 (秒)
 matchPanelTimeout: 180
 # 等待正在加入玩家超时重开时间 (秒)
-playerJoiningTimeout: 120
+playerJoiningTimeout: 60
 # 开始差事等待延迟 (秒)
 startMatchDelay: 15
 # 等待差事启动落地超时时间 (秒)(防止卡在启动战局中)
