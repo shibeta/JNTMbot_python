@@ -28,7 +28,9 @@ class SteamAutomation:
     @staticmethod
     def _preserve_focus_decorator(func: Callable[P, R]) -> Callable[P, R]:
         """
-        用于自动还原之前的键盘焦点的装饰器
+        用于自动还原之前的键盘焦点的装饰器。
+
+        注意: 频繁调用该修饰器可能会导致窗口闪烁
         """
 
         @wraps(func)
@@ -104,6 +106,8 @@ class SteamAutomation:
         control.Click(simulateMove=False)
         auto.SetCursorPos(*original_cursor_pos)
 
+    # 还原键盘焦点的范围为整个函数，而非更细粒度的寻找文本输入框
+    # 避免发送消息时多次调用还原键盘焦点导致窗口闪烁
     @_preserve_focus_decorator
     def verify_steam_chat_window(self):
         """
@@ -162,6 +166,8 @@ class SteamAutomation:
 
         return input_field
 
+    # 还原键盘焦点的范围为整个函数，而非更细粒度的寻找文本输入框
+    # 避免发送消息时多次调用还原键盘焦点导致窗口闪烁
     @ClipboardScope._preserve_clipboard_decorator
     @_preserve_focus_decorator
     def send_message_to_steam_chat_window(self, message: str):
