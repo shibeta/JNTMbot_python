@@ -49,7 +49,7 @@ class LobbyStateTracker:
         self.in_lobby = False
         # 上一次队伍状态发生变动的时间
         self.team_status_last_changed_time = self.start_wait_time
-        # 上一次变为没有正在加入的玩家的时间
+        # 上一次没有正在加入的玩家的时间
         self.last_zero_joining_player_time = self.start_wait_time
         # 最新一次检查时正在加入的玩家数
         self.joining_count = 0
@@ -68,7 +68,8 @@ class LobbyStateTracker:
 
         is_on_panel, joining, joined, standby = self.screen.get_job_setup_status(ocr_text)
 
-        # 处理警告页面
+        # 如果不在大厅页面，尝试处理警告页面，再次获取
+        # 一般来讲大厅里不会突然出现警告页面，这个仅仅作为保底策略
         if not is_on_panel:
             self.handle_warning_page_func()
             is_on_panel, joining, joined, standby = self.screen.get_job_setup_status(ocr_text)
@@ -82,9 +83,10 @@ class LobbyStateTracker:
             self.joining_count = joining
             self.joined_count = joined
             self.standby_count = standby
-            # 如果队伍状态变化且没有正在加入的玩家，更新无加入状态玩家计时器
-            if joining == 0:
-                self.last_zero_joining_player_time = current_time
+
+        # 如果没有正在加入的玩家，更新无加入状态玩家计时器
+        if joining == 0:
+            self.last_zero_joining_player_time = current_time
 
     @property
     def is_lobby_full(self):
