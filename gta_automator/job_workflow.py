@@ -77,12 +77,14 @@ class LobbyStateTracker:
         # 如果能识别到任务面板则说明在大厅中，反之亦然
         self.in_lobby = is_on_panel
 
-        # 如果人数结构发生变化，更新队伍状态变化计时器和大厅人数计数器
+        # 更新大厅内人数和状态
+        self.joining_count = joining
+        self.joined_count = joined
+        self.standby_count = standby
+
+        # 如果人数结构发生变化，更新队伍状态变化计时器
         if joining != self.joining_count or joined != self.joined_count or standby != self.standby_count:
             self.team_status_last_changed_time = current_time
-            self.joining_count = joining
-            self.joined_count = joined
-            self.standby_count = standby
 
         # 如果没有正在加入的玩家，更新无加入状态玩家计时器
         if joining == 0:
