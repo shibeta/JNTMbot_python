@@ -88,7 +88,6 @@ jobs:
           --contents-directory resources `
           --icon ./assets/johnny_guns.ico `
           --version-file version_file.txt `
-          --name ${{ env.PRODUCT_NAME }} `
           --hidden-import=chardet `
           main.py
 
