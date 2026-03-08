@@ -89,7 +89,7 @@ jobs:
           --icon ./assets/johnny_guns.ico `
           --version-file version_file.txt `
           --name ${{ env.PRODUCT_NAME }} `
-          --hidden-import=charset-normalizer `
+          --hidden-import=chardet `
           main.py
 
       - name: Package with PyInstaller

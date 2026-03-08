@@ -1,4 +1,4 @@
-charset-normalizer
+chardet
 colorlog
 comtypes
 numpy
