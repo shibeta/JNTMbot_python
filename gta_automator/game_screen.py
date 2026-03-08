@@ -202,7 +202,7 @@ class GameScreen:
         if self._search_text_in_text(ocr_text, GameScreenTextPatterns.IS_ON_JOB_PANEL_RIGHT_SCREEN):
             # 在面板中则识别加入玩家数
             # "离开"是加入失败，可以认为这也是一种"正在加入"状态
-            joining_count = ocr_text.count("正在") + ocr_text.count("离开")
+            joining_count = ocr_text.count("正在加") + ocr_text.count("离开")
             joined_count = ocr_text.count("已加")
             standby_count = ocr_text.count("待命")
 
