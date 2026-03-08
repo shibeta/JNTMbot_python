@@ -36,7 +36,7 @@ class GameScreenTextPatterns:
     IS_ON_JOB_PANEL_RIGHT_SCREEN = _compile_to_pattern(["浑球", "办事", "角色"])
     IS_ON_MAINMENU_BRIGHTNESS_OR_WARNING_PAGE = _compile_to_pattern(["调整", "确认"])
     IS_ON_MAINMENU_GTAPLUS_ADVERTISEMENT_PAGE = _compile_to_pattern(["导览", "跳过"])
-    IS_ON_JOB_PANEL_LEFT_SCREEN = _compile_to_pattern(["别惹", "德瑞", "搭档"])
+    IS_ON_JOB_PANEL_LEFT_SCREEN = _compile_to_pattern(["别惹", "搭档"])
     IS_ON_FIRST_JOB_SETUP_PAGE = _compile_to_pattern(["设置", "镜头", "武器"])
     IS_ON_SECOND_JOB_SETUP_PAGE = _compile_to_pattern(["匹配", "邀请", "帮会"])
     IS_ON_SCOREBOARD = _compile_to_pattern(["别惹", "德瑞"])
