@@ -116,7 +116,7 @@ class SteamAutomation:
 
         :raises ``Exception``: 未找到窗口标题正确的 Steam 聊天窗口，或者无法定位文本输入框
         """
-        logger.info("正在检查 Steam 聊天窗口...")
+        logger.info("正在查找 Steam 聊天窗口，请手动打开对应的 Steam 群组的聊天窗口，并切换至对应的频道...")
         # 聊天窗口是否打开
         try:
             chat_window = self.find_steam_chat_window()
