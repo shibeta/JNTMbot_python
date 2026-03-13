@@ -208,7 +208,7 @@ jobs:
         run: echo "TODAY=$(Get-Date -Format 'yyyy-MM-dd')" >> $env:GITHUB_ENV
 
       - name: Download all build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           # 将下载的 artifacts 存放到 build_output 文件夹
           path: build_output
@@ -236,7 +236,7 @@ jobs:
           echo "zip_path=$zipPath" >> $env:GITHUB_OUTPUT
 
       - name: Create or update Nightly Release
-        uses: andelf/nightly-release@main
+        uses: andelf/nightly-release@main  # Warning: 需要更新到 node.js 24
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
