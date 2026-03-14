@@ -433,7 +433,7 @@ class GamepadSimulator:
             raise
 
     def _check_connected(self) -> bool:
-        if self.pad is None:
+        if not self.pad or self.pad is None:
             logger.error("没有安装虚拟手柄驱动，或没有初始化")
             return False
         return True
@@ -442,7 +442,7 @@ class GamepadSimulator:
         """
         重置手柄状态，松开全部按钮，扳机，摇杆。
         """
-        if not self.pad or not self._check_connected():
+        if not self._check_connected():
             return
         try:
             self.pad.reset()
@@ -456,7 +456,7 @@ class GamepadSimulator:
 
         :param button: 要按下的按钮
         """
-        if not self.pad or not self._check_connected():
+        if not self._check_connected():
             return
         try:
             self.pad.press_button(button)
@@ -470,7 +470,7 @@ class GamepadSimulator:
 
         :param button: 要松开的按钮
         """
-        if not self.pad or not self._check_connected():
+        if not self._check_connected():
             return
         try:
             self.pad.release_button(button)
@@ -485,7 +485,7 @@ class GamepadSimulator:
         :param button: 要按住的按钮
         :param duration_milliseconds: 持续时间，单位为毫秒
         """
-        if not self.pad or not self._check_connected():
+        if not self._check_connected():
             return
         try:
             self.press_button(button)
@@ -504,7 +504,7 @@ class GamepadSimulator:
 
         :param direction: 左右方向和后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)
         """
-        if not self.pad or not self._check_connected():
+        if not self._check_connected():
             return
         try:
             self.pad.left_joystick_float(*direction)
@@ -519,7 +519,7 @@ class GamepadSimulator:
         :param direction: 左右方向和后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)
         :param duration_milliseconds: 持续时间，单位为毫秒
         """
-        if not self.pad or not self._check_connected():
+        if not self._check_connected():
             return
         self.move_left_joystick(direction)
         time.sleep(duration_milliseconds / 1000.0)
@@ -535,7 +535,7 @@ class GamepadSimulator:
 
         :param direction: 左右方向和后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)
         """
-        if not self.pad or not self._check_connected():
+        if not self._check_connected():
             return
         try:
             self.pad.right_joystick_float(*direction)
@@ -550,7 +550,7 @@ class GamepadSimulator:
         :param direction: 左右方向和后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)
         :param duration_milliseconds: 持续时间，单位为毫秒
         """
-        if not self.pad or not self._check_connected():
+        if not self._check_connected():
             return
         self.move_right_joystick(direction)
         time.sleep(duration_milliseconds / 1000.0)
@@ -563,7 +563,7 @@ class GamepadSimulator:
 
         :param pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
         """
-        if not self.pad or not self._check_connected():
+        if not self._check_connected():
             return
         try:
             self.pad.left_trigger_float(value_float=pressure_float)
@@ -582,7 +582,7 @@ class GamepadSimulator:
         :param pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
         :param duration_milliseconds: 持续时间，单位为毫秒。
         """
-        if not self.pad or not self._check_connected():
+        if not self._check_connected():
             return
         self.press_left_trigger(pressure_float)
         time.sleep(duration_milliseconds / 1000.0)
@@ -594,7 +594,7 @@ class GamepadSimulator:
 
         :param pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
         """
-        if not self.pad or not self._check_connected():
+        if not self._check_connected():
             return
         try:
             self.pad.right_trigger_float(value_float=pressure_float)
@@ -613,7 +613,7 @@ class GamepadSimulator:
         :param pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
         :param duration_milliseconds: 持续时间，单位为毫秒。
         """
-        if not self.pad or not self._check_connected():
+        if not self._check_connected():
             return
         self.press_right_trigger(pressure_float)
         time.sleep(duration_milliseconds / 1000.0)
@@ -626,7 +626,7 @@ class GamepadSimulator:
         :param micro: 一个宏对象。
         :param reset_at_end: 宏播放完毕后是否松开所有键。默认松开
         """
-        if not self.pad or not self._check_connected():
+        if not self._check_connected():
             return
         if not micro:
             logger.warning("宏为空，不执行任何操作。")
