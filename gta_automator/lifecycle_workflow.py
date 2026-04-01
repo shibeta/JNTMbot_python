@@ -128,7 +128,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         如果重启游戏失败，将关闭游戏并抛出异常。
 
         :param force: 如果为 True，则强制关闭游戏而不尝试常规退出
-        :raise ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.UNKNOWN)``: 重启游戏失败次数过多
+        :raise ``UnexpectedGameState(expected=GameState.ON, actual=GameState.UNKNOWN)``: 重启游戏失败次数过多
         """
         logger.info(f"动作: 正在重启 GTA V...")
 
@@ -162,7 +162,7 @@ class LifecycleWorkflow(_BaseWorkflow):
             logger.error("GTA V 重启失败次数过多，退出游戏。")
             if self.process.is_game_started():
                 self.shutdown()
-            raise UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.UNKNOWN)
+            raise UnexpectedGameState(expected=GameState.ON, actual=GameState.UNKNOWN)
 
         logger.info("重启 GTA V 成功。")
 

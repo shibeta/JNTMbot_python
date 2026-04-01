@@ -83,7 +83,7 @@ class GTAAutomator:
         :raises ``UnexpectedGameState({GameState.ONLINE_FREEMODE, GameState.IN_MISSION, GameState.ONLINE_PAUSED}, GameState.UNKNOWN)``: 切换新战局失败次数过多
         :raises ``UnexpectedGameState(GameState.ONLINE_PAUSED, GameState.UNKNOWN)``: 游戏卡死，无法切换战局
         :raises ``UnexpectedGameState(expected={GameState.ONLINE_FREEMODE, GameState.IN_MISSION}, actual=GameState.UNKNOWN)``: 挂机时离开了在线战局
-        :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.UNKNOWN)``: 启动游戏失败
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 启动或重启游戏失败
         :raises ``UIElementNotFound(UIElement.PAUSE_MENU)``: 打开暂停菜单失败
         :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
         :raises ``UIElementNotFound(UIElement.JOB_TRIGGER_POINT)``: 无法找到任务触发点
@@ -104,7 +104,7 @@ class GTAAutomator:
         初始化游戏状态，确保 GTA V 已启动并进入在线模式。
 
         :return bool: 是否重启了游戏
-        :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.UNKNOWN)``: 启动游戏失败
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.UNKNOWN)``: 启动或重启游戏失败
         """
         logger.info("动作: 正在初始化 GTA V ...")
 
