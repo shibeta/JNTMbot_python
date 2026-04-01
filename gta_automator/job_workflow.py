@@ -267,12 +267,17 @@ class JobWorkflow(_BaseWorkflow):
         except Exception:
             pass  # 忽略发送消息失败
 
-        time.sleep(1)  # 等待 1 秒以给其他玩家反应时间
-        self.action.confirm()  # 按 A 键启动
-        # 不能等太久，否则"启动中"状态可能被跳过
-        time.sleep(0.5)  # 多等一会，让游戏响应差事启动
+        # 按确认键启动差事
+        self.action.confirm()
+        # 单人启动差事时，或者有玩家正在加入时，会弹出警告窗口
+        # 额外按下一次确认键，确认警告
+        time.sleep(0.2)
+        self.action.confirm()
+        # 多等一会，让游戏响应差事启动
+        # 不能等太久，必须在面板消失前开始检查差事是否启动
+        time.sleep(0.2)
 
-        # 检查 3 次，避免游戏响应太慢
+        # 检查差事启动。检查 3 次，避免游戏响应太慢
         for _ in range(3):
             if self.screen.is_job_starting():
                 logger.info("启动差事成功。")
