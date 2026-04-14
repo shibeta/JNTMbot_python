@@ -4,11 +4,13 @@ import time
 from typing import Optional
 import requests
 
+from app_lifecycle import sleep_smart as sleep
 from config import Config
-from gta_automator.exception import *
+
 from logger import get_logger
 from windows_utils import get_document_fold_path
 
+from .exception import *
 from .game_screen import GameScreen
 from .game_action import GameAction
 from .game_process import GameProcess
@@ -115,7 +117,7 @@ class _BaseWorkflow:
 
         logger.info("动作: 发现警告页面，正在确认...")
         self.action.confirm()
-        time.sleep(0.2)  # 等待游戏响应页面关闭
+        sleep(0.2)  # 等待游戏响应页面关闭
         logger.info("已确认警告页面。")
         return True
 
@@ -140,7 +142,7 @@ class _BaseWorkflow:
 
             if check_function():
                 return True
-            time.sleep(check_interval)
+            sleep(check_interval)
         return False
 
     def clean_pcsetting_bin(self, pcsetting_bin_path: Path):

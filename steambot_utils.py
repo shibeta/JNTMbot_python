@@ -8,6 +8,7 @@ from typing import Callable, Optional
 import requests
 from requests.exceptions import JSONDecodeError
 
+from app_lifecycle import sleep_smart as sleep
 from config import Config
 from logger import get_logger
 from windows_utils import get_system_proxy
@@ -328,7 +329,7 @@ class Supervisor(threading.Thread):
                 return True
             if self.stop_event.is_set():
                 return False
-            time.sleep(5)
+            sleep(5)
         return False
 
     def stop(self):
@@ -378,7 +379,7 @@ class SteamBot:
 
         # 等待 Steam Bot 完成登录，无限期等待
         while self.get_login_status()["loggedIn"] != True:
-            time.sleep(5)
+            sleep(5)
         logger.info("Steam Bot 后端登录成功。")
 
         # 显示登录的用户名

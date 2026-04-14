@@ -1,5 +1,4 @@
-import time
-
+from app_lifecycle import sleep_smart as sleep
 from config import Config
 from gamepad_utils import Button, GamepadSimulator, JoystickDirection
 from logger import get_logger
@@ -49,52 +48,52 @@ class GameAction:
     def confirm(self):
         """确认当前选择"""
         self.gamepad.click_button(Button.A)
-        time.sleep(1)
+        sleep(1)
 
     def back(self):
         """返回上一级菜单"""
         self.gamepad.click_button(Button.B)
-        time.sleep(1)
+        sleep(1)
 
     def up(self):
         """向上移动选择"""
         self.gamepad.click_button(Button.DPAD_UP)
-        time.sleep(0.5)
+        sleep(0.5)
 
     def down(self):
         """向下移动选择"""
         self.gamepad.click_button(Button.DPAD_DOWN)
-        time.sleep(0.5)
+        sleep(0.5)
 
     def left(self):
         """向左移动选择"""
         self.gamepad.click_button(Button.DPAD_LEFT)
-        time.sleep(0.5)
+        sleep(0.5)
 
     def right(self):
         """向右移动选择"""
         self.gamepad.click_button(Button.DPAD_RIGHT)
-        time.sleep(0.5)
+        sleep(0.5)
 
     def previous_page(self):
         """翻到上一页"""
         self.gamepad.click_button(Button.LEFT_SHOULDER)
-        time.sleep(2)
+        sleep(2)
 
     def next_page(self):
         """翻到下一页"""
         self.gamepad.click_button(Button.RIGHT_SHOULDER)
-        time.sleep(2)
+        sleep(2)
 
     def open_or_close_pause_menu(self):
         """打开或关闭暂停菜单"""
         self.gamepad.click_button(Button.MENU)
-        time.sleep(2)
+        sleep(2)
 
     def open_onlinemode_info_panel(self):
         """打开在线模式信息面板"""
         self.gamepad.click_button(Button.DPAD_DOWN)
-        time.sleep(1)
+        sleep(1)
 
     def navigate_to_storymode_tab_in_mainmenu(self):
         """在主菜单中，导航到'故事模式'选项卡"""
@@ -108,45 +107,45 @@ class GameAction:
             self.next_page()
         self.confirm()  # 打开在线选择卡
         self.up()  # 选中"进入在线模式"
-        time.sleep(0.5)  # 多等一会
+        sleep(0.5)  # 多等一会
         self.confirm()  # 进入"进入在线模式"选项卡
 
     def navigate_to_switch_session_tab_in_online_pausemenu(self):
         """在在线模式的暂停菜单中，导航到'寻找新战局'选项卡"""
         self.next_page()  # 选中在线选择卡
         self.confirm()  # 打开在线选择卡
-        time.sleep(0.5)  # 多等一会
+        sleep(0.5)  # 多等一会
         # 选中"寻找新战局"
         for _ in range(5):
             self.up()
-            time.sleep(0.5)  # 多等一会
-        time.sleep(0.5)  # 多等一会
+            sleep(0.5)  # 多等一会
+        sleep(0.5)  # 多等一会
         self.confirm()  # 进入"切换会话"选项卡
 
     def navigate_to_player_list_tab_in_online_pausemenu(self):
         """在在线模式的暂停菜单中，导航到'玩家'选项卡"""
         self.next_page()  # 选中在线选择卡
         self.confirm()  # 打开在线选择卡
-        time.sleep(0.5)  # 多等一会
+        sleep(0.5)  # 多等一会
         # 选中"玩家"
         for _ in range(4):
             self.down()
-            time.sleep(0.5)  # 多等一会
-        time.sleep(0.5)  # 多等一会
+            sleep(0.5)  # 多等一会
+        sleep(0.5)  # 多等一会
         self.confirm()  # 进入"玩家"选项卡
 
     def enter_invite_only_session(self):
         """在'寻找新战局'选项卡中，进入仅邀请战局"""
         self.down()  # 选中"仅邀请战局"
-        time.sleep(0.5)  # 多等一会
+        sleep(0.5)  # 多等一会
         self.confirm()  # 进入"仅邀请战局"
-        time.sleep(1)  # 多等一会
+        sleep(1)  # 多等一会
         self.confirm()  # 确认进入战局
 
     def go_job_point_from_bed_by_bot_owner(self):
         """Bot拥有者接管游戏，手动从事务所的床移动到任务点附近。"""
         logger.info("动作：请Bot拥有者接管游戏，在60秒内手动移动到差事点附近 ...")
-        time.sleep(60)  # 等待移动结束
+        sleep(60)  # 等待移动结束
         return
 
     def go_job_point_from_bed(self):
@@ -180,7 +179,7 @@ class GameAction:
     def launch_job_setup_panel(self):
         """在差事点上进入差事准备面板，目前只需要按一下十字键右键。"""
         self.gamepad.click_button(Button.DPAD_RIGHT, 110)
-        time.sleep(0.5)
+        sleep(0.5)
 
     def setup_job_panel(self):
         """在差事准备面板中，设置差事参数"""
@@ -192,14 +191,14 @@ class GameAction:
     def exit_job_panel_from_first_page(self):
         """从差事准备面板的第一个面板退出"""
         self.back()
-        time.sleep(0.5)  # 多等一会
+        sleep(0.5)  # 多等一会
         self.confirm()
-        time.sleep(4)  # 多等一会，确保退出完成
+        sleep(4)  # 多等一会，确保退出完成
 
     def exit_job_panel_from_second_page(self):
         """从差事准备面板的第二个面板退出"""
         self.back()
         self.back()
-        time.sleep(0.5)  # 多等一会
+        sleep(0.5)  # 多等一会
         self.confirm()
-        time.sleep(4)  # 多等一会，确保退出完成
+        sleep(4)  # 多等一会，确保退出完成

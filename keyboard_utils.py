@@ -3,6 +3,7 @@ import time
 from typing import Any, List, Optional, Set, Tuple, Union, Callable, Dict
 from pynput.keyboard import Controller, KeyCode, Key, GlobalHotKeys
 
+from app_lifecycle import sleep_stoppable as sleep
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -80,7 +81,7 @@ class KeyboardSimulator:
         for key in keys_to_process:
             self.press(key)
 
-        time.sleep(milliseconds / 1000.0)
+        sleep(milliseconds / 1000.0)
 
         # 以相反的顺序释放所有按键 (这对于组合键非常重要)
         for key in reversed(keys_to_process):
@@ -138,9 +139,9 @@ class KeyboardSimulator:
         """
         for char in text:
             self.press(char)
-            time.sleep(delay)
+            sleep(delay)
             self.release(char)
-            time.sleep(delay)
+            sleep(delay)
 
 
 class HotKeyManager:

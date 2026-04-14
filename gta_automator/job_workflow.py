@@ -1,6 +1,7 @@
 import time
 from typing import Any, Callable, Optional
 
+from app_lifecycle import sleep_smart as sleep
 from logger import get_logger
 from config import Config
 
@@ -201,7 +202,7 @@ class JobWorkflow(_BaseWorkflow):
             for _ in range(repetitions):
                 # 每走一步都检查一次
                 action(self.config.moveTimeFindJob)
-                time.sleep(0.3)  # 等待移动结束
+                sleep(0.3)  # 等待移动结束
                 if self.screen.is_job_marker_found():
                     logger.info("成功找到差事触发点。")
                     return
@@ -222,7 +223,7 @@ class JobWorkflow(_BaseWorkflow):
             self.action.go_job_point_from_bed_by_bot_owner()
         else:
             self.action.go_job_point_from_bed()
-        time.sleep(0.5)  # 等待移动结束
+        sleep(0.5)  # 等待移动结束
         self._find_job_point()
 
     def enter_and_wait_for_job_panel(self):
@@ -271,18 +272,18 @@ class JobWorkflow(_BaseWorkflow):
         self.action.confirm()
         # 单人启动差事时，或者有玩家正在加入时，会弹出警告窗口
         # 额外按下一次确认键，确认警告
-        time.sleep(0.2)
+        sleep(0.2)
         self.action.confirm()
         # 多等一会，让游戏响应差事启动
         # 不能等太久，必须在面板消失前开始检查差事是否启动
-        time.sleep(0.2)
+        sleep(0.2)
 
         # 检查差事启动。检查 3 次，避免游戏响应太慢
         for _ in range(3):
             if self.screen.is_job_starting():
                 logger.info("启动差事成功。")
                 return True  # 成功启动
-            time.sleep(0.1)  # 每次检查间等待 0.1 秒
+            sleep(0.1)  # 每次检查间等待 0.1 秒
         else:
             # 处理启动失败的情况
             logger.warning("启动差事失败，正在尝试恢复...")
@@ -346,7 +347,7 @@ class JobWorkflow(_BaseWorkflow):
                     break
                 else:
                     # 启动失败继续等，不进行无人加入和正在加入超时检查
-                    time.sleep(self.config.lobbyCheckLoopTime)
+                    sleep(self.config.lobbyCheckLoopTime)
                     continue
 
             # 长时间无人加入，发送消息，抛出异常
@@ -368,7 +369,7 @@ class JobWorkflow(_BaseWorkflow):
                 raise OperationTimeout(OperationTimeoutContext.PLAYER_JOIN)
 
             # 每次检查大厅状态间间隔一定时间，通过配置文件指定
-            time.sleep(self.config.lobbyCheckLoopTime)
+            sleep(self.config.lobbyCheckLoopTime)
 
         logger.info(f"成功发车，本班车载有 {self.lobby_tracker.joined_count} 人。")
 
@@ -411,7 +412,7 @@ class JobWorkflow(_BaseWorkflow):
 
         # 首次卡单
         logger.info(f"面板已消失。{self.config.delaySuspendTimePanelDisappear} 秒后将卡单。")
-        time.sleep(self.config.delaySuspendTimePanelDisappear)
+        sleep(self.config.delaySuspendTimePanelDisappear)
         self.glitch_single_player_session()
 
         # 等待人物落地
@@ -426,7 +427,7 @@ class JobWorkflow(_BaseWorkflow):
 
         # 再次卡单
         logger.info(f"人物已落地。{self.config.delaySuspendTimeJobStart} 秒后将卡单。")
-        time.sleep(self.config.delaySuspendTimeJobStart)
+        sleep(self.config.delaySuspendTimeJobStart)
         self.glitch_single_player_session()
 
     def verify_mission_status_after_glitch(self):
@@ -436,7 +437,7 @@ class JobWorkflow(_BaseWorkflow):
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         logger.info("动作: 正在检查当前差事状态，等待 10 秒以响应其他玩家离开。")
-        time.sleep(10)  # 响应其他玩家离开
+        sleep(10)  # 响应其他玩家离开
 
         if not self.screen.is_job_started():
             logger.warning("未检测到在差事中，可能因其他玩家导致任务失败。正在检查计分板...")
@@ -451,7 +452,7 @@ class JobWorkflow(_BaseWorkflow):
                 # 计算还需要等待的时间
                 remaining_wait_time = wait_end_time - time.monotonic()
                 if remaining_wait_time > 0:
-                    time.sleep(remaining_wait_time)
+                    sleep(remaining_wait_time)
             else:
                 logger.warning("无法确定当前差事状态。")
         else:

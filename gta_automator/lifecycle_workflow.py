@@ -1,6 +1,7 @@
 import time
 from typing import Optional
 
+from app_lifecycle import sleep_smart as sleep
 from logger import get_logger
 from windows_utils import exec_command_detached
 
@@ -46,7 +47,7 @@ class LifecycleWorkflow(_BaseWorkflow):
                 self.handle_warning_page()
                 # 触发 alt+f4, 然后等待游戏加载退出页面
                 self.process.request_exit()
-                time.sleep(3)
+                sleep(3)
                 # 检查是否在确认退出页面
                 if self.screen.is_on_exit_confirm_page():
                     # 游戏会先尝试与 RockStar 在线服务通信以进行保存, 直到保存成功或保存失败后才能确认退出
@@ -56,7 +57,7 @@ class LifecycleWorkflow(_BaseWorkflow):
                         # 等待游戏关闭
                         if self.wait_for_state(lambda: not self.process.is_game_started(), 30, 2, False):
                             logger.info("已通过常规方法退出游戏，等待 20 秒以让 RockStar 启动器响应。")
-                            time.sleep(20)
+                            sleep(20)
                         else:
                             logger.warning("通过常规方法退出游戏失败。")
 
@@ -79,7 +80,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         logger.info("动作: 正在强制关闭游戏...")
         self.process.kill()
         # 等待系统回收资源
-        time.sleep(1)
+        sleep(1)
         logger.info("强制关闭游戏完成。")
 
     def launch(self):
@@ -96,7 +97,7 @@ class LifecycleWorkflow(_BaseWorkflow):
             return
 
         # 进入故事模式
-        time.sleep(2)
+        sleep(2)
         try:
             self.enter_storymode_from_mainmenu()
         except GameAutomatorException as e:
@@ -105,7 +106,7 @@ class LifecycleWorkflow(_BaseWorkflow):
             return
 
         # 进入在线模式
-        time.sleep(2)
+        sleep(2)
         try:
             self.enter_onlinemode_from_storymode()
         except UnexpectedGameState as e:
@@ -140,7 +141,7 @@ class LifecycleWorkflow(_BaseWorkflow):
 
         # 等待 10 秒钟用于 steam 客户端响应 GTA V 退出
         logger.info("20秒后将重启 GTA V...")
-        time.sleep(10)  # 剩下那 10 秒在第一次循环里
+        sleep(10)  # 剩下那 10 秒在第一次循环里
 
         # 启动游戏并进入在线模式仅邀请战局
         # 从 config 获取最大尝试次数，至少 1 次
@@ -148,7 +149,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         for retry_times in range(max_retry_times):
             # 每次重试前确保游戏已关闭
             self.force_shutdown()
-            time.sleep(10)  # 等待 10 秒钟用于 steam 客户端响应 GTA V 退出
+            sleep(10)  # 等待 10 秒钟用于 steam 客户端响应 GTA V 退出
             logger.info(f"GTA V 重启尝试第 {retry_times + 1} 次。")
             self.launch()
             if self.process.is_game_started():
@@ -190,7 +191,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         # 等待 GTA V 窗口出现
         self.wait_for_window_showup()
         logger.info("GTA V 窗口已出现。")
-        time.sleep(5)  # 等待5秒钟让游戏稳定
+        sleep(5)  # 等待5秒钟让游戏稳定
 
         # 更新 GTA V 窗口信息
         self.process.update_info()
@@ -224,7 +225,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         end_time = time.monotonic() + 180  # 3分钟加载超时，有时需要等待预编译管线
         while time.monotonic() < end_time:
             # 每5秒检查一次
-            time.sleep(5)
+            sleep(5)
 
             # 获取一次当前屏幕状态
             ocr_text = self.screen.ocr_game_window(0.5, 0.8, 0.5, 0.2)
@@ -236,12 +237,12 @@ class LifecycleWorkflow(_BaseWorkflow):
             # 当pcsetting文件损坏时，会显示设置亮度的页面
             # 有的时候加载主菜单还会显示警告页面，该方法可以一并处理
             elif self.screen.is_on_mainmenu_brightness_or_warning_page(ocr_text):
-                time.sleep(2)  # 等待页面加载完成
+                sleep(2)  # 等待页面加载完成
                 self.action.confirm()
                 continue
             # 有时候会展示 GTA+ 广告窗口
             elif self.screen.is_on_mainmenu_gtaplus_advertisement_page(ocr_text):
-                time.sleep(2)  # 等待广告页面加载完成
+                sleep(2)  # 等待广告页面加载完成
                 self.action.confirm()
                 continue
         else:
@@ -268,7 +269,7 @@ class LifecycleWorkflow(_BaseWorkflow):
 
         # 在主菜单中切换到故事模式页面
         self.action.navigate_to_storymode_tab_in_mainmenu()
-        time.sleep(1)
+        sleep(1)
 
         # 检查是否在故事模式页面
         if not self.screen.is_on_mainmenu_storymode_page():
@@ -367,7 +368,7 @@ class LifecycleWorkflow(_BaseWorkflow):
 
         while time.monotonic() < end_time:
             # 每10秒检查一次
-            time.sleep(10)
+            sleep(10)
 
             # 获取一次当前屏幕状态
             ocr_text = self.screen.ocr_game_window(0, 0, 1, 1)
@@ -444,7 +445,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         self.action.confirm()
         self.action.down()
         self.action.confirm()
-        time.sleep(0.2)  # 等待游戏响应页面关闭
+        sleep(0.2)  # 等待游戏响应页面关闭
         logger.info("已确认在线服务政策页面。")
         return True
 
@@ -468,7 +469,7 @@ class LifecycleWorkflow(_BaseWorkflow):
 
         steam_url = f"steam://rungame/3240220/76561199074735990/-steamjvp={steam_jvp}"
         exec_command_detached(["start", "", steam_url])
-        time.sleep(3)
+        sleep(3)
 
         # 等待加入战局
         self.process_online_loading()

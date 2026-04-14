@@ -12,6 +12,7 @@ from collections import defaultdict
 from functools import total_ordering
 import bisect
 
+from app_lifecycle import sleep_stoppable as sleep
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -489,7 +490,7 @@ class GamepadSimulator:
             return
         try:
             self.press_button(button)
-            time.sleep(duration_milliseconds / 1000.0)
+            sleep(duration_milliseconds / 1000.0)
         except Exception as e:
             logger.error(f"点按按钮 {button} 时出错: {e}")
         finally:
@@ -522,7 +523,7 @@ class GamepadSimulator:
         if not self._check_connected():
             return
         self.move_left_joystick(direction)
-        time.sleep(duration_milliseconds / 1000.0)
+        sleep(duration_milliseconds / 1000.0)
         self.return_left_joystick_to_center()
         self.pad.update()
 
@@ -553,7 +554,7 @@ class GamepadSimulator:
         if not self._check_connected():
             return
         self.move_right_joystick(direction)
-        time.sleep(duration_milliseconds / 1000.0)
+        sleep(duration_milliseconds / 1000.0)
         self.return_right_joystick_to_center()
         self.pad.update()
 
@@ -585,7 +586,7 @@ class GamepadSimulator:
         if not self._check_connected():
             return
         self.press_left_trigger(pressure_float)
-        time.sleep(duration_milliseconds / 1000.0)
+        sleep(duration_milliseconds / 1000.0)
         self.release_left_trigger()
 
     def press_right_trigger(self, pressure_float: float):
@@ -616,7 +617,7 @@ class GamepadSimulator:
         if not self._check_connected():
             return
         self.press_right_trigger(pressure_float)
-        time.sleep(duration_milliseconds / 1000.0)
+        sleep(duration_milliseconds / 1000.0)
         self.release_right_trigger()
 
     def play_macro(self, micro: Macro, reset_at_end: bool = True):
@@ -654,7 +655,7 @@ class GamepadSimulator:
                 sleep_duration_sec = target_elapsed_sec - current_elapsed_sec
 
                 if sleep_duration_sec > 0:
-                    time.sleep(sleep_duration_sec)
+                    sleep(sleep_duration_sec)
 
                 # 执行当前时间戳下的所有事件
                 events_to_run = event_groups[timestamp_ms]

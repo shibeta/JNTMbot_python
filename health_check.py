@@ -3,6 +3,7 @@ import threading
 import time
 from typing import Any, Callable, Optional
 
+from app_lifecycle import sleep_smart as sleep, is_exiting
 from config import Config
 from logger import get_logger
 
@@ -58,13 +59,11 @@ class HealthMonitor(threading.Thread):
         self.steam_chat_timeout_threshold = config.healthCheckSteamChatTimeoutThreshold  # 分钟
         self.exit_on_unhealthy = config.enableExitOnUnhealthy
 
-        # 使能: 检查上次发送 Steam 消息时间
-        self.enable_steam_chat_timeout = True
-
         # 上次检查结果，初始化是假定为健康
         self._is_healthy_on_last_check = True
-        # 用于停止线程
-        self._stop_event = threading.Event()
+
+        # 启用检查项: 检查上次发送 Steam 消息时间
+        self.enable_steam_chat_timeout = True
 
         logger.info(f"健康检查已配置：每 {self.check_interval} 分钟检查一次。")
         if self.enable_steam_chat_timeout:
@@ -80,17 +79,16 @@ class HealthMonitor(threading.Thread):
         """线程的主执行逻辑。"""
         logger.info(f"健康检查监控已启动，每 {self.check_interval} 分钟检查一次。")
 
-        while not self._stop_event.is_set():
-            # 使用 Event.wait() 代替 time.sleep()，这样可以被 stop_event 立即中断
-            is_stopped = self._stop_event.wait(timeout=self.check_interval * 60)
-            if is_stopped:
-                break  # 如果是 stop_event 触发了 wait 的返回，则退出循环
+        while not is_exiting():
+            # 全局暂停会在这里被挂起，不需要再通过抑制检查实现
+            sleep_finished = sleep(self.check_interval * 60)
+
+            # 如果被停止信号打断，将返回 False
+            if not sleep_finished:
+                logger.debug("HealthMonitor 接收到退出信号，正在安全结束子线程...")
+                break
 
             self._perform_check()
-
-    def stop(self):
-        """外部调用的方法，用于请求线程停止。"""
-        self._stop_event.set()
 
     def __send_notification(self, title: str, message: str):
         """
@@ -121,7 +119,9 @@ class HealthMonitor(threading.Thread):
             last_send_monotonic_time = self.get_last_steam_message_send_monotonic_time()
             elapsed_time = time.monotonic() - last_send_monotonic_time
             # 转换为整数以输出更好看的时间
-            logger.debug(f"健康检查：距离上次通过 Steam 发送消息已过去 {timedelta(seconds=int(elapsed_time))}。")
+            logger.debug(
+                f"健康检查：距离上次通过 Steam 发送消息已过去 {timedelta(seconds=int(elapsed_time))}。"
+            )
 
             if elapsed_time > self.steam_chat_timeout_threshold * 60:
                 is_healthy_now = False

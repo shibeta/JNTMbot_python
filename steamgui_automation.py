@@ -4,6 +4,7 @@ import uiautomation as auto
 from windows_utils import ClipboardScope
 import time
 
+from app_lifecycle import sleep_smart as sleep
 from logger import get_logger
 
 # 用于装饰器类型注解的泛型变量
@@ -152,7 +153,7 @@ class SteamAutomation:
         """
         # 处理窗口以准备查找元素
         steam_chat_window.SwitchToThisWindow()  # 从最小化恢复，否则查找元素会出错
-        time.sleep(0.5)  # 等待窗口绘制
+        sleep(0.5)  # 等待窗口绘制
 
         # 文本输入框没有特征，基于发送按钮辅助定位文本输入框
         # 文本输入框 <- 发送包按钮
@@ -199,7 +200,7 @@ class SteamAutomation:
             input_field.SendKeys(text=message, charMode=True)
 
         # 等待窗口响应剪贴板粘贴
-        time.sleep(0.05)
+        sleep(0.05)
 
         # 按下回车以发送消息
         self._set_keyboard_focus(input_field)
@@ -261,5 +262,5 @@ if __name__ == "__main__":
     MESSAGE_TO_SEND = "测试: 通过 UIautomation 发送 Steam 聊天消息。"
     my_steamautomation = SteamAutomation(GROUP_NAME)
     print("1秒钟后将向Steam聊天窗口发送测试消息。")
-    time.sleep(1)
+    sleep(1)
     my_steamautomation.send_group_message(MESSAGE_TO_SEND)

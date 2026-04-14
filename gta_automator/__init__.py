@@ -2,6 +2,7 @@ from enum import Enum, auto
 import time
 from typing import Any, Callable, Optional
 
+from app_lifecycle import sleep_smart as sleep
 from config import Config
 from gamepad_utils import GamepadSimulator
 from logger import get_logger
@@ -281,7 +282,7 @@ class GTAAutomator:
             # 等待差事面板打开超时
             logger.warning("等待差事面板打开超时，尝试回到自由模式。")
             self.job_workflow.exit_job_panel()
-            time.sleep(2)
+            sleep(2)
             if self.lifecycle_workflow.check_if_in_onlinemode():
                 return
             else:
@@ -328,7 +329,7 @@ class GTAAutomator:
                 logger.warning(f"{e.message}。卡单并切换战局。")
                 # 首先需要卡单，进入单人战局状态，因为在多人差事中切换战局会增加恶意值
                 self.online_workflow.glitch_single_player_session()
-                time.sleep(2)  # 等待游戏状态稳定
+                sleep(2)  # 等待游戏状态稳定
 
                 # 切换战局
                 try:

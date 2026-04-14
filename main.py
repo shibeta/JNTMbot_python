@@ -1,17 +1,14 @@
-import signal
 import sys
 import time
-import threading
 import os
 import traceback
 from functools import wraps, partial
-from atexit import _run_exitfuncs as trigger_atexit
 from typing import Callable, ParamSpec, TypeVar
 
 from keyboard_utils import HotKeyManager
 from logger import set_loglevel, get_logger
 from config import Config
-
+from app_lifecycle import init_lifecycle_manager, toggle_pause, trigger_exit, is_paused
 from argument_parser import ArgumentParser, ArgumentError
 from ocr_utils import OCREngine
 from steambot_utils import SteamBot
@@ -46,36 +43,14 @@ def interrupt_decorator(main_func: Callable[P, R]) -> Callable[P, R]:
 
     return wrapper
 
-
-def exit_main_process(main_pid: int):
-    """
-    触发 atexit 中注册的所有方法，然后向主进程发送 SIGTERM 信号。
-
-    :param int main_pid: 主进程的 PID。可以通过在主进程中执行`os.getpid()`获取。
-    """
-    logger.debug("正在执行 atexit 退出回调...")
-    try:
-        trigger_atexit()
-    except Exception as e:
-        logger.error(f"执行 atexit 退出回调时发生异常: {e}")
-
-    logger.debug(f"正在向主进程 {main_pid} 发送退出信号...")
-    try:
-        os.kill(main_pid, signal.SIGTERM)
-    except (ProcessLookupError, OSError) as e:
-        logger.error(f"发送退出信号失败，主进程可能已退出。错误: {e}")
-    except Exception as e:
-        logger.error(f"发送退出信号时发生异常: {e}")
-    finally:
-        # 以防终端窗口不关闭，提示用户程序已退出
-        logger.info("程序已经退出，现在可以安全关闭终端窗口。")
-
-
 # --- 主程序执行 ---
 @interrupt_decorator
 def main():
     os.system(f"title 鸡你太美")
     global_start_time = time.monotonic()
+
+    # 初始化生命周期管理器
+    init_lifecycle_manager()
 
     # 初始化命令行参数
     try:
@@ -108,34 +83,10 @@ def main():
     hotkey = HotKeyManager()
 
     # 暂停/恢复热键
-    pause_lock = threading.Lock()
-    run_control_event = threading.Event()
-    run_control_event.set()  # 初始状态为“正在运行”
-
-    def toggle_pause():
-        with pause_lock:
-            if run_control_event.is_set():
-                run_control_event.clear()  # 清除标志，进入暂停状态
-                logger.warning("暂停/恢复热键被按下，Bot 将在本轮循环结束后暂停。按 CTRL+F9 恢复。")
-            else:
-                run_control_event.set()  # 设置标志，恢复运行
-                try:
-                    steam_bot.reset_send_timer()
-                except NameError:
-                    pass  # steam_bot 可能未被定义
-                logger.warning("暂停/恢复热键被按下，Bot 已恢复。")
-
     hotkey.add_hotkey("<ctrl>+<f9>", toggle_pause)
 
     # 退出热键
-    exit_lock = threading.Lock()
-
-    def toggle_exit():
-        with exit_lock:
-            logger.warning("退出热键被按下，退出程序...")
-            exit_main_process(os.getpid())
-
-    hotkey.add_hotkey("<ctrl>+<f10>", toggle_exit)
+    hotkey.add_hotkey("<ctrl>+<f10>", trigger_exit)
     logger.warning("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
 
     # 初始化 OCR
@@ -185,21 +136,20 @@ def main():
 
     # 初始化健康检查
     def should_suppress_health_check():
-        """如果处于暂停状态，或者 Bot 在恢复模式，跳过健康检查。"""
-        if not run_control_event.is_set():
-            return False
-
+        """如果 Bot 在恢复模式，跳过健康检查。"""
+        # 注: 早期版本中该方法还被用于跳过暂停时的检查，目前该功能已在 HealthMonitor 内部实现
         try:
             if automator.is_in_recovery_mode():
                 return False
         except Exception as e:
-            raise Exception(f"获取 Bot 工作模式出错: {e}")
+            logger.error(f"健康检查未能获取 Bot 工作模式: {e} , 将进行健康检查。")
+            return True
 
         return True
 
     if config.enableHealthCheck:
         logger.warning(f"已启用健康检查。正在初始化监控模块...")
-        health_check_exit_func = partial(exit_main_process, os.getpid())
+        health_check_exit_func = partial(trigger_exit, "触发 BOT 不健康自动退出")
         monitor = HealthMonitor(
             config,
             steam_bot.get_last_send_system_time,
@@ -217,9 +167,6 @@ def main():
 
     while True:
         try:
-            # 响应暂停信号
-            run_control_event.wait()
-
             # 执行一轮循环
             automator.run_one_cycle()
 

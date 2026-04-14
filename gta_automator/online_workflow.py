@@ -1,5 +1,6 @@
 import time
 
+from app_lifecycle import sleep_smart as sleep
 from logger import get_logger
 
 from ._base_workflow import _BaseWorkflow
@@ -65,7 +66,7 @@ class OnlineWorkflow(_BaseWorkflow):
         """通过卡单人战局来处理卡云"""
         logger.info("尝试通过卡单来恢复正常状态。")
         self.glitch_single_player_session()
-        time.sleep(5)  # 卡完单等一会
+        sleep(5)  # 卡完单等一会
 
     def start_new_match(self):
         """
@@ -127,14 +128,14 @@ class OnlineWorkflow(_BaseWorkflow):
         # 打开暂停菜单并导航到玩家列表
         self.open_pause_menu()
         self.action.navigate_to_player_list_tab_in_online_pausemenu()
-        time.sleep(0.5)  # 等待玩家列表加载
+        sleep(0.5)  # 等待玩家列表加载
         # 读取恶意等级
         bad_sport_level = self.screen.get_bad_sport_level_of_first_player_in_list()
         if bad_sport_level == "未知等级":
             # 重试最多三次
             for _ in range(3):
                 logger.warning("读取恶意等级失败，正在重试...")
-                time.sleep(0.5)
+                sleep(0.5)
                 bad_sport_level = self.screen.get_bad_sport_level_of_first_player_in_list()
                 if bad_sport_level != "未知等级":
                     break
@@ -173,8 +174,8 @@ class OnlineWorkflow(_BaseWorkflow):
             if remaining_time <= online_check_interval:
                 if remaining_time > 0:
                     # 让挂机时间尽量精确
-                    time.sleep(remaining_time)
+                    sleep(remaining_time)
                 break
 
             # 其他时候休眠并等待下一次检查
-            time.sleep(online_check_interval)
+            sleep(online_check_interval)

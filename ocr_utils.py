@@ -1,8 +1,6 @@
 import os
 import sys
 import threading
-import time
-import atexit
 from PIL.Image import fromarray
 import io
 import win32gui
@@ -10,6 +8,7 @@ import win32ui
 import numpy as np
 from ctypes import windll
 
+from app_lifecycle import sleep_smart as sleep, _exit_event
 from RapidOCR_api import OcrAPI
 from windows_utils import (
     is_window_handler_exist,
@@ -72,7 +71,7 @@ class WindowCapturer:
         try:
             # 将窗口取消最小化
             if restore_minimized_window(hwnd):
-                time.sleep(0.2)
+                sleep(0.2)
 
             if include_title_bar:
                 window_rect = win32gui.GetWindowRect(hwnd)
@@ -214,8 +213,18 @@ class OCREngine:
         """
         logger.info("正在初始化 OCR 引擎...")
 
-        # 确保程序退出时 OCR 引擎被关闭
-        atexit.register(self.shutdown)
+        # 使用哨兵进程确保程序退出时 OCR 引擎立即被关闭
+        # atexit.register(self.shutdown)
+        def instant_kill_rapidocr():
+            # 通过等待信号量实现的挂起基本不耗费性能
+            _exit_event.wait()
+            try:
+                # 不申请锁，因为这样更快
+                self.api.stop()
+            finally:
+                pass
+        self.emergency_killer_thread = threading.Thread(target=instant_kill_rapidocr, daemon=True, name="OcrEmergencyKiller")
+        self.emergency_killer_thread.start()
 
         # 检查 OCR 引擎可执行文件是否存在
         if not os.path.exists(OCR_EXECUTABLE_PATH):
