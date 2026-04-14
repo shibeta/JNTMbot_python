@@ -1,4 +1,3 @@
-import argparse
 import signal
 import sys
 import time
@@ -13,6 +12,7 @@ from keyboard_utils import HotKeyManager
 from logger import set_loglevel, get_logger
 from config import Config
 
+from argument_parser import ArgumentParser, ArgumentError
 from ocr_utils import OCREngine
 from steambot_utils import SteamBot
 from steamgui_automation import SteamAutomation
@@ -26,30 +26,6 @@ P = ParamSpec("P")  # 捕获函数的参数列表 (args, kwargs)
 R = TypeVar("R")  # 捕获函数的返回值类型
 
 logger = get_logger("main")
-
-
-class ArgumentParser:
-    """
-    管理和解析命令行参数的封装类。
-    """
-
-    def __init__(self):
-        self.parser = argparse.ArgumentParser(description="德瑞BOT自动化脚本")
-        self._add_arguments()
-
-    def _add_arguments(self):
-        self.parser.add_argument(
-            "--config-file",
-            dest="config_file_path",  # 解析后参数字典中的键名
-            default="config.yaml",  # 默认值
-            help='指定配置文件的路径。\n默认值: "config.yaml"',
-        )
-        # 示例：添加更多参数
-        # self.parser.add_argument('--verbose', action='store_true', help='启用详细输出模式')
-
-    def parse(self) -> dict:
-        args = self.parser.parse_args()
-        return vars(args)
 
 
 def interrupt_decorator(main_func: Callable[P, R]) -> Callable[P, R]:
@@ -105,7 +81,7 @@ def main():
     try:
         arg_manager = ArgumentParser()
         command_line_args = arg_manager.parse()
-    except argparse.ArgumentError as e:
+    except ArgumentError as e:
         logger.error(f"解析命令行参数时出错: {e}", exc_info=e)
         input("\n按 Enter 键退出...")
         return
