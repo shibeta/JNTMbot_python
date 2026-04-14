@@ -253,6 +253,7 @@
     > > -   将 `useAlterMessagingMethod` 设置为 `true` 以启用。
     > > -   启用后，必须**手动打开对应的 Steam 群组的聊天窗口，并切换至对应的频道**。
     > > -   启用后，必须在 `AlterMessagingMethodWindowTitle` 填入对应聊天窗口的窗口标题。不需要完整的标题，只要能唯一搜索到该窗口即可。
+    > > -   该方法相比 `Steam Bot` 更稳定，但会频繁弹出 Steam 聊天窗口，推荐无人值守使用。
 
 -   `enableWechatPush` 和 `pushplusToken`
     > 是否启用微信推送警报。启用后，当程序运行一段时间后发生报错退出，或健康状态发生变化时，会向微信推送错误信息。

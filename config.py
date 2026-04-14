@@ -35,7 +35,7 @@ class Config:
         },
         "useAlterMessagingMethod": {
             "value": False,
-            "comment": "是否改用备用方法发送Steam群组消息，该方法通过与Steam客户端GUI交互以发送消息",
+            "comment": "是否改用备用方法发送Steam群组消息，该方法通过与Steam客户端GUI交互以发送消息。该方法会频繁弹出Steam聊天窗口，推荐长期挂Bot使用",
         },
         "AlterMessagingMethodWindowTitle": {
             "value": "蠢人帮",
