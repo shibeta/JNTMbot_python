@@ -73,15 +73,11 @@ class LobbyStateTracker:
         # 一般来讲大厅里不会突然出现警告页面，这个仅仅作为保底策略
         if not is_on_panel:
             self.handle_warning_page_func()
+            current_time = time.monotonic()
             is_on_panel, joining, joined, standby = self.screen.get_job_setup_status(ocr_text)
 
         # 如果能识别到任务面板则说明在大厅中，反之亦然
         self.in_lobby = is_on_panel
-
-        # 更新大厅内人数和状态
-        self.joining_count = joining
-        self.joined_count = joined
-        self.standby_count = standby
 
         # 如果人数结构发生变化，更新队伍状态变化计时器
         if joining != self.joining_count or joined != self.joined_count or standby != self.standby_count:
@@ -90,6 +86,11 @@ class LobbyStateTracker:
         # 如果没有正在加入的玩家，更新无加入状态玩家计时器
         if joining == 0:
             self.last_zero_joining_player_time = current_time
+
+        # 存储大厅内人数和状态用于下一次检查
+        self.joining_count = joining
+        self.joined_count = joined
+        self.standby_count = standby
 
     @property
     def is_lobby_full(self):
