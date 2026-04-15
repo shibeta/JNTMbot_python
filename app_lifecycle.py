@@ -86,11 +86,11 @@ def sleep_smart(duration: float) -> bool:
 
         # 正常休眠：分块睡眠，避免长时间阻塞
         chunk = min(remaining, 0.5)
-        start = time.perf_counter()
+        start = time.monotonic()
 
         _exit_event.wait(timeout=chunk)
 
-        elapsed = time.perf_counter() - start
+        elapsed = time.monotonic() - start
         remaining -= elapsed
 
     return not _exit_event.is_set()
