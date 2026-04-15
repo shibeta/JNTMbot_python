@@ -38,7 +38,7 @@ def toggle_pause():
         logger.warning("暂停/恢复热键被按下，Bot 已恢复。")
         _pause_event.clear()
     else:
-        logger.warning("暂停/恢复热键被按下，Bot 将在下一次执行 sleep 方法时暂停。按 CTRL+F9 恢复。")
+        logger.warning("暂停/恢复热键被按下，Bot 即将暂停。按 CTRL+F9 恢复。")
         _pause_event.set()
 
 
