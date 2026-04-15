@@ -3,7 +3,7 @@ import time
 from typing import Any, List, Optional, Set, Tuple, Union, Callable, Dict
 from pynput.keyboard import Controller, KeyCode, Key, GlobalHotKeys
 
-from app_lifecycle import sleep_stoppable as sleep
+from app_lifecycle import sleep_stoppable as sleep, is_exiting
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -115,7 +115,7 @@ class KeyboardSimulator:
                 try:
                     self._controller.release(key)
                 except Exception as e:
-                    print(f"Releasing key failed: {e}")
+                    print(f"释放按键失败: {e}")
 
             # 清空集合
             self._pressed_keys.clear()
@@ -152,16 +152,17 @@ class HotKeyManager:
     它支持在运行时动态地添加和移除热键。
     """
 
-    def __init__(self, enable: bool = True, debounce_interval: float = 0.1):
+    def __init__(self, enable: bool = True, debounce_interval: float = 0.1, refresh_interval: float = 3600.0):
         """
         初始化 HotKeyManager 实例。
 
         :param bool enable: 是否立刻启动热键监听器。默认启用
-        :param debounce_interval: 防抖时间间隔（秒）。在此时间内重复触发将被忽略。
+        :param float debounce_interval: 防抖时间间隔（秒），在此时间内重复触发将被忽略。默认 0.1 秒。
+        :param float refresh_interval: 自动刷新底层Hook的间隔时间（秒）。默认 3600 秒。
         """
         # 是否启用
         self.enable: bool = enable
-        # 防抖间隔
+        # 防抖间隔 (秒)
         self.debounce_interval: float = debounce_interval
 
         # 热键字符串到回调函数的映射
@@ -170,6 +171,15 @@ class HotKeyManager:
         self._listener: GlobalHotKeys | None = None
         # GlobalHotKeys 对象的锁
         self._listener_lock: threading.Lock = threading.Lock()
+
+        # 看门狗对象: 用于定时重启全局热键
+        self._watchdog_thread: threading.Thread | None = None
+        # 重启全局热键的间隔 (秒)
+        self._watchdog_refresh_interval: float = refresh_interval
+        # 看门狗停止信号
+        self._watchdog_stop_event: threading.Event = threading.Event()
+        # 看门狗对象的锁
+        self._watchdog_lock: threading.Lock = threading.Lock()
 
     def __update_listener_unsafe(self) -> None:
         """
@@ -183,10 +193,12 @@ class HotKeyManager:
         if self._listener is not None:
             try:
                 self._listener.stop()
-                self._listener.join(2.0)
-            except:
-                # 忽略任何异常
-                pass
+                # 如果当前线程不是 _listener 自身，等待线程停止
+                # 不检查会导致将 `__update_listener_unsafe()` 绑定到热键时，发生死锁
+                if threading.current_thread() is not self._listener:
+                    self._listener.join(2.0)
+            except Exception as e:
+                logger.error(f"停止旧热键监听器时发生异常: {e}")
 
         # 如果启用且有热键，则启动新的监听器
         if self.enable and self._hotkeys:
@@ -195,46 +207,110 @@ class HotKeyManager:
         else:
             self._listener = None
 
+    def _watchdog_loop(self):
+        """看门狗循环：定期刷新监听器以应对远程桌面导致的 Hook 丢失"""
+        logger.debug("看门狗线程已启动。")
+        # 同时等待看门狗停止信号和程序停止信号
+        while not self._watchdog_stop_event.is_set() and not is_exiting():
+            # 休眠目标时间，避免循环漂移
+            target_wakeup_time = time.monotonic() + self._watchdog_refresh_interval
+            # 休眠是否被打断
+            is_interrupted = False
+
+            while time.monotonic() < target_wakeup_time:
+                # 检查看门狗自身的停止信号
+                if self._watchdog_stop_event.is_set():
+                    is_interrupted = True
+                    break
+
+                # 每次休眠 1 秒
+                remaining = target_wakeup_time - time.monotonic()
+                sleep_duration = min(remaining, 1.0)
+
+                if sleep_duration > 0:
+                    # sleep 本身就会等待程序停止信号，是无延迟的
+                    if not sleep(sleep_duration):
+                        is_interrupted = True
+                        break
+
+            # 如果休眠被打断，说明接收到了停止信号，结束线程
+            if is_interrupted:
+                break
+
+            # 如果未被打断则执行热键监听器刷新
+            with self._listener_lock:
+                if self.enable and self._hotkeys:
+                    logger.debug("执行例行热键监听器刷新，防止 Hook 失效。")
+                    self.__update_listener_unsafe()
+
+        logger.debug("看门狗线程已退出。")
+
     def start(self):
         """
-        启动热键管理器服务，开始监听管理的热键。
+        启动热键管理器服务和看门狗，开始监听管理的热键。
         """
         with self._listener_lock:
             self.enable = True
             self.__update_listener_unsafe()
+            logger.debug("全局热键监听器已启动。")
+
+        with self._watchdog_lock:
+            if self._watchdog_thread is None or not self._watchdog_thread.is_alive():
+                self._watchdog_stop_event.clear()
+                self._watchdog_thread = threading.Thread(
+                    target=self._watchdog_loop, name="HotKey_Watchdog", daemon=True
+                )
+                self._watchdog_thread.start()
 
     def stop(self):
         """
-        停止热键管理器服务并释放所有资源。
+        停止热键管理器服务和看门狗，并释放所有资源。
         """
+        self._watchdog_stop_event.set()
+
         with self._listener_lock:
             self.enable = False
             self.__update_listener_unsafe()
 
-    def add_hotkey(self, hotkey: str, callback: Callable[[], Any], debounce: Optional[float] = None):
+        with self._watchdog_lock:
+            if self._watchdog_thread is not None and self._watchdog_thread.is_alive():
+                self._watchdog_thread.join(timeout=1.0)
+                self._watchdog_thread = None
+
+    def add_hotkey(
+        self,
+        hotkey: str,
+        callback: Callable[[], Any],
+        debounce: Optional[float] = None,
+        auto_update: bool = True,
+    ):
         """
         添加或更新一个全局热键。
+        需要重启热键监听器，才能使用新的热键。
 
         :param hotkey: 热键字符串, 比如 "<ctrl>+<alt>+h"
         :param callback: 绑定至热键的无参回调函数, 有参的调用请通过 partial 包装
         :param debounce: (可选) 防抖时间(秒)
+        :param auto_update: (可选) 是否立即重启监听器。如果需要连续添加多个热键，建议设为 False，最后手动刷新。
         """
         # 如果未传入防抖时间，使用 self 中定义的全局防抖时间
-        debounce_interval = debounce if debounce else self.debounce_interval
+        debounce_interval = debounce if debounce is not None else self.debounce_interval
 
-        # 使用闭包保存该热键的上一次触发时间
-        last_triggered = [0.0]  # 实现可变的浮点对象
+        # 初始化该热键的上一次触发时间
+        last_triggered = 0.0
 
         # 为回调函数创建包装函数，添加防抖和异常捕获
         def callback_warpper():
+            # 使用 nonlocal 实现可变对象
+            nonlocal last_triggered
             current_time = time.monotonic()
             # 防抖检查: 距离上次执行时间是否超过防抖阈值
-            if current_time - last_triggered[0] < debounce_interval:
+            if current_time - last_triggered < debounce_interval:
                 # 未超过防抖阈值直接返回
                 return
 
             # 更新上次执行时间
-            last_triggered[0] = current_time
+            last_triggered = current_time
 
             try:
                 callback()
@@ -245,13 +321,13 @@ class HotKeyManager:
         # 添加包装函数到热键映射
         with self._listener_lock:
             self._hotkeys[hotkey] = callback_warpper
-            # 如果启用，更新监听器
-            if self.enable:
+            # 如果启动了监听器，并且请求立即刷新，更新监听器
+            if self.enable and auto_update:
                 self.__update_listener_unsafe()
 
     def remove_hotkey(self, hotkey: str):
         """
-        移除一个已注册的全局热键。
+        移除一个已注册的全局热键，并重启监听器。
 
         :param hotkey: 热键字符串, 比如 "<ctrl>+<alt>+h"
         """
@@ -264,7 +340,7 @@ class HotKeyManager:
 
     def clear_hotkey(self):
         """
-        移除所有已注册的全局热键。
+        移除所有已注册的全局热键，并重启监听器。
         """
         with self._listener_lock:
             self._hotkeys = {}
