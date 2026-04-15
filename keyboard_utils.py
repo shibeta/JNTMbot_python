@@ -183,6 +183,7 @@ class HotKeyManager:
         if self._listener is not None:
             try:
                 self._listener.stop()
+                self._listener.join(2.0)
             except:
                 # 忽略任何异常
                 pass

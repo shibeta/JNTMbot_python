@@ -335,7 +335,7 @@ class Supervisor(threading.Thread):
     def stop(self):
         """向线程发送停止信号并等待其结束。"""
         self.stop_event.set()
-        self.join()
+        self.join(2.0)
 
 
 class SteamBot:
