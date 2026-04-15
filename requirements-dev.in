@@ -1,0 +1,4 @@
+-r requirements.in
+
+pyinstaller
+pyinstaller_versionfile
