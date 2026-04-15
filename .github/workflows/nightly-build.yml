@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
     inputs:
       force_build:
-        description: '无论是否有新提交都重新生成'
+        description: '无论是否有新提交都进行构建'
         required: false
         type: boolean
         default: false
