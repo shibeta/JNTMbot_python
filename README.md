@@ -41,9 +41,9 @@
 -   **🚀 开箱即用**：提供合理的默认配置 (`config.yaml`)，大部分用户无需修改即可直接启动。
 -   **📄 详细日志记录**：在终端中记录关键操作和潜在问题，方便排查和调试。
 
-<!-- ## 🎬 运行演示 -->
-<!-- TODO:在此处放置一张 GIF 动图来展示Bot的工作流程 -->
-<!-- ![运行演示 GIF](path/to/your/demo.gif) -->
+## 🎬 运行演示
+
+<img width="1280" height="720" alt="运行演示.webp" src="https://github.com/user-attachments/assets/e5057cdd-4292-4bf2-b434-ade6c95238e8" />
 
 ## 🔧 环境要求
 
