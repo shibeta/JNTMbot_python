@@ -299,6 +299,7 @@
 -   `gamepad_utils.py`: 模拟手柄输入。
 -   `push_utils.py`: 消息平台推送，目前实现了基于 PushPlus 的微信推送。
 -   `health_check.py`: 监控 Bot 是否正常工作。
+-   `app_lifecycle.py`: 通过信号量实现外部控制程序暂停和停止的工具类。
 -   `logger.py`: 简单的日志格式化工具。
 -   `gta_automator`: 封装了所有对 GTA5 的自动化操作。
 -   `steambot_utils.py`: 用于管理 `Steam Bot` 后端并调用其 API 发送消息。
