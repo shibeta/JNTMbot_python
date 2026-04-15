@@ -121,10 +121,14 @@ def _console_ctrl_handler(ctrl_type):
 
 
 def init_lifecycle_manager():
-    """初始化生命周期管理器，注册系统回调"""
+    """
+    初始化生命周期管理器，注册系统回调。
+    注意早于该方法执行的 atexit 回调在接收到 WM_CLOSE 信号将不会被执行。
+    """
     global _win_handler_ref
 
-    # 确保 atexit 链最末端释放 Windows 的等待锁
+    # 将 Windows 的等待锁的释放注册到 atexit 链中
+    # 因为 atexit 执行回调时是 FILO 的，所以在 WM_CLOSE 时只有晚于该语句注册的回调才能执行
     atexit.register(_mark_cleanup_done)
 
     # 注册拦截关闭事件

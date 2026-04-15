@@ -1,3 +1,7 @@
+from app_lifecycle import init_lifecycle_manager, toggle_pause, trigger_exit
+# 生命周期管理器需要在所有 atexit 方法被注册前初始化
+init_lifecycle_manager()
+
 import sys
 import time
 import os
@@ -8,7 +12,7 @@ from typing import Callable, ParamSpec, TypeVar
 from keyboard_utils import HotKeyManager
 from logger import set_loglevel, get_logger
 from config import Config
-from app_lifecycle import init_lifecycle_manager, toggle_pause, trigger_exit, is_paused
+
 from argument_parser import ArgumentParser, ArgumentError
 from ocr_utils import OCREngine
 from steambot_utils import SteamBot
@@ -48,9 +52,6 @@ def interrupt_decorator(main_func: Callable[P, R]) -> Callable[P, R]:
 def main():
     os.system(f"title 鸡你太美")
     global_start_time = time.monotonic()
-
-    # 初始化生命周期管理器
-    init_lifecycle_manager()
 
     # 初始化命令行参数
     try:
