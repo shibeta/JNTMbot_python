@@ -1,0 +1,138 @@
+<div style="background:#0d1117;border-radius:12px;overflow:hidden;border:0.5px solid #30363d;max-width:820px;margin:0 auto;font-family:var(--font-mono);">
+  <div style="background:#161b22;padding:10px 16px;display:flex;align-items:center;gap:6px;border-bottom:0.5px solid #30363d;">
+    <span style="width:12px;height:12px;border-radius:50%;background:#ff5f57;display:inline-block;flex-shrink:0;"></span>
+    <span style="width:12px;height:12px;border-radius:50%;background:#ffbd2e;display:inline-block;flex-shrink:0;"></span>
+    <span style="width:12px;height:12px;border-radius:50%;background:#28c840;display:inline-block;flex-shrink:0;"></span>
+    <span style="font-size:12px;color:#8b949e;margin-left:8px;flex:1;">JNTMbot_python</span>
+    <span style="font-size:11px;color:#3fb950;background:rgba(35,134,54,0.15);padding:2px 8px;border-radius:4px;border:0.5px solid #238636;">6× 加速</span>
+  </div>
+  <div style="height:420px;overflow:hidden;position:relative;">
+    <div id="tLog" style="position:absolute;bottom:12px;left:0;right:0;padding:0 16px;font-size:12.5px;line-height:1.65;white-space:pre-wrap;word-break:break-word;"></div>
+  </div>
+  <div style="height:2px;background:#21262d;">
+    <div id="prog" style="height:100%;background:#238636;width:0%;"></div>
+  </div>
+</div>
+
+<script>
+const LINES=[
+[0,"[2026-04-15 21:45:15] [INFO] [gta_automator] 动作: 正在初始化 GTA V ..."],
+[0.1,"[2026-04-15 21:45:15] [INFO] [windows_utils] 已恢复进程 20044。"],
+[5,"[2026-04-15 21:45:20] [INFO] [gta_automator] 初始化 GTA V 完成。"],
+[5.1,"[2026-04-15 21:45:20] [INFO] [gta_automator] 动作: 正在开始新一轮德瑞 Bot 任务..."],
+[5.2,"[2026-04-15 21:45:20] [INFO] [online_workflow] 动作: 正在切换新战局..."],
+[5.3,"[2026-04-15 21:45:20] [INFO] [_base_workflow] 动作: 正在打开暂停菜单..."],
+[7,"[2026-04-15 21:45:22] [INFO] [_base_workflow] 成功打开暂停菜单。"],
+[7.1,"[2026-04-15 21:45:22] [INFO] [online_workflow] 动作: 正在打开切换战局菜单..."],
+[19,"[2026-04-15 21:45:34] [INFO] [online_workflow] 成功打开切换战局菜单。"],
+[23,"[2026-04-15 21:45:38] [INFO] [online_workflow] 成功进入新战局。"],
+[23.1,"[2026-04-15 21:45:38] [INFO] [job_workflow] 等待在事务所床上复活..."],
+[36,"[2026-04-15 21:45:51] [INFO] [job_workflow] 在事务所床上复活成功。"],
+[36.1,"[2026-04-15 21:45:51] [INFO] [game_action] 动作：正在从事务所个人空间走到楼梯间..."],
+[48,"[2026-04-15 21:46:03] [INFO] [game_action] 动作：正在下楼..."],
+[59,"[2026-04-15 21:46:14] [INFO] [game_action] 动作：正在穿过差事层走廊..."],
+[64,"[2026-04-15 21:46:19] [INFO] [job_workflow] 动作：正在寻找差事触发点..."],
+[64.1,"[2026-04-15 21:46:19] [INFO] [job_workflow] 成功找到差事触发点。"],
+[66,"[2026-04-15 21:46:21] [INFO] [job_workflow] 等待差事面板打开..."],
+[72,"[2026-04-15 21:46:27] [INFO] [job_workflow] 动作: 正在等待队伍成员并开始差事..."],
+[72.1,"[2026-04-15 21:46:27] [INFO] [job_workflow] 动作: 正在设置差事面板..."],
+[75,"[2026-04-15 21:46:30] [INFO] [job_workflow] 差事面板设置完成。"],
+[75.1,"[2026-04-15 21:46:30] [INFO] [steambot_utils] 正在向 Steam 群组 (37660928) 的频道 (163168791) 发送消息..."],
+[75.2,'[2026-04-15 21:46:30] [INFO] [steambot_utils] 消息内容: \u201c德瑞差事已启动，请先看教程，学会卡CEO和卡单再进。如果无法连接请再试一次，bot没加速器网不好\u201d'],
+[75.4,"原始请求体 (解析后): {"],
+[75.5,"    groupId: '37660928',"],
+[75.6,"    channelId: '163168791',"],
+[75.7,"    message: '德瑞差事已启动，请先看教程，学会卡CEO和卡单再进。如果无法连接请再试一次，bot没加速器网不好'"],
+[75.8,"}"],
+[75.9,"💬 收到API请求: 向群组[37660928]的频道[163168791]发送消息..."],
+[76.0,"✅ 已提交向群组 37660928 (频道ID: 163168791) 发送消息的请求。"],
+[76.1,"✅ 发送任务已成功提交。"],
+[76.2,"[2026-04-15 21:46:31] [INFO] [steambot_utils] 已提交消息发送任务。"],
+[76.3,"✅ 消息已成功送达至群组 37660928 (频道ID: 163168791)。"],
+[76.5,"[2026-04-15 21:46:31] [INFO] [job_workflow] 队伍状态: 0人已加入, 0人正在加入, 0人待命。"],
+[78,"[2026-04-15 21:46:33] [INFO] [job_workflow] 队伍状态: 0人已加入, 0人正在加入, 0人待命。"],
+[79,"[2026-04-15 21:46:34] [INFO] [job_workflow] 队伍状态: 0人已加入, 0人正在加入, 0人待命。"],
+[81,"[2026-04-15 21:46:36] [INFO] [job_workflow] 队伍状态: 0人已加入, 0人正在加入, 0人待命。"],
+[82,"[2026-04-15 21:46:37] [INFO] [job_workflow] 队伍状态: 0人已加入, 0人正在加入, 0人待命。"],
+[84,"[2026-04-15 21:46:39] [INFO] [job_workflow] 队伍状态: 0人已加入, 1人正在加入, 0人待命。"],
+[85,"[2026-04-15 21:46:40] [INFO] [job_workflow] 队伍状态: 0人已加入, 1人正在加入, 0人待命。"],
+[87,"[2026-04-15 21:46:42] [INFO] [job_workflow] 队伍状态: 0人已加入, 1人正在加入, 0人待命。"],
+[88,"[2026-04-15 21:46:43] [INFO] [job_workflow] 队伍状态: 0人已加入, 1人正在加入, 0人待命。"],
+[90,"[2026-04-15 21:46:45] [INFO] [job_workflow] 队伍状态: 0人已加入, 1人正在加入, 0人待命。"],
+[91,"[2026-04-15 21:46:46] [INFO] [job_workflow] 队伍状态: 0人已加入, 1人正在加入, 0人待命。"],
+[93,"[2026-04-15 21:46:48] [INFO] [job_workflow] 队伍状态: 1人已加入, 1人正在加入, 0人待命。"],
+[94,"[2026-04-15 21:46:49] [INFO] [job_workflow] 队伍状态: 1人已加入, 1人正在加入, 0人待命。"],
+[96,"[2026-04-15 21:46:51] [INFO] [job_workflow] 队伍状态: 1人已加入, 1人正在加入, 0人待命。"],
+[97,"[2026-04-15 21:46:52] [INFO] [job_workflow] 队伍状态: 1人已加入, 1人正在加入, 0人待命。"],
+[99,"[2026-04-15 21:46:54] [INFO] [job_workflow] 队伍状态: 1人已加入, 1人正在加入, 0人待命。"],
+[100,"[2026-04-15 21:46:55] [INFO] [job_workflow] 队伍状态: 1人已加入, 1人正在加入, 0人待命。"],
+[102,"[2026-04-15 21:46:57] [INFO] [job_workflow] 队伍状态: 1人已加入, 1人正在加入, 0人待命。"],
+[104,"[2026-04-15 21:46:59] [INFO] [job_workflow] 队伍状态: 1人已加入, 1人正在加入, 0人待命。"],
+[105,"[2026-04-15 21:47:00] [INFO] [job_workflow] 队伍状态: 2人已加入, 0人正在加入, 0人待命。"],
+[105.1,"[2026-04-15 21:47:00] [INFO] [job_workflow] 动作: 正在启动差事..."],
+[105.2,"[2026-04-15 21:47:00] [INFO] [steambot_utils] 正在向 Steam 群组 (37660928) 的频道 (163168791) 发送消息..."],
+[105.3,'[2026-04-15 21:47:00] [INFO] [steambot_utils] 消息内容: \u201c即将发车，请在听到\u201c咚\u201d的一声后卡单\u201d'],
+[105.5,"原始请求体 (解析后): {"],
+[105.6,"    groupId: '37660928',"],
+[105.7,"    channelId: '163168791',"],
+[105.8,"    message: '即将发车，请在听到\u201c咚\u201d的一声后卡单'"],
+[105.9,"}"],
+[106.0,"💬 收到API请求: 向群组[37660928]的频道[163168791]发送消息..."],
+[106.1,"✅ 已提交向群组 37660928 (频道ID: 163168791) 发送消息的请求。"],
+[106.2,"✅ 发送任务已成功提交。"],
+[106.3,"[2026-04-15 21:47:01] [INFO] [steambot_utils] 已提交消息发送任务。"],
+[106.4,"✅ 消息已成功送达至群组 37660928 (频道ID: 163168791)。"],
+[109,"[2026-04-15 21:47:04] [INFO] [job_workflow] 启动差事成功。"],
+[109.1,"[2026-04-15 21:47:04] [INFO] [job_workflow] 成功发车，本班车载有 2 人。"],
+[109.2,"[2026-04-15 21:47:04] [INFO] [job_workflow] 差事启动成功！等待面板消失..."],
+[136,"[2026-04-15 21:47:31] [INFO] [job_workflow] 面板已消失。5 秒后将卡单。"],
+[141,"[2026-04-15 21:47:36] [INFO] [_base_workflow] 动作: 正在卡单人战局..."],
+[141.1,"[2026-04-15 21:47:36] [INFO] [windows_utils] 正在挂起进程 20044，持续 13 秒。"],
+[154,"[2026-04-15 21:47:49] [INFO] [windows_utils] 已恢复进程 20044。"],
+[154.1,"[2026-04-15 21:47:49] [INFO] [_base_workflow] 卡单人战局完成。"],
+[154.2,"[2026-04-15 21:47:49] [INFO] [job_workflow] 差事加载完成！等待人物落地..."],
+[177,"[2026-04-15 21:48:12] [INFO] [job_workflow] 人物已落地。10 秒后将卡单。"],
+[187,"[2026-04-15 21:48:22] [INFO] [_base_workflow] 动作: 正在卡单人战局..."],
+[187.1,"[2026-04-15 21:48:22] [INFO] [windows_utils] 正在挂起进程 20044，持续 13 秒。"],
+[200,"[2026-04-15 21:48:35] [INFO] [windows_utils] 已恢复进程 20044。"],
+[200.1,"[2026-04-15 21:48:35] [INFO] [_base_workflow] 卡单人战局完成。"],
+[200.2,"[2026-04-15 21:48:35] [INFO] [job_workflow] 动作: 正在检查当前差事状态，等待 10 秒以响应其他玩家离开。"],
+[210,"[2026-04-15 21:48:45] [INFO] [job_workflow] 当前在差事中，状态正常。"],
+[210.1,"[2026-04-15 21:48:45] [INFO] [gta_automator] 本轮德瑞 Bot 任务成功完成。"]
+];
+
+const TOTAL=35,FACTOR=TOTAL/210;
+const META=/^(\[\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\] \[INFO\] \[[^\]]+\])(.*)/;
+const log=document.getElementById("tLog"),prog=document.getElementById("prog");
+let t0=null,idx=0;
+
+function esc(s){return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+
+function mkLine(txt){
+  const d=document.createElement("div");
+  const m=META.exec(txt);
+  if(m){
+    d.innerHTML='<span style="color:#79c0ff">'+esc(m[1])+'</span><span style="color:#e6edf3">'+esc(m[2])+'</span>';
+  }else{
+    d.style.color="#c9d1d9";
+    d.textContent=txt;
+  }
+  return d;
+}
+
+function frame(now){
+  if(!t0)t0=now;
+  const e=(now-t0)/1000;
+  while(idx<LINES.length&&LINES[idx][0]*FACTOR<=e){
+    log.appendChild(mkLine(LINES[idx][1]));
+    idx++;
+  }
+  prog.style.width=Math.min(100,(e/TOTAL)*100)+"%";
+  if(idx<LINES.length){requestAnimationFrame(frame);}
+  else{
+    prog.style.width="100%";
+    setTimeout(()=>{log.innerHTML="";prog.style.width="0%";t0=null;idx=0;requestAnimationFrame(frame);},3500);
+  }
+}
+requestAnimationFrame(frame);
+</script>
