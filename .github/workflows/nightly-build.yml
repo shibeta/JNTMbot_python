@@ -27,14 +27,14 @@ jobs:
       # 是否应当跳过检查
       - name: Handle force build option
         id: check_force_build
-        if: ${{ github.event.inputs.force_build }}
+        if: ${{ github.event.inputs.force_build == 'true' }}
         run: |
           echo "检测到手动强制构建请求，将直接开始构建。"
           echo "should_build=true" >> "$GITHUB_OUTPUT"
 
       - name: Checkout repository
         # 仅在非强制构建时才检出仓库
-        if: ${{ ! github.event.inputs.force_build }}
+        if: ${{ github.event.inputs.force_build != 'true' }}
         uses: actions/checkout@v6
         with:
           # 获取所有历史记录，以便找到 tag
@@ -43,7 +43,7 @@ jobs:
       - name: Check for changes since last nightly tag
         id: check
         # 仅在非强制构建时才检查提交
-        if: ${{ ! github.event.inputs.force_build }}
+        if: ${{ github.event.inputs.force_build != 'true' }}
         shell: bash
         run: |
           # 从远程获取所有 tag
