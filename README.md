@@ -44,7 +44,7 @@
 
 ## 🎬 运行演示
 
-<img width="1280" height="720" alt="运行演示.webp" src="https://github.com/user-attachments/assets/e5057cdd-4292-4bf2-b434-ade6c95238e8" />
+<img width="1280" height="720" alt="运行演示.gif" src="https://github.com/user-attachments/assets/806770e6-dd41-4f54-ba80-b880977f85d4" />
 
 ## 🔧 环境要求
 
