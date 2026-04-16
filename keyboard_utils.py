@@ -318,11 +318,15 @@ class HotKeyManager:
             # 更新上次执行时间
             last_triggered = current_time
 
-            try:
-                callback()
-            except Exception as e:
-                # 防止回调报错导致监听线程崩溃
-                logger.error(f"执行热键 {hotkey} 绑定的函数时发生错误: {e}", exc_info=e)
+            # 将回调函数放在独立线程中执行，不阻塞监听器线程
+            def run_callback():
+                try:
+                    callback()
+                except Exception as e:
+                    # 防止回调报错导致监听线程崩溃
+                    logger.error(f"执行热键 {hotkey} 绑定的函数时发生错误: {e}", exc_info=e)
+
+            threading.Thread(target=run_callback, daemon=True, name=f"HotkeyTask_{hotkey}").start()
 
         # 添加包装函数到热键映射
         with self._listener_lock:
