@@ -56,7 +56,11 @@ def is_paused() -> bool:
 def sleep_stoppable(duration: float) -> bool:
     """
     仅带退出信号检查的休眠。
+
     不需要响应暂停的线程或原子方法应当使用该方法替换 `time.sleep()` 。
+
+    该计时器精度低于 `time.sleep()` 。
+
     :return: True 表示正常休眠结束，False 表示被退出信号打断
     """
     # event.wait() 返回 True 表示事件被 set 了 (即收到了退出信号)
@@ -68,7 +72,11 @@ def sleep_smart(duration: float) -> bool:
     """
     同时带有退出信号检查和暂停检查的 sleep 方法。
     如果在休眠中发生暂停，计时器不走，直到恢复后继续补足剩余的休眠时间。
+
     需要响应暂停的线程应当使用该方法替换 `time.sleep()` 。
+
+    该计时器精度低于 `sleep_stoppable()` 。
+
     :return: True 表示正常休眠结束，False 表示被退出信号打断
     """
     remaining = duration
