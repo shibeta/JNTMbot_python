@@ -277,6 +277,12 @@ class HotKeyManager:
                 self._watchdog_thread.join(timeout=1.0)
                 self._watchdog_thread = None
 
+    def update_listener(self):
+        """供批量操作后手动刷新监听器使用"""
+        with self._listener_lock:
+            if self.enable:
+                self.__update_listener_unsafe()
+
     def add_hotkey(
         self,
         hotkey: str,
