@@ -212,7 +212,7 @@ class HotKeyManager:
 
     def _watchdog_loop(self):
         """看门狗循环：定期刷新监听器以应对远程桌面导致的 Hook 丢失"""
-        logger.debug("看门狗线程已启动。")
+        logger.debug(f"看门狗线程已启动, 每 {self._watchdog_refresh_interval} 秒重启一次热键监听器。")
         # 同时等待看门狗停止信号和程序停止信号
         while not self._watchdog_stop_event.is_set() and not is_exiting():
             # 休眠目标时间，避免循环漂移
@@ -246,7 +246,7 @@ class HotKeyManager:
                     logger.debug("执行例行热键监听器刷新，防止 Hook 失效。")
                     self._update_listener_unsafe()
 
-        logger.debug("看门狗线程已退出。")
+        logger.debug("看门狗线程已停止。")
 
     def _start_watchdog(self):
         """启动热键监听器看门狗"""
@@ -259,7 +259,7 @@ class HotKeyManager:
                 self._watchdog_thread.start()
 
     def _stop_watchdog(self):
-        """关闭热键监听器看门狗"""
+        """停止热键监听器看门狗"""
         self._watchdog_stop_event.set()
 
         with self._watchdog_lock:
@@ -274,7 +274,7 @@ class HotKeyManager:
         with self._listener_lock:
             self.enable = True
             self._update_listener_unsafe()
-            logger.debug("全局热键监听器已启动。")
+            logger.debug("热键监听器已启动。")
 
         self._start_watchdog()
 
@@ -285,6 +285,7 @@ class HotKeyManager:
         with self._listener_lock:
             self.enable = False
             self._update_listener_unsafe()
+            logger.debug("热键监听器已停止。")
 
         self._stop_watchdog()
 
