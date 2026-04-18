@@ -90,7 +90,7 @@ class HealthMonitor(threading.Thread):
 
             self._perform_check()
 
-    def __send_notification(self, title: str, message: str):
+    def _send_notification(self, title: str, message: str):
         """
         推送消息到配置的推送方法。
 
@@ -161,7 +161,7 @@ class HealthMonitor(threading.Thread):
         if not unhealthy_detail_list:
             unhealthy_detail_list.append("未提供错误原因")
 
-        self.__send_notification("状态变为不健康", "\n".join(unhealthy_detail_list))
+        self._send_notification("状态变为不健康", "\n".join(unhealthy_detail_list))
         # 按需退出
         if self.exit_on_unhealthy:
             logger.error("检测到 Bot 不健康且已配置为自动退出，程序将关闭。")
@@ -171,7 +171,7 @@ class HealthMonitor(threading.Thread):
         """从不健康恢复为健康时触发。"""
         # 发送通知
         logger.info("Bot 状态已恢复健康。")
-        self.__send_notification("状态恢复健康", "现在一切正常。")
+        self._send_notification("状态恢复健康", "现在一切正常。")
 
     def _on_unhealthy(self, reason: Optional[str] = None):
         """检查结果为不健康时触发。"""

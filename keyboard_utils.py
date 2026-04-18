@@ -184,7 +184,7 @@ class HotKeyManager:
         if self.enable:
             self._start_watchdog()
 
-    def __update_listener_unsafe(self) -> None:
+    def _update_listener_unsafe(self) -> None:
         """
         根据热键字典和使能状态，更新监听器:
         - 如果启用且有热键，则运行监听器。
@@ -197,7 +197,7 @@ class HotKeyManager:
             try:
                 self._listener.stop()
                 # 如果当前线程不是 _listener 自身，等待线程停止
-                # 不检查会导致将 `__update_listener_unsafe()` 绑定到热键时，发生死锁
+                # 不检查会导致将 `_update_listener_unsafe()` 绑定到热键时，发生死锁
                 if threading.current_thread() is not self._listener:
                     self._listener.join(2.0)
             except Exception as e:
@@ -244,7 +244,7 @@ class HotKeyManager:
             with self._listener_lock:
                 if self.enable and self._hotkeys:
                     logger.debug("执行例行热键监听器刷新，防止 Hook 失效。")
-                    self.__update_listener_unsafe()
+                    self._update_listener_unsafe()
 
         logger.debug("看门狗线程已退出。")
 
@@ -273,7 +273,7 @@ class HotKeyManager:
         """
         with self._listener_lock:
             self.enable = True
-            self.__update_listener_unsafe()
+            self._update_listener_unsafe()
             logger.debug("全局热键监听器已启动。")
 
         self._start_watchdog()
@@ -284,7 +284,7 @@ class HotKeyManager:
         """
         with self._listener_lock:
             self.enable = False
-            self.__update_listener_unsafe()
+            self._update_listener_unsafe()
 
         self._stop_watchdog()
 
@@ -292,7 +292,7 @@ class HotKeyManager:
         """供批量操作后手动刷新监听器使用"""
         with self._listener_lock:
             if self.enable:
-                self.__update_listener_unsafe()
+                self._update_listener_unsafe()
 
     def add_hotkey(
         self,
@@ -344,7 +344,7 @@ class HotKeyManager:
             self._hotkeys[hotkey] = callback_warpper
             # 如果启动了监听器，并且请求立即刷新，更新监听器
             if self.enable and auto_update:
-                self.__update_listener_unsafe()
+                self._update_listener_unsafe()
 
     def remove_hotkey(self, hotkey: str):
         """
@@ -357,7 +357,7 @@ class HotKeyManager:
                 self._hotkeys.pop(hotkey)
             # 如果启用，更新监听器
             if self.enable:
-                self.__update_listener_unsafe()
+                self._update_listener_unsafe()
 
     def clear_hotkey(self):
         """
@@ -367,4 +367,4 @@ class HotKeyManager:
             self._hotkeys = {}
             # 如果启用，更新监听器
             if self.enable:
-                self.__update_listener_unsafe()
+                self._update_listener_unsafe()
