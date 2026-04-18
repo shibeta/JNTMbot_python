@@ -180,6 +180,9 @@ class HotKeyManager:
         self._watchdog_stop_event: threading.Event = threading.Event()
         # 看门狗对象的锁
         self._watchdog_lock: threading.Lock = threading.Lock()
+        # 如果启用热键则启动看门狗
+        if self.enable:
+            self._start_watchdog()
 
     def __update_listener_unsafe(self) -> None:
         """
@@ -245,6 +248,25 @@ class HotKeyManager:
 
         logger.debug("看门狗线程已退出。")
 
+    def _start_watchdog(self):
+        """启动热键监听器看门狗"""
+        with self._watchdog_lock:
+            if self._watchdog_thread is None or not self._watchdog_thread.is_alive():
+                self._watchdog_stop_event.clear()
+                self._watchdog_thread = threading.Thread(
+                    target=self._watchdog_loop, name="HotKey_Watchdog", daemon=True
+                )
+                self._watchdog_thread.start()
+
+    def _stop_watchdog(self):
+        """关闭热键监听器看门狗"""
+        self._watchdog_stop_event.set()
+
+        with self._watchdog_lock:
+            if self._watchdog_thread is not None and self._watchdog_thread.is_alive():
+                self._watchdog_thread.join(timeout=1.0)
+                self._watchdog_thread = None
+
     def start(self):
         """
         启动热键管理器服务和看门狗，开始监听管理的热键。
@@ -254,28 +276,17 @@ class HotKeyManager:
             self.__update_listener_unsafe()
             logger.debug("全局热键监听器已启动。")
 
-        with self._watchdog_lock:
-            if self._watchdog_thread is None or not self._watchdog_thread.is_alive():
-                self._watchdog_stop_event.clear()
-                self._watchdog_thread = threading.Thread(
-                    target=self._watchdog_loop, name="HotKey_Watchdog", daemon=True
-                )
-                self._watchdog_thread.start()
+        self._start_watchdog()
 
     def stop(self):
         """
         停止热键管理器服务和看门狗，并释放所有资源。
         """
-        self._watchdog_stop_event.set()
-
         with self._listener_lock:
             self.enable = False
             self.__update_listener_unsafe()
 
-        with self._watchdog_lock:
-            if self._watchdog_thread is not None and self._watchdog_thread.is_alive():
-                self._watchdog_thread.join(timeout=1.0)
-                self._watchdog_thread = None
+        self._stop_watchdog()
 
     def update_listener(self):
         """供批量操作后手动刷新监听器使用"""
