@@ -7,7 +7,7 @@
 <!-- 简要说明这个 PR 修改了什么、实现了什么功能或修复了什么 Bug。 -->
 
 
-### 🔗 关联的 Issue
+### 🔗 关联的 Issue / Related Issues
 <!-- 如果此 PR 修复了某个特定的 Issue，请使用关键字自动关闭它。例如：`Fixes #123` 或 `Resolves #456` -->
 Fixes #
 
