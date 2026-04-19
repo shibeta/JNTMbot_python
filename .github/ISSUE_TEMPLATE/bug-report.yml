@@ -56,7 +56,7 @@ body:
           required: true
         - label: 没有安装 **PlayStation Accessories**
           required: true
-        - label: 没有开启 **[自动 HDR](https://go.microsoft.com/fwlink/?linkid=2159313)** 或者单独为 GTA5 关闭了自动 HDR
+        - label: 没有开启 **自动 HDR** 或者单独为 GTA5 关闭了自动 HDR
           required: true
         - label: 图像设置中已关闭 **失焦时暂停游戏**
           required: true
