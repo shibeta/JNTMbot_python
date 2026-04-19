@@ -13,34 +13,34 @@
 
 ## 目录
 
--   [🌟 主要功能](#-主要功能)
--   [🎬 运行演示](#-运行演示)
--   [🔧 环境要求](#-环境要求)
--   [🚀 安装与运行](#-安装与运行)
-    -   [方式一：运行发行版](#方式一运行发行版)
-    -   [方式二：从源码运行](#方式二从源码运行)
-    -   [命令行参数](#命令行参数)
--   [⬆️ 升级指南](#️-升级指南)
-    -   [发行版升级指南](#发行版升级指南)
-    -   [源代码升级指南](#源代码升级指南)
--   [🛠️ 使用说明](#️-使用说明)
-    -   [1. 配置文件 (`config.yaml`)](#1-配置文件-configyaml)
-    -   [2. 游戏设置](#2-游戏设置)
-    -   [3. 程序操作](#3-程序操作)
--   [🔬 项目架构](#-项目架构)
--   [🤝 贡献指南](#-贡献指南)
--   [🙏 致谢](#-致谢)
--   [📄 许可证](#-许可证)
+- [🌟 主要功能](#-主要功能)
+- [🎬 运行演示](#-运行演示)
+- [🔧 环境要求](#-环境要求)
+- [🚀 安装与运行](#-安装与运行)
+    - [方式一：运行发行版](#方式一运行发行版)
+    - [方式二：从源码运行](#方式二从源码运行)
+    - [命令行参数](#命令行参数)
+- [⬆️ 升级指南](#️-升级指南)
+    - [发行版升级指南](#发行版升级指南)
+    - [源代码升级指南](#源代码升级指南)
+- [🛠️ 使用说明](#️-使用说明)
+    - [1. 配置文件 (`config.yaml`)](#1-配置文件-configyaml)
+    - [2. 游戏设置](#2-游戏设置)
+    - [3. 程序操作](#3-程序操作)
+- [🔬 项目架构](#-项目架构)
+- [🤝 交流与反馈](#-交流与反馈)
+- [🙏 致谢](#-致谢)
+- [📄 许可证](#-许可证)
 
 ## 🌟 主要功能
 
--   **🤖 无人值守**：从启动差事到完成，全程无需人工干预，实现真正的“挂机”。
--   **🌙 后台挂机**：程序不占用键盘和鼠标，不占用窗口焦点，可以自由地使用电脑进行其他工作。
--   **💬 Steam 消息**：通过独立的 `Node.js` 后端，将 Bot 状态（如“面板已开”、“队伍已满”）实时发送到指定的 Steam 群聊频道。
--   **🛡️ 故障处理**：程序可以自动处理游戏运行时的多种故障，包括但不限于黑屏警告、恶意玩家、游戏崩溃。
--   **📡 状态推送**: 当 Bot 工作不正常时，可配置通过 PushPlus 发送微信警报并退出。
--   **🚀 开箱即用**：提供合理的默认配置 (`config.yaml`)，大部分用户无需修改即可直接启动。
--   **📄 运行日志**：在终端中记录关键操作和潜在问题，方便排查和调试。
+- **🤖 无人值守**：从启动差事到完成，全程无需人工干预，实现真正的“挂机”。
+- **🌙 后台挂机**：程序不占用键盘和鼠标，不占用窗口焦点，可以自由地使用电脑进行其他工作。
+- **💬 Steam 消息**：通过独立的 `Node.js` 后端，将 Bot 状态（如“面板已开”、“队伍已满”）实时发送到指定的 Steam 群聊频道。
+- **🛡️ 故障处理**：程序可以自动处理游戏运行时的多种故障，包括但不限于黑屏警告、恶意玩家、游戏崩溃。
+- **📡 状态推送**: 当 Bot 工作不正常时，可配置通过 PushPlus 发送微信警报并退出。
+- **🚀 开箱即用**：提供合理的默认配置 (`config.yaml`)，大部分用户无需修改即可直接启动。
+- **📄 运行日志**：在终端中记录关键操作和潜在问题，方便排查和调试。
 
 ## 🎬 运行演示
 
@@ -48,14 +48,14 @@
 
 ## 🔧 环境要求
 
--   **运行发行版**:
-    -   Windows 10 Build 18362 (即 19H1) 或更高版本
-    -   GTA5 增强版 (不支持传承版)
--   **从源码运行**:
-    -   Windows 10 Build 18362 (即 19H1) 或更高版本
-    -   GTA5 增强版 (不支持传承版)
-    -   Python >= 3.12
-    -   Node.js >= v22.0
+- **运行发行版**:
+    - Windows 10 Build 18362 (即 19H1) 或更高版本
+    - GTA5 增强版 (不支持传承版)
+- **从源码运行**:
+    - Windows 10 Build 18362 (即 19H1) 或更高版本
+    - GTA5 增强版 (不支持传承版)
+    - Python >= 3.12
+    - Node.js >= v22.0
 
 ## 🚀 安装与运行
 
@@ -182,9 +182,8 @@
     详细说明请参考 [安装与运行](#方式一运行发行版) 。
 
 4.  **迁移配置**
-
-    -   将备份的 Steam 登录令牌放入程序文件夹。
-    -   将旧配置文件中自定义过的值逐一复制到新的 `config.yaml` 中。
+    - 将备份的 Steam 登录令牌放入程序文件夹。
+    - 将旧配置文件中自定义过的值逐一复制到新的 `config.yaml` 中。
 
 ### 源代码升级指南
 
@@ -217,14 +216,13 @@
     ```
 
 5.  **迁移配置**
-
-    -   对比新旧配置文件:
+    - 对比新旧配置文件:
 
         ```powershell
         diff (cat config.yaml) (cat config_backup.yaml) | findstr "=>"
         ```
 
-    -   根据对比结果，将旧配置文件中自定义过的值逐一复制到新的 `config.yaml` 中。
+    - 根据对比结果，将旧配置文件中自定义过的值逐一复制到新的 `config.yaml` 中。
 
 ## 🛠️ 使用说明
 
@@ -232,15 +230,15 @@
 
 大部分配置项已设置为通用值，无需修改。以下是您可能需要关注或自定义的关键配置：
 
--   `steamBotHost`, `steamBotPort`, `steamBotToken`
+- `steamBotHost`, `steamBotPort`, `steamBotToken`
 
     > `Steam Bot` 后端服务的相关配置。通常无需修改，除非您有特殊的网络需求或端口已被占用。
 
--   `steamBotProxy`
+- `steamBotProxy`
 
     > `Steam Bot` 后端服务访问 Steam 的代理。默认为 `"system"`，表示使用系统代理。也可以配置为使用 HTTP 代理或 SOCKS 代理。
 
--   `steamGroupId` 和 `steamChannelId`
+- `steamGroupId` 和 `steamChannelId`
 
     > 通过 `Steam Bot` 发送消息时，将发送到 ID 为 `steamGroupId` 的 Steam 群组中 ID 为 `steamChannelId` 的频道。
     >
@@ -248,38 +246,38 @@
     >
     > > **如何获取频道 ID？** 正确配置 `steamGroupId` 后，将此项改为空字符串 (`steamChannelId: ''`)，然后启动程序并登录 Steam。程序会在控制台中打印出该群组下所有频道及其 ID。复制所需 ID 并填回此处即可。
 
--   `useAlterMessagingMethod` 和 `AlterMessagingMethodWindowTitle`
+- `useAlterMessagingMethod` 和 `AlterMessagingMethodWindowTitle`
 
     > 是否使用备用的 Steam 消息发送方式。启用后，将禁用 `Steam Bot` 服务，改为通过 `Steam Automation` 控制 Steam 聊天窗口发送消息。
     >
-    > > -   将 `useAlterMessagingMethod` 设置为 `true` 以启用。
-    > > -   启用后，必须**手动打开对应的 Steam 群组的聊天窗口，并切换至对应的频道**。
-    > > -   启用后，必须在 `AlterMessagingMethodWindowTitle` 填入对应聊天窗口的窗口标题。不需要完整的标题，只要能唯一搜索到该窗口即可。
-    > > -   该方法相比 `Steam Bot` 更稳定，但会频繁弹出 Steam 聊天窗口，推荐无人值守使用。
+    > > - 将 `useAlterMessagingMethod` 设置为 `true` 以启用。
+    > > - 启用后，必须**手动打开对应的 Steam 群组的聊天窗口，并切换至对应的频道**。
+    > > - 启用后，必须在 `AlterMessagingMethodWindowTitle` 填入对应聊天窗口的窗口标题。不需要完整的标题，只要能唯一搜索到该窗口即可。
+    > > - 该方法相比 `Steam Bot` 更稳定，但会频繁弹出 Steam 聊天窗口，推荐无人值守使用。
 
--   `enableWechatPush` 和 `pushplusToken`
+- `enableWechatPush` 和 `pushplusToken`
     > 是否启用微信推送警报。启用后，当程序运行一段时间后发生报错退出，或健康状态发生变化时，会向微信推送错误信息。
     >
-    > > -   将 `enableWechatPush` 设为 `true` 以启用。
-    > > -   启用后，必须在 `pushplusToken` 中填入您从 [PushPlus 官网](https://www.pushplus.plus) 获取的 Token。
-    > > -   必须将 `enableHealthCheck` 设为 `true`，才会在健康状态发生变化时推送。
+    > > - 将 `enableWechatPush` 设为 `true` 以启用。
+    > > - 启用后，必须在 `pushplusToken` 中填入您从 [PushPlus 官网](https://www.pushplus.plus) 获取的 Token。
+    > > - 必须将 `enableHealthCheck` 设为 `true`，才会在健康状态发生变化时推送。
 
 ### 2. 游戏设置
 
 为确保 Bot 能正常工作，请在游戏中完成以下设置：
 
--   ✅ 确保游戏版本为 **增强版** ，并且游戏内语言设置为 **简体中文** 。
--   ✅ 确保 **没有** 连接 **任何游戏手柄** 到电脑 (会和虚拟手柄冲突)。
--   ✅ 确保没有安装 **PlayStation®Accessories** (会和虚拟手柄冲突)。
--   ✅ 在 **手机** 购买 **事务所**。注意不是 **保镖事务所** 也不是 **办公室** 。
--   ✅ 在 **事务所** 购买 **个人空间** 。
--   ✅ 将 **出生点** 设置为 **事务所** 。
--   ✅ 在 **图像设置** 中关闭 **失焦时暂停游戏**。
--   ✅ 确保您的 **故事模式** 存档最后保存时为 **第一人称** 视角。
--   ✅ 已经 **完成过至少一次德瑞差事终章** (避免首次任务需要等待富兰克林电话)。
--   ✅ 确保事务所内有 **猎杀约翰尼·贡斯** 的黄色任务光圈。
--   ✴️ 可选: 降低游戏分辨率和最大帧率，以节省性能开销。
--   ✴️ 可选: 在 Steam 游戏设置中关闭 Steam 游戏内叠加，以避免遮挡游戏窗口。
+- ✅ 确保游戏版本为 **增强版** ，并且游戏内语言设置为 **简体中文** 。
+- ✅ 确保 **没有** 连接 **任何游戏手柄** 到电脑 (会和虚拟手柄冲突)。
+- ✅ 确保没有安装 **PlayStation®Accessories** (会和虚拟手柄冲突)。
+- ✅ 在 **手机** 购买 **事务所**。注意不是 **保镖事务所** 也不是 **办公室** 。
+- ✅ 在 **事务所** 购买 **个人空间** 。
+- ✅ 将 **出生点** 设置为 **事务所** 。
+- ✅ 在 **图像设置** 中关闭 **失焦时暂停游戏**。
+- ✅ 确保您的 **故事模式** 存档最后保存时为 **第一人称** 视角。
+- ✅ 已经 **完成过至少一次德瑞差事终章** (避免首次任务需要等待富兰克林电话)。
+- ✅ 确保事务所内有 **猎杀约翰尼·贡斯** 的黄色任务光圈。
+- ✴️ 可选: 降低游戏分辨率和最大帧率，以节省性能开销。
+- ✴️ 可选: 在 Steam 游戏设置中关闭 Steam 游戏内叠加，以避免遮挡游戏窗口。
 
 最后，请关闭游戏，或者进入 **在线模式的仅邀请战局** 。
 
@@ -287,51 +285,63 @@
 
 程序启动后，支持使用键盘热键来控制程序：
 
--   暂停/恢复 Bot: **`Ctrl + F9`**
--   退出程序: **`Ctrl + F10`**
+- 暂停/恢复 Bot: **`Ctrl + F9`**
+- 退出程序: **`Ctrl + F10`**
 
 ## 🔬 项目架构
 
--   `main.py`: 主函数，负责整合所有模块并执行核心逻辑。
--   `config.py`: 读取和初始化 `config.yaml` 中的配置。
--   `RapidOCR_api.py`: 调用`RapidOCR-json.exe`进行 OCR 的类。[来源](https://github.com/hiroi-sora/RapidOCR-json/raw/refs/heads/main/api/python/RapidOCR_api.py)
--   `ocr_utils.py`: 对 RapidOCR_api 的封装，用于游戏画面识别。
--   `windows_utils.py`: 封装了 Windows 中对进程和窗口的一些操作。
--   `keyboard_utils.py`: 模拟键盘输入，监听键盘快捷键。
--   `gamepad_utils.py`: 模拟手柄输入。
--   `push_utils.py`: 消息平台推送，目前实现了基于 PushPlus 的微信推送。
--   `health_check.py`: 监控 Bot 是否正常工作。
--   `app_lifecycle.py`: 通过信号量实现外部控制程序暂停和停止的工具类。
--   `logger.py`: 简单的日志格式化工具。
--   `gta_automator`: 封装了所有对 GTA5 的自动化操作。
--   `steambot_utils.py`: 用于管理 `Steam Bot` 后端并调用其 API 发送消息。
--   `steamgui_automation.py`: 使用 UIAutomation 通过窗口发送 Steam 群组消息。
--   `steam_bot`: 基于 `node-steam-user` 的 Node.js 后端，将 Steam 功能封装为 HTTP API。
+- `main.py`: 主函数，负责整合所有模块并执行核心逻辑。
+- `config.py`: 读取和初始化 `config.yaml` 中的配置。
+- `RapidOCR_api.py`: 调用`RapidOCR-json.exe`进行 OCR 的类。[来源](https://github.com/hiroi-sora/RapidOCR-json/raw/refs/heads/main/api/python/RapidOCR_api.py)
+- `ocr_utils.py`: 对 RapidOCR_api 的封装，用于游戏画面识别。
+- `windows_utils.py`: 封装了 Windows 中对进程和窗口的一些操作。
+- `keyboard_utils.py`: 模拟键盘输入，监听键盘快捷键。
+- `gamepad_utils.py`: 模拟手柄输入。
+- `push_utils.py`: 消息平台推送，目前实现了基于 PushPlus 的微信推送。
+- `health_check.py`: 监控 Bot 是否正常工作。
+- `app_lifecycle.py`: 通过信号量实现外部控制程序暂停和停止的工具类。
+- `logger.py`: 简单的日志格式化工具。
+- `gta_automator`: 封装了所有对 GTA5 的自动化操作。
+- `steambot_utils.py`: 用于管理 `Steam Bot` 后端并调用其 API 发送消息。
+- `steamgui_automation.py`: 使用 UIAutomation 通过窗口发送 Steam 群组消息。
+- `steam_bot`: 基于 `node-steam-user` 的 Node.js 后端，将 Steam 功能封装为 HTTP API。
 
-## 🤝 贡献指南
+## 🤝 交流与反馈
 
-我们欢迎任何形式的贡献！无论是提出问题、报告 Bug 还是提交代码。
+无论你是遇到使用问题、发现了 Bug，还是想要改进代码，我们都非常欢迎你的参与！为了让问题得到更高效的处理，请按照以下指引进行：
 
-1.  **发现 Bug?** 请通过 [GitHub Issues](https://github.com/shibeta/JNTMbot_python/issues) 提交一个详细的报告。
-2.  **想要新功能?** 欢迎在 Issues 中提出您的建议。
-3.  **想要贡献代码?**
-    -   Fork 本仓库。
-    -   创建一个新的分支 (`git checkout -b feature/AmazingFeature`)。
-    -   提交您的更改 (`git commit -m 'Add some AmazingFeature'`)。
-    -   将分支推送到您的 Fork (`git push origin feature/AmazingFeature`)。
-    -   开启一个 Pull Request。
+### 1. 遇到使用问题或环境配置疑问？ (Questions & Help)
 
-> **提示**: 为了规范化提交流程，后续会考虑加入 Issue 和 Pull Request 模板，以及通过 GitHub Actions 实现的 CI/CD 流程。
+请**不要**在 Issue 中提问！如果你在安装运行、环境配置、游戏设置方面遇到了困难，或者想与其他玩家交流挂机经验，请前往 [GitHub Discussions](https://github.com/shibeta/JNTMbot_python/discussions) 讨论区发帖。
+
+### 2. 发现 Bug 或想要新功能？ (Bug Reports & Feature Requests)
+
+如果你确认发现了一个程序的逻辑 Bug，或有优化自动化流程的好点子，请通过 [GitHub Issues](https://github.com/shibeta/JNTMbot_python/issues/new/choose) 提交。
+
+- 提交前，请务必确认你已按照 README 完成了所有的**游戏前置设置**。
+- 请根据页面引导，选择对应的模板（Bug 反馈 / 新功能建议）并完整填写。对于 Bug 反馈，提供详尽的控制台日志或发生问题时的【全屏游戏截图】将极大加快排查速度。
+
+### 3. 想要贡献代码？ (Pull Requests)
+
+非常感谢你愿意为项目添砖加瓦！提交代码请遵循以下流程：
+
+1.  Fork 本仓库。
+2.  创建一个新的分支 (`git checkout -b feature/AmazingFeature` 或 `bugfix/FixSomething`)。
+3.  提交你的更改 (`git commit -m 'feat: Add some AmazingFeature'`)。
+4.  将分支推送到你的 Fork 仓库 (`git push origin feature/AmazingFeature`)。
+5.  开启一个 Pull Request。
+
+> **⚠️ 重要提示**：由于本项目是基于图像识别和按键模拟的游戏自动化脚本，任何代码变更都有可能导致意外的流程中断。提交 PR 时，请务必根据 PR 模板的自检清单进行确认，并确保你已经在**本地真实游戏环境**中完整跑通过测试流程。
 
 ## 🙏 致谢
 
--   **[傲弗拉](https://space.bilibili.com/26604157)**: 提供了德瑞 Bot 的原理。
--   **[JiNiTaiMeiBot](https://github.com/davidLi17/JiNiTaiMeiBot)**: 本项目的原型。本项目使用 Python 重新实现了 JiNiTaiMeiBot 的大部分功能。
--   **[QuellGTA](https://github.com/mageangela/QuellGTA)**: 本项目使用的差传 Bot 来源; 清理 pc_setting.bin 算法的实现。
--   **[RapidOCR](https://github.com/RapidAI/RapidOCR)**: 强大而快速的 OCR 识别框架。
--   **[RapidOCR-json](https://github.com/hiroi-sora/RapidOCR-json)**: RapidOCR 的一个 C++ 实现，比打包后的 Python 程序快。
--   **[node-steam-user](https://github.com/DoctorMcKay/node-steam-user)**: Steam 客户端功能的 Node.js 实现。
--   **[Python-UIAutomation-for-Windows](https://github.com/yinkaisheng/Python-UIAutomation-for-Windows)**: Microsoft UI Automation 的 Python 3 封装。
+- **[傲弗拉](https://space.bilibili.com/26604157)**: 提供了德瑞 Bot 的原理。
+- **[JiNiTaiMeiBot](https://github.com/davidLi17/JiNiTaiMeiBot)**: 本项目的原型。本项目使用 Python 重新实现了 JiNiTaiMeiBot 的大部分功能。
+- **[QuellGTA](https://github.com/mageangela/QuellGTA)**: 本项目使用的差传 Bot 来源; 清理 pc_setting.bin 算法的实现。
+- **[RapidOCR](https://github.com/RapidAI/RapidOCR)**: 强大而快速的 OCR 识别框架。
+- **[RapidOCR-json](https://github.com/hiroi-sora/RapidOCR-json)**: RapidOCR 的一个 C++ 实现，比打包后的 Python 程序快。
+- **[node-steam-user](https://github.com/DoctorMcKay/node-steam-user)**: Steam 客户端功能的 Node.js 实现。
+- **[Python-UIAutomation-for-Windows](https://github.com/yinkaisheng/Python-UIAutomation-for-Windows)**: Microsoft UI Automation 的 Python 3 封装。
 
 ## 📄 许可证
 

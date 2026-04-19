@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "🙋 常见问题求助 & 交流 (Questions & Help)"
+    url: https://github.com/shibeta/JNTMbot_python/discussions/categories/%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98%E6%B1%82%E5%8A%A9-%E4%BA%A4%E6%B5%81
+    about: "请不要在 Issue 中提问！如果你遇到了环境配置、游戏设置、运行失败等疑问，请前往 Discussions 提问。"
+  - name: "💬 闲聊与经验分享"
+    url: https://github.com/shibeta/JNTMbot_python/discussions/categories/%E9%97%B2%E8%81%8A%E4%B8%8E%E7%BB%8F%E9%AA%8C%E5%88%86%E4%BA%AB
+    about: "分享挂机经验、防封策略或与其他玩家交流。"

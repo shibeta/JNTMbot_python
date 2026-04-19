@@ -1,0 +1,43 @@
+name: "💡 新功能建议 / Feature Request"
+description: 为 JNTMbot_python 提出新的功能、自动化优化或机制改进
+title: "[Feature] <请替换为简短的新功能描述>"
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢您为 `JNTMbot_python` 贡献想法！在填写前，请先在现有的 Issue 中搜索是否已经有类似的需求。
+
+  - type: textarea
+    id: pain-point
+    attributes:
+      label: 痛点描述 (The Problem)
+      description: 请描述你在日常挂机/使用中遇到的问题或痛点。这个功能是为了解决什么麻烦？
+      placeholder: 目前程序在遇到 XXX 情况时会直接退出，导致我半夜挂机总是中途断掉...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: 期望的解决方案 (Proposed Solution)
+      description: 请清晰地描述你希望程序增加什么功能或做出怎样的改变。
+      placeholder: 增加一个配置项 `restartOnXXX`，允许在遇到该情况时自动接管并重启差事...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 替代方案 (Alternatives Considered)
+      description: 你目前是用什么方法绕过或解决这个问题的？
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: 补充说明 (Additional Context)
+      description: 任何有助于理解此需求的截图、参考链接或逻辑伪代码。
+    validations:
+      required: false
