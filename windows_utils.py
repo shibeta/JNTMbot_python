@@ -381,10 +381,10 @@ def find_window(window_class: Optional[str] = None, window_title: Optional[str] 
     :param window_class: 窗口类名，可选，与 window_title 至少要提供一个
     :param window_title: 窗口标题，可选，与 window_class 至少要提供一个
     :return: 如果找到符合条件的窗口，返回 (hwnd, pid) 元组，否则返回 None
+    :raises ``ValueError``: 传入的窗口类名和窗口标题均为空值
     """
-    if window_class is None and window_title is None:
-        logger.warning("查找窗口必须要提供窗口类名或窗口标题。")
-        return None
+    if not window_class and not window_title:
+        raise ValueError("查找窗口必须要提供窗口类名或窗口标题。")
 
     # 使用 FindWindow 直接查找窗口
     hwnd = win32gui.FindWindow(window_class, window_title)
