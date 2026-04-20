@@ -69,9 +69,9 @@ class HealthMonitor(threading.Thread):
         if self.enable_steam_chat_timeout:
             logger.info(f"不健康阈值：连续 {self.steam_chat_timeout_threshold} 分钟未发送消息。")
         if self.exit_on_unhealthy:
-            logger.warning("不健康时自动退出程序功能：已启用。")
+            logger.warning("不健康时自动退出程序：已启用。")
         else:
-            logger.info("不健康时自动退出程序功能：已禁用。")
+            logger.info("不健康时自动退出程序：已禁用。")
 
         self.start()
 
