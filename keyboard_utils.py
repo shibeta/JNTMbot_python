@@ -250,22 +250,24 @@ class HotKeyManager:
 
     def _start_watchdog(self):
         """启动热键监听器看门狗"""
-        with self._watchdog_lock:
-            if self._watchdog_thread is None or not self._watchdog_thread.is_alive():
-                self._watchdog_stop_event.clear()
-                self._watchdog_thread = threading.Thread(
-                    target=self._watchdog_loop, name="HotKey_Watchdog", daemon=True
-                )
-                self._watchdog_thread.start()
+        # with self._watchdog_lock:
+        #     if self._watchdog_thread is None or not self._watchdog_thread.is_alive():
+        #         self._watchdog_stop_event.clear()
+        #         self._watchdog_thread = threading.Thread(
+        #             target=self._watchdog_loop, name="HotKey_Watchdog", daemon=True
+        #         )
+        #         self._watchdog_thread.start()
+        pass
 
     def _stop_watchdog(self):
         """停止热键监听器看门狗"""
-        self._watchdog_stop_event.set()
+        # self._watchdog_stop_event.set()
 
-        with self._watchdog_lock:
-            if self._watchdog_thread is not None and self._watchdog_thread.is_alive():
-                self._watchdog_thread.join(timeout=1.0)
-                self._watchdog_thread = None
+        # with self._watchdog_lock:
+        #     if self._watchdog_thread is not None and self._watchdog_thread.is_alive():
+        #         self._watchdog_thread.join(timeout=1.0)
+        #         self._watchdog_thread = None
+        pass
 
     def start(self):
         """
