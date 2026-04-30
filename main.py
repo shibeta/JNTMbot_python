@@ -40,7 +40,7 @@ def interrupt_decorator(main_func: Callable[P, R]) -> Callable[P, R]:
         try:
             return main_func(*args, **kwargs)
         except KeyboardInterrupt:
-            trigger_exit("程序被用户中断")
+            trigger_exit("用户手动中断")
             sys.exit(0)
         except Exception as e:
             logger.critical(f"未捕获的异常: {e}", exc_info=e)
