@@ -167,7 +167,7 @@ class HotKeyManager:
 
         # 热键字符串到回调函数的映射
         self._hotkeys: Dict[str, Callable[[], Any]] = {}
-        # GlobalHotKeys 对象，支持部分 threading.Thread 的特性
+        # GlobalHotKeys 对象: 热键监听器后端封装
         self._listener: GlobalHotKeys | None = None
         # GlobalHotKeys 对象的锁
         self._listener_lock: threading.Lock = threading.Lock()
@@ -205,7 +205,7 @@ class HotKeyManager:
 
         # 如果启用且有热键，则启动新的监听器
         if self.enable and self._hotkeys:
-            self._listener = GlobalHotKeys(self._hotkeys, daemon=True)
+            self._listener = GlobalHotKeys(hotkeys=self._hotkeys)
             self._listener.start()
         else:
             self._listener = None
