@@ -219,7 +219,9 @@ class OCREngine:
             # 通过等待信号量实现的挂起基本不耗费性能
             _exit_event.wait()
             try:
-                # 不申请锁，因为这样更快
+                # 不申请锁以尽快杀死子进程，无需等待现有 OCR 动作完成
+                # 代价是现有的 OCR 动作会因为 Popen 被关闭而抛出异常
+                # stop() 方法本身调用 Popen.stop() 方法，不需要申请锁
                 self.api.stop()
             finally:
                 pass
