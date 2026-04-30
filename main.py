@@ -1,4 +1,5 @@
 from app_lifecycle import init_lifecycle_manager, toggle_pause, trigger_exit
+
 # 生命周期管理器需要在所有 atexit 方法被注册前初始化
 init_lifecycle_manager()
 
@@ -46,6 +47,7 @@ def interrupt_decorator(main_func: Callable[P, R]) -> Callable[P, R]:
             sys.exit(1)
 
     return wrapper
+
 
 # --- 主程序执行 ---
 @interrupt_decorator
