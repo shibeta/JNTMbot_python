@@ -22,14 +22,15 @@ _cleanup_done_event = threading.Event()
 # ----------------- 信号控制 API -----------------
 
 
-def trigger_exit(reason=""):
+def trigger_exit(reason:str):
     """触发全局退出信号，并打断主线程"""
     if _exit_event.is_set():
         return
     if reason:
         logger.warning(f"准备退出程序，原因: {reason} 。")
     _exit_event.set()
-    _thread.interrupt_main()
+    if threading.current_thread() is not threading.main_thread():
+        _thread.interrupt_main()
 
 
 def toggle_pause():

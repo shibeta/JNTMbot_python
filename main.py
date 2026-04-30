@@ -87,7 +87,7 @@ def main():
     hotkey.add_hotkey("<ctrl>+<f9>", toggle_pause)
 
     # 退出热键
-    hotkey.add_hotkey("<ctrl>+<f10>", trigger_exit)
+    hotkey.add_hotkey("<ctrl>+<f10>", partial(trigger_exit, "触发退出热键"))
     logger.warning("热键初始化成功，使用 CTRL+F9 暂停和恢复 Bot，使用 CTRL+F10 退出程序。")
 
     # 初始化 OCR
@@ -195,7 +195,7 @@ def main():
                     f"恶意值过高({e.actual_state.value})",
                     "程序将退出以保护账号安全。\n提示: 如果启用了自动降低恶意值，程序会在问题玩家时自动挂机降低恶意值。",
                 )
-                return  # 退出程序
+                return 2  # 退出程序
 
             # 其他异常则根据配置文件决定是重试还是退出
             else:
@@ -209,7 +209,7 @@ def main():
                         push_integration.push_message(
                             "超过连续失败阈值，程序退出", f"最后一次错误: {e} \n{traceback.format_exc()}"
                         )
-                    return  # 退出程序
+                    return 1  # 退出程序
 
                 logger.info(f"未超过连续失败阈值，将在 {wait_before_restart_loop} 秒后重启循环...")
                 time.sleep(wait_before_restart_loop)
