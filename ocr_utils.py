@@ -245,12 +245,11 @@ class OCREngine:
         """
         关闭 RapidOCR-json.exe 子进程。
         """
-        if hasattr(self, "api") and self.api:
-            try:
-                with rapidocr_lock:
-                    self.api.stop()
-            except Exception as e:
-                logger.error(f"关闭 OCR 引擎时出错: {e}")
+        try:
+            with rapidocr_lock:
+                self.api.stop()
+        except Exception as e:
+            logger.error(f"关闭 OCR 引擎时出错: {e}")
 
     def _get_physical_rect(self, hwnd: int, include_title_bar: bool) -> tuple[int, int, int, int]:
         """

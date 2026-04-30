@@ -87,8 +87,7 @@ def restart_program():
 
     # 触发 atexit 清理
     try:
-        if hasattr(atexit, "_run_exitfuncs"):
-            atexit._run_exitfuncs()
+        atexit._run_exitfuncs()
     except Exception as e:
         logger.error(f"执行 atexit 退出回调时发生异常: {e}")
 

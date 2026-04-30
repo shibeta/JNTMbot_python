@@ -601,17 +601,17 @@ class SteamBot:
         """关闭所有组件。"""
         logger.info("正在关闭 Steam Bot...")
         # 停止 Supervisor，避免再次重启进程
-        if hasattr(self, "supervisor") and self.supervisor is not None:
+        if  self.supervisor is not None:
             self.supervisor.stop()
 
         # 通过API请求登出
         try:
-            if hasattr(self, "api_client") and self.api_client is not None:
+            if self.api_client is not None:
                 self.api_client.logout()
         except Exception:
             pass  # 失败也无所谓
 
         # 停止子进程
-        if hasattr(self, "process_manager") and self.process_manager is not None:
+        if self.process_manager is not None:
             self.process_manager.stop()
         logger.info("Steam Bot 已成功关闭。")
