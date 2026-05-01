@@ -45,7 +45,7 @@ body:
   - type: checkboxes
     id: pre-checks
     attributes:
-      label: 游戏设置前置检查 (Pre-checks)
+      label: 环境设置前置检查 (Pre-checks)
       description: 为排查问题，请确认你已按照 README 完成以下必要设置。**请务必全部检查并勾选！**
       options:
         - label: 游戏版本为 **增强版**
@@ -57,6 +57,10 @@ body:
         - label: 没有安装 **PlayStation Accessories**
           required: true
         - label: 没有开启 **自动 HDR** 或者单独为 GTA5 关闭了自动 HDR
+          required: true
+        - label: 没有开启 **Steam 弹出通知**
+          required: true
+        - label: 没有开启 **Steam FPS监视器** 或者单独为 GTA5 关闭了 **Steam 叠加界面**
           required: true
         - label: 图像设置中已关闭 **失焦时暂停游戏**
           required: true
