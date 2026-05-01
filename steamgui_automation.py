@@ -113,7 +113,6 @@ class SteamAutomation:
     def verify_steam_chat_window(self):
         """
         检查是否打开了正确的 Steam 聊天窗口。
-        如果一切正常函数将返回 None，否则会抛出异常。
 
         :raises ``Exception``: 未找到窗口标题正确的 Steam 聊天窗口，或者无法定位文本输入框
         """
@@ -138,7 +137,11 @@ class SteamAutomation:
             raise
 
     def find_steam_chat_window(self):
-        """查找 Steam 聊天窗口"""
+        """
+        查找 Steam 聊天窗口。
+        
+        :raises ``Exception``: 未找到窗口标题正确的 Steam 聊天窗口
+        """
         chat_window = auto.WindowControl(searchDepth=1, SubName=self.window_title_substring)
 
         if not chat_window.Exists():
@@ -149,7 +152,9 @@ class SteamAutomation:
     @staticmethod
     def find_input_field(steam_chat_window: auto.WindowControl):
         """
-        查找 Steam 聊天窗口中的文本输入框
+        查找 Steam 聊天窗口中的文本输入框。
+
+        :raises ``Exception``: 未找到辅助定位文本输入框用的表情包按钮, 或未找到文本输入框
         """
         # 处理窗口以准备查找元素
         steam_chat_window.SwitchToThisWindow()  # 从最小化恢复，否则查找元素会出错
@@ -176,7 +181,7 @@ class SteamAutomation:
         查找 Steam 聊天窗口，并发送消息。发送消息会占用剪贴板。
 
         :param str message: 发送的文本消息内容
-        :raises Exception: 查找窗口或发送消息失败
+        :raises Exception: 查找窗口, 查找文本输入框，激活文本输入框或发送消息时出错
         """
         if not message:
             return
