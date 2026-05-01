@@ -194,7 +194,7 @@ class SteamAutomation:
             # 将消息写入剪贴板
             auto.SetClipboardText(message)
             # 粘贴内容
-            input_field.SendKeys("{Ctrl}v")
+            input_field.SendKeys("{Ctrl}v", charMode=True)
         except Exception as e:
             logger.error(f"使用剪贴板粘贴消息失败: {e}。回退到模拟输入。")
             input_field.SendKeys(text=message, charMode=True)
@@ -204,9 +204,9 @@ class SteamAutomation:
 
         # 按下回车以发送消息
         self._set_keyboard_focus(input_field)
-        input_field.SendKeys("{Enter}")
+        input_field.SendKeys("{Enter}", charMode=True)
         # 多按一次
-        input_field.SendKeys("{Enter}")
+        input_field.SendKeys("{Enter}", charMode=True)
 
     def send_group_message(self, message: str):
         """
