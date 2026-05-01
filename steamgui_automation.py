@@ -188,7 +188,8 @@ class SteamAutomation:
         input_field = self.find_input_field(chat_window)
 
         # 激活文本输入框
-        self._set_keyboard_focus(input_field)
+        if not self._set_keyboard_focus(input_field):
+            raise Exception("激活文本输入框失败")
 
         try:
             # 将消息写入剪贴板
