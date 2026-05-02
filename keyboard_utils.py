@@ -38,7 +38,7 @@ class KeyboardSimulator:
         """
         模拟按下指定的按键。
 
-        :param key: 要按下的键 (pynput.Key, pynput.KeyCode 或 str)。
+        :param key: 要按下的键 (pynput.Key, pynput.KeyCode 或长度为 1 的 str)。
         """
         with self._lock:
             self._controller.press(key)
@@ -308,7 +308,7 @@ class HotKeyManager:
         添加或更新一个全局热键。
         需要重启热键监听器，才能使用新的热键。
 
-        :param hotkey: 热键字符串, 比如 "<ctrl>+<alt>+h"
+        :param hotkey: 热键字符串, 比如 "``<ctrl>+<alt>+h``"
         :param callback: 绑定至热键的无参回调函数, 有参的调用请通过 partial 包装
         :param debounce: (可选) 防抖时间(秒)
         :param auto_update: (可选) 是否立即重启监听器。如果需要连续添加多个热键，建议设为 False，最后手动刷新。
