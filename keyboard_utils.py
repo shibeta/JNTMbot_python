@@ -172,18 +172,6 @@ class HotKeyManager:
         # GlobalHotKeys 对象的锁
         self._listener_lock: threading.Lock = threading.Lock()
 
-        # 看门狗对象: 用于定时重启全局热键
-        self._watchdog_thread: threading.Thread | None = None
-        # 重启全局热键的间隔 (秒)
-        self._watchdog_refresh_interval: float = refresh_interval
-        # 看门狗停止信号
-        self._watchdog_stop_event: threading.Event = threading.Event()
-        # 看门狗对象的锁
-        self._watchdog_lock: threading.Lock = threading.Lock()
-        # 如果启用热键则启动看门狗
-        if self.enable:
-            self._start_watchdog()
-
     def _update_listener_unsafe(self) -> None:
         """
         根据热键字典和使能状态，更新监听器:
@@ -210,65 +198,6 @@ class HotKeyManager:
         else:
             self._listener = None
 
-    def _watchdog_loop(self):
-        """看门狗循环：定期刷新监听器以应对远程桌面导致的 Hook 丢失"""
-        logger.debug(f"看门狗线程已启动, 每 {self._watchdog_refresh_interval} 秒重启一次热键监听器。")
-        # 同时等待看门狗停止信号和程序停止信号
-        while not self._watchdog_stop_event.is_set() and not is_exiting():
-            # 休眠目标时间，避免循环漂移
-            target_wakeup_time = time.monotonic() + self._watchdog_refresh_interval
-            # 休眠是否被打断
-            is_interrupted = False
-
-            while time.monotonic() < target_wakeup_time:
-                # 检查看门狗自身的停止信号
-                if self._watchdog_stop_event.is_set():
-                    is_interrupted = True
-                    break
-
-                # 每次休眠 1 秒
-                remaining = target_wakeup_time - time.monotonic()
-                sleep_duration = min(remaining, 1.0)
-
-                if sleep_duration > 0:
-                    # sleep 本身就会等待程序停止信号，是无延迟的
-                    if not sleep(sleep_duration):
-                        is_interrupted = True
-                        break
-
-            # 如果休眠被打断，说明接收到了停止信号，结束线程
-            if is_interrupted:
-                break
-
-            # 如果未被打断则执行热键监听器刷新
-            with self._listener_lock:
-                if self.enable and self._hotkeys:
-                    logger.debug("执行例行热键监听器刷新，防止 Hook 失效。")
-                    self._update_listener_unsafe()
-
-        logger.debug("看门狗线程已停止。")
-
-    def _start_watchdog(self):
-        """启动热键监听器看门狗"""
-        # with self._watchdog_lock:
-        #     if self._watchdog_thread is None or not self._watchdog_thread.is_alive():
-        #         self._watchdog_stop_event.clear()
-        #         self._watchdog_thread = threading.Thread(
-        #             target=self._watchdog_loop, name="HotKey_Watchdog", daemon=True
-        #         )
-        #         self._watchdog_thread.start()
-        pass
-
-    def _stop_watchdog(self):
-        """停止热键监听器看门狗"""
-        # self._watchdog_stop_event.set()
-
-        # with self._watchdog_lock:
-        #     if self._watchdog_thread is not None and self._watchdog_thread.is_alive():
-        #         self._watchdog_thread.join(timeout=1.0)
-        #         self._watchdog_thread = None
-        pass
-
     def start(self):
         """
         启动热键管理器服务和看门狗，开始监听管理的热键。
@@ -278,8 +207,6 @@ class HotKeyManager:
             self._update_listener_unsafe()
             logger.debug("热键监听器已启动。")
 
-        self._start_watchdog()
-
     def stop(self):
         """
         停止热键管理器服务和看门狗，并释放所有资源。
@@ -288,8 +215,6 @@ class HotKeyManager:
             self.enable = False
             self._update_listener_unsafe()
             logger.debug("热键监听器已停止。")
-
-        self._stop_watchdog()
 
     def update_listener(self):
         """供批量操作后手动刷新监听器使用"""
