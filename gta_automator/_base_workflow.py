@@ -121,6 +121,29 @@ class _BaseWorkflow:
         logger.info("已确认警告页面。")
         return True
 
+    def exit_job_panel(self):
+        """
+        从差事准备面板退出到自由模式，如果不在差事准备面板中则不做任何事。
+
+        :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        """
+        logger.info("动作: 正在退出差事面板...")
+        # 处理警告屏幕
+        self.handle_warning_page()
+
+        # 从差事准备面板退出
+        ocr_result = self.screen.ocr_game_window(0, 0, 1, 1)
+        if self.screen.is_on_second_job_setup_page(ocr_result):
+            logger.debug("检测到在差事面板第二页，正在退出...")
+            self.action.exit_job_panel_from_second_page()
+        elif self.screen.is_on_first_job_setup_page(ocr_result):
+            logger.debug("检测到在差事面板第一页，正在退出...")
+            self.action.exit_job_panel_from_first_page()
+        else:
+            logger.debug("未检测到差事面板的任何一页，不做任何事。")
+
+        logger.info("已退出差事面板。")
+
     def wait_for_state(
         self, check_function, timeout: float, check_interval: float = 1.0, game_has_started: bool = True
     ) -> bool:
