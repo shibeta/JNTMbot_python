@@ -17,6 +17,7 @@ class LifecycleWorkflow(_BaseWorkflow):
     def is_game_ready(self) -> bool:
         """
         检查游戏是否已启动并进入在线模式。
+        该方法可以自动处理警告页面，暂停菜单，差事面板。
 
         :return: 如果游戏已启动并进入在线模式则返回 True，否则返回 False
         """
@@ -30,6 +31,12 @@ class LifecycleWorkflow(_BaseWorkflow):
         try:
             # 处理警告页面
             self.handle_warning_page()
+            # 检查是否在在线模式
+            if self.check_if_in_onlinemode():
+                return True
+            # 检查是否在差事面板(并退出)
+            self.exit_job_panel()
+            # 检查是否在在线模式
             return self.check_if_in_onlinemode()
         except UnexpectedGameState:
             return False
@@ -408,7 +415,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         :return: 没有发现在线服务政策页面时返回 False，发现并确认在线服务政策页面时返回 True
         :raises ``OperationTimeout(OperationTimeoutContext.DOWNLOAD_POLICY)``: 下载在线服务政策超时
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
-        :raises ``UnexpectedGameState(expected=GameState.ONLINE_SERVICE_POLICY_PAGE, actual=GameState.UNKNOWN)``: 
+        :raises ``UnexpectedGameState(expected=GameState.ONLINE_SERVICE_POLICY_PAGE, actual=GameState.UNKNOWN)``:
             无法确定当前页面，页面结构与方法定义的两条政策页面不一致
         """
         # 不在在线服务政策页面，直接返回
