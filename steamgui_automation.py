@@ -21,6 +21,9 @@ class SteamAutomation:
         self.window_title_substring = window_title_substring
         self.last_send_monotonic_time = time.monotonic()  # 上次向 Steam 发送消息的相对时间
         self.last_send_system_time = time.time()  # 上次向 Steam 发送消息的系统时间，仅作参考
+        self.last_send_button_control: auto.ButtonControl | None = (
+            None  # 缓存上一次查找到的发送按钮控件，节省搜索时间
+        )
 
         self.verify_steam_chat_window()
 
@@ -139,7 +142,7 @@ class SteamAutomation:
     def find_steam_chat_window(self):
         """
         查找 Steam 聊天窗口。
-        
+
         :raises ``Exception``: 未找到窗口标题正确的 Steam 聊天窗口
         """
         chat_window = auto.WindowControl(searchDepth=1, SubName=self.window_title_substring)
@@ -149,23 +152,45 @@ class SteamAutomation:
 
         return chat_window
 
-    @staticmethod
-    def find_input_field(steam_chat_window: auto.WindowControl):
+    def find_input_field(self, steam_chat_window: auto.WindowControl):
         """
         查找 Steam 聊天窗口中的文本输入框。
+        该方法会缓存发送按钮控件用于下一次查找。
 
-        :raises ``Exception``: 未找到辅助定位文本输入框用的表情包按钮, 或未找到文本输入框
+        :raises ``Exception``: 未找到辅助定位文本输入框用的发送按钮, 或未找到文本输入框
         """
         # 处理窗口以准备查找元素
         steam_chat_window.SwitchToThisWindow()  # 从最小化恢复，否则查找元素会出错
         sleep(0.5)  # 等待窗口绘制
 
         # 文本输入框没有特征，基于发送按钮辅助定位文本输入框
-        # 文本输入框 <- 发送包按钮
-        send_button = steam_chat_window.ButtonControl(Name="发送")
-        if send_button is None or not send_button.Exists():
-            raise Exception("未找到辅助定位文本输入框用的表情包按钮")
+        # 从缓存中读出上一次查找到的发送按钮
+        if self.last_send_button_control is not None:
+            # 检查缓存是否有效
+            try:
+                cache_valid = (
+                    self.last_send_button_control.Exists() and self.last_send_button_control.Name == "发送"
+                )
+            except Exception:
+                cache_valid = False
 
+            if cache_valid:
+                logger.debug("发送按钮缓存有效，使用缓存的发送按钮。")
+                send_button = self.last_send_button_control
+            else:
+                logger.debug("发送按钮缓存无效，重新查找发送按钮。")
+                send_button = steam_chat_window.ButtonControl(Name="发送")
+        else:
+            logger.debug("发送按钮缓存为空，重新查找发送按钮。")
+            send_button = steam_chat_window.ButtonControl(Name="发送")
+
+        if send_button is None or not send_button.Exists():
+            raise Exception("未找到辅助定位文本输入框用的发送按钮")
+
+        # 缓存发送按钮控件
+        self.last_send_button_control = send_button
+
+        # 文本输入框是发送按钮的上一个控件
         input_field = send_button.GetPreviousSiblingControl()
         if input_field is None or not input_field.Exists():
             raise Exception("未找到文本输入框")
@@ -267,6 +292,9 @@ if __name__ == "__main__":
     GROUP_NAME = "德瑞"
     MESSAGE_TO_SEND = "测试: 通过 UIautomation 发送 Steam 聊天消息。"
     my_steamautomation = SteamAutomation(GROUP_NAME)
-    print("1秒钟后将向Steam聊天窗口发送测试消息。")
-    sleep(1)
-    my_steamautomation.send_group_message(MESSAGE_TO_SEND)
+    while True:
+        print("1秒钟后将向Steam聊天窗口发送测试消息。")
+        sleep(1)
+        my_steamautomation.send_group_message(MESSAGE_TO_SEND)
+        print("发送成功，休眠10秒钟后继续发送")
+        sleep(10)
