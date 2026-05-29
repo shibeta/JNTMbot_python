@@ -18,12 +18,16 @@ class SteamAutomation:
     """使用 UIautomation，自动化控制 Steam 客户端"""
 
     def __init__(self, window_title_substring: str):
+        """
+        :param window_title_substring: 目标 Steam 窗口的标题字符串的一部分，用于搜索聊天窗口
+        """
         self.window_title_substring = window_title_substring
         self.last_send_monotonic_time = time.monotonic()  # 上次向 Steam 发送消息的相对时间
         self.last_send_system_time = time.time()  # 上次向 Steam 发送消息的系统时间，仅作参考
-        self.last_send_button_control: auto.ButtonControl | None = (
-            None  # 缓存上一次查找到的发送按钮控件，节省搜索时间
-        )
+        # 缓存上一次查找到的 Steam 窗口控件，节省搜索时间
+        self.last_steam_chat_window_control: auto.WindowControl | None = None
+        # 缓存上一次查找到的发送按钮控件，节省搜索时间
+        self.last_send_button_control: auto.ButtonControl | None = None
 
         self.verify_steam_chat_window()
 
@@ -142,13 +146,37 @@ class SteamAutomation:
     def find_steam_chat_window(self):
         """
         查找 Steam 聊天窗口。
+        该方法会缓存聊天窗口控件用于下一次查找。
 
         :raises ``Exception``: 未找到窗口标题正确的 Steam 聊天窗口
         """
+        # 检查是否有缓存聊天窗口控件
+        if self.last_steam_chat_window_control is not None:
+            try:
+                if (
+                    self.last_steam_chat_window_control.Exists()
+                    and self.window_title_substring in self.last_steam_chat_window_control.Name
+                ):
+                    logger.debug("Steam 聊天窗口缓存有效，使用缓存的窗口控件。")
+                    return self.last_steam_chat_window_control
+            except Exception:
+                # Control.Exists() 有时候会报错
+                pass
+
+        # 重新搜索聊天窗口
+        if self.last_steam_chat_window_control is None:
+            logger.debug("尚未缓存 Steam 聊天窗口，将无效化缓存的发送按钮控件，并重新查找窗口控件。")
+        else:
+            logger.debug("Steam 聊天窗口缓存无效，将无效化缓存的发送按钮控件，并重新查找窗口控件。")
+
+        self.last_send_button_control = None
         chat_window = auto.WindowControl(searchDepth=1, SubName=self.window_title_substring)
 
         if not chat_window.Exists():
             raise Exception(f"未找到标题包含 '{self.window_title_substring}' 的窗口")
+
+        # 缓存 Steam 聊天窗口空间
+        self.last_steam_chat_window_control = chat_window
 
         return chat_window
 
@@ -164,31 +192,33 @@ class SteamAutomation:
         sleep(0.5)  # 等待窗口绘制
 
         # 文本输入框没有特征，基于发送按钮辅助定位文本输入框
-        # 从缓存中读出上一次查找到的发送按钮
+        # 检查是否有缓存发送按钮控件
         if self.last_send_button_control is not None:
-            # 检查缓存是否有效
             try:
                 cache_valid = (
                     self.last_send_button_control.Exists() and self.last_send_button_control.Name == "发送"
                 )
             except Exception:
+                # Control.Exists() 有时候会报错
                 cache_valid = False
-
-            if cache_valid:
-                logger.debug("发送按钮缓存有效，使用缓存的发送按钮。")
-                send_button = self.last_send_button_control
-            else:
-                logger.debug("发送按钮缓存无效，重新查找发送按钮。")
-                send_button = steam_chat_window.ButtonControl(Name="发送")
         else:
-            logger.debug("发送按钮缓存为空，重新查找发送按钮。")
+            cache_valid = False
+
+        if cache_valid and self.last_send_button_control is not None:
+            logger.debug("发送按钮缓存有效，使用缓存的发送按钮控件。")
+            send_button = self.last_send_button_control
+        else:
+            if self.last_send_button_control is None:
+                logger.debug("尚未缓存发送按钮，将重新查找发送按钮控件。")
+            else:
+                logger.debug("发送按钮缓存无效，将重新查找发送按钮控件。")
+
             send_button = steam_chat_window.ButtonControl(Name="发送")
+            if send_button is None or not send_button.Exists():
+                raise Exception("未找到辅助定位文本输入框用的发送按钮")
 
-        if send_button is None or not send_button.Exists():
-            raise Exception("未找到辅助定位文本输入框用的发送按钮")
-
-        # 缓存发送按钮控件
-        self.last_send_button_control = send_button
+            # 缓存发送按钮控件
+            self.last_send_button_control = send_button
 
         # 文本输入框是发送按钮的上一个控件
         input_field = send_button.GetPreviousSiblingControl()
