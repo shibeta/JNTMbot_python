@@ -134,8 +134,8 @@ jobs:
 
           # 复制 README 文件
           Write-Host "Copying readme file..."
-          Copy-Item -Path "./README.md" -Destination "$releaseDir/帮助文档.md" -Force
-          Copy-Item -Path "./README.md" -Destination "$releaseDir/帮助文档.txt" -Force
+          Copy-Item -Path "./docs/INSTALL.md" -Destination "$releaseDir/使用指南.md" -Force
+          Copy-Item -Path "./docs/INSTALL.md" -Destination "$releaseDir/使用指南.txt" -Force
 
       - name: Upload Python artifact
         uses: actions/upload-artifact@v6
@@ -222,6 +222,6 @@ jobs:
           body: |
             ${{ github.event.inputs.body }}
             ---
-            使用方法: [点此查看](https://github.com/shibeta/JNTMbot_python?tab=readme-ov-file#%E6%96%B9%E5%BC%8F%E4%B8%80%E8%BF%90%E8%A1%8C%E5%8F%91%E8%A1%8C%E7%89%88)
+            使用方法: [点此查看](https://github.com/shibeta/JNTMbot_python/blob/main/docs/INSTALL.md)
           draft: ${{ github.event.inputs.is_draft }}
           prerelease: false
