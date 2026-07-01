@@ -30,40 +30,45 @@
 ## 2. 下载与安装
 
 1. **下载最新发行版**
+   
    从 [GitHub Releases](https://github.com/shibeta/JNTMbot_python/releases/latest) 下载最新的 `JNTMbot_python.zip` 文件并解压到任意位置。
 
-2. **安装虚拟手柄驱动**
+3. **安装虚拟手柄驱动**
+   
    在解压或下载的资源中，找到并运行 `虚拟手柄驱动ViGEmBusSetup_x64.msi`。请接受许可协议并完成安装，这是程序控制游戏的必要组件。
 
 ## 3. 关键配置说明
 
 程序根目录下的 `config.yaml` 包含了所有的运行参数。**该文件内已有非常详尽的中文注释**，大部分配置项（如延迟、按键等）无需修改即可开箱即用。
 
-> [!NOTE]
-> 以下是您可能需要关注或自定义的关键配置：
+以下是您可能需要关注或自定义的关键配置：
 
-- **Steam Bot 网络代理 (`steamBotProxy`)**
+1. **Steam Bot 网络代理 (`steamBotProxy`)**
 
   `Steam Bot` 后端服务访问 Steam 的代理。默认为 `"system"`，表示使用系统代理。可以配置为使用 HTTP 代理或 SOCKS 代理。
 
-- **Steam Bot 消息发送配置 (`steamGroupId` / `steamChannelId`)**
+2. **Steam Bot 消息发送配置 (`steamGroupId` / `steamChannelId`)**
 
   通过 `Steam Bot` 发送消息时，将发送到 ID 为 `steamGroupId` 的 Steam 群组中 ID 为 `steamChannelId` 的频道。
+  程序默认会发送到傲弗拉的 Steam 群组 `蠢人帮` 中的 `Bot候车室` 频道。如果需要发送到其他频道，需要手动填入对应的群组ID和频道ID。
 
 > [!TIP]
-> **如何获取群组 ID？** 将此项改为空字符串 (`steamGroupId: ''`)，然后启动程序并登录 Steam。程序会在控制台中打印出您所在的所有群组及其 ID。复制所需 ID 并填入 `steamGroupId` 。
-> **如何获取频道 ID？** 正确配置 `steamGroupId` 后，将此项改为空字符串 (`steamChannelId: ''`)，然后启动程序并登录 Steam。程序会在控制台中打印出该群组下所有频道及其 ID。复制所需 ID 并填入 `steamChannelId` 。
+> **如何获取群组 ID？**  
+> 将 `steamGroupId` 改为空字符串 (`steamGroupId: ''`)，然后启动程序并登录 Steam。程序会在控制台中打印出您所在的所有群组及其 ID。复制所需 ID 并填入 `steamGroupId` 。
+> 
+> **如何获取频道 ID？**  
+> 正确配置 `steamGroupId` 后，将 `steamChannelId` 改为空字符串 (`steamChannelId: ''`)，然后启动程序并登录 Steam。程序会在控制台中打印出该群组下所有频道及其 ID。复制所需 ID 并填入 `steamChannelId` 。
 
-- **备用 Steam 消息模式 (`useAlterMessagingMethod` / `AlterMessagingMethodWindowTitle`)**
+3. **备用 Steam 消息模式 (`useAlterMessagingMethod` / `AlterMessagingMethodWindowTitle`)**
 
   如果您发现自带的 Steam 后端服务不稳定，可以将 `useAlterMessagingMethod` 设置为 `true` 以启用备用的消息模式。  
   启用后，程序将通过模拟操作真实的 Steam 聊天窗口来发送消息（需要在 `AlterMessagingMethodWindowTitle` 填入窗口标题关键字，并保持该聊天窗口处于打开状态）。
 
 > [!IMPORTANT]
-> 启用后，必须手动打开对应的 Steam 群组的聊天窗口，并切换至对应的频道。
+> 启用后，必须手动打开对应的 Steam 群组的聊天窗口，并切换至对应的频道。  
 > 该方法相比 `Steam Bot` 更稳定，但会频繁弹出 Steam 聊天窗口，推荐无人值守使用。
 
-- **微信告警推送 (`enableWechatPush` / `pushplusToken`)**
+4. **微信告警推送 (`enableWechatPush` / `pushplusToken`)**
 
   当程序运行一段时间后异常退出，或健康状态改变时，可通过 PushPlus 推送到微信。  
   需将 `enableHealthCheck` 设置为 `true` ，并前往 [PushPlus 官网](https://www.pushplus.plus) 获取 Token 并填入 `pushplusToken` 。  
@@ -72,22 +77,25 @@
 ## 4. 启动与运行
 
 1. **启动程序**
+   
    双击运行目录下的 `德瑞Bot.exe`。
 
-2. **首次登录 Steam**
+3. **首次登录 Steam**
+   
    如果是第一次启动，程序会要求您在控制台中输入 Steam 用户名、密码和安全令牌码。
 
 > [!CAUTION]
-> **安全警告**：登录成功后，程序会在工作目录生成一个名为 `steam登录缓存请勿分享此文件` 的长效登录令牌。
+> **安全警告**：登录成功后，程序会在工作目录生成一个名为 `steam登录缓存请勿分享此文件` 的长效登录令牌。  
 > **任何持有此文件的人都可以免密登录您的 Steam 账号，请绝对不要将此文件分享或发送给他人！**
 
 3. **控制热键**
+   
    程序运行后，您可以使用以下键盘快捷键控制 Bot：
    - `Ctrl + F9`：暂停 / 恢复 Bot
    - `Ctrl + F10`：强制退出程序
 
 > [!IMPORTANT]
-> 控制热键功能与R星启动器的"禁用 Windows 键"功能冲突。
+> 控制热键功能与R星启动器的"禁用 Windows 键"功能冲突。  
 > 如果使用热键，请务必将 RockStar Games Launcher 的“设置 > 禁用 Windows 键”设置为**关闭**。
 
 ## 5. 命令行参数
@@ -104,9 +112,13 @@
 当有新版本发布时，请按照以下步骤升级，以免丢失配置：
 
 1. **备份数据**
-   - 备份旧版本文件夹中的 `steam登录缓存请勿分享此文件`，这样升级后无需重新输入账号密码。
-2. **下载新版本**
-   - 下载最新的 `JNTMbot_python.zip` 并解压到一个新文件夹。
-3. **迁移配置**
-   - 将备份的 Steam 登录令牌文件放入新文件夹。
-   - **不要**直接用旧的 `config.yaml` 覆盖新文件（因为新版本可能增加了新的配置项）。请用文本编辑器打开两者，将您在旧版本中修改过的自定义值（如群组 ID、Token 等）复制到新的 `config.yaml` 中。
+   
+   备份旧版本文件夹中的 `steam登录缓存请勿分享此文件`，这样升级后无需重新输入账号密码。
+3. **下载新版本**
+   
+   下载最新的 `JNTMbot_python.zip` 并解压到一个新文件夹。
+5. **迁移配置**
+   
+   将备份的 Steam 登录令牌文件放入新文件夹。
+> [!IMPORTANT]
+> **不要**直接用旧的 `config.yaml` 覆盖新文件（因为新版本可能增加了新的配置项）。请用文本编辑器打开两者，将您在旧版本中修改过的自定义值（如群组 ID、Token 等）复制到新的 `config.yaml` 中。
