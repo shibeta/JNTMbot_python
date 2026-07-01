@@ -62,7 +62,7 @@
    ```powershell
    cp config.yaml.example config.yaml
    ```
-   如有需要，请根据 `config.yaml` 中的注释修改配置，并确保已完成 `[INSTALL.md](docs/INSTALL.md)` 中说明的**游戏环境设置**。
+   如有需要，请根据 `config.yaml` 中的注释修改配置，并确保已完成 [安装与使用指南](docs/INSTALL.md) 中说明的**游戏环境设置**。
 
 5. **启动程序**
    ```powershell
