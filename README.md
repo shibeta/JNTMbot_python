@@ -1,6 +1,6 @@
 <div style="text-align: center">
 
-# JNTMbot - GTAOL 德瑞差事自动化系统
+# JNTMbot - GTAOL 德瑞 BOT 自动化脚本
 
 [![Stable](https://img.shields.io/github/v/release/shibeta/JNTMbot_python?style=for-the-badge&logo=github&color=green&label=稳定版)](https://github.com/shibeta/JNTMbot_python/releases/latest)
 [![Nightly](https://img.shields.io/github/v/release/shibeta/JNTMbot_python?style=for-the-badge&logo=github&filter=nightly&color=purple&label=测试版)](https://github.com/shibeta/JNTMbot_python/releases/tag/nightly)
