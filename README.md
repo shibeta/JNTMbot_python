@@ -1,4 +1,4 @@
-<div style="text-align: center">
+<div align="center">
 
 # JNTMbot - GTAOL 德瑞 BOT 自动化脚本
 
