@@ -31,7 +31,7 @@
 
 1. **下载最新发行版**
    
-   从 [GitHub Releases](https://github.com/shibeta/JNTMbot_python/releases/latest) 下载最新的 `JNTMbot_python.zip` 文件并解压到任意位置。
+   从 [GitHub Releases](https://github.com/shibeta/JNTMbot_python/releases/latest) 或 [123 云盘](https://www.123865.com/s/05OiVv-bdsmH?pwd=bJEH) 下载最新的 `JNTMbot_python.zip` 文件并解压到任意位置。
 
 3. **安装虚拟手柄驱动**
    
