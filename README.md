@@ -19,7 +19,6 @@
 **3.** [**安装指南**](#安装指南)  
 **5.** [**交流与反馈**](#交流与反馈)  
 **6.** [**致谢**](#致谢)  
-**7.** [**许可证**](#许可证)
 
 ## 关于项目
 
@@ -71,7 +70,3 @@
 - **[RapidOCR-json](https://github.com/hiroi-sora/RapidOCR-json)**: RapidOCR 的一个 C++ 实现，比打包后的 Python 程序快。
 - **[node-steam-user](https://github.com/DoctorMcKay/node-steam-user)**: Steam 客户端功能的 Node.js 实现。
 - **[Python-UIAutomation-for-Windows](https://github.com/yinkaisheng/Python-UIAutomation-for-Windows)**: Microsoft UI Automation 的 Python 3 封装。
-
-## 许可证
-
-本项目采用 [MIT License](LICENSE) 开源许可证。
