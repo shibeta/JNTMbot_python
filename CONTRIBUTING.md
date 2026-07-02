@@ -43,33 +43,33 @@
 > [!TIP]
 > 安装依赖需要能够顺畅访问 pip 仓库和 npm 仓库。
 
-1. **克隆源码**
+### 1. **克隆源码**
    ```powershell
    git clone https://github.com/shibeta/JNTMbot_python.git
    cd JNTMbot_python
    ```
 
-2. **安装 Python 依赖**
+### 2. **安装 Python 依赖**
    ```powershell
    pip install -r requirements-dev.txt
    ```
 > [!IMPORTANT]
 > 安装期间可能会弹出 ViGEmBus 虚拟手柄驱动的安装程序，请接受并完成安装。
 
-3. **安装 Node.js 依赖**
+### 3. **安装 Node.js 依赖**
    ```powershell
    cd steam_bot
    npm install --omit=dev
    cd ..
    ```
 
-4. **初始化配置**
+### 4. **初始化配置**
    ```powershell
    cp config.yaml.example config.yaml
    ```
    如有需要，请根据 `config.yaml` 中的注释修改配置，并确保已完成 [安装与使用指南](docs/INSTALL.md#1-游戏与系统环境设置) 中说明的**游戏环境设置**。
 
-5. **启动程序**
+### 5. **启动程序**
    ```powershell
    python main.py
    ```
@@ -81,7 +81,7 @@
 
 想要同步上游最新代码，请执行：
 
-1. **拉取最新代码并更新依赖**
+### 1. **拉取最新代码并更新依赖**
    ```powershell
    git pull
    pip install -r requirements-dev.txt
@@ -90,7 +90,7 @@
    cd ..
    ```
 
-2. **迁移配置**
+### 2. **迁移配置**
    ```powershell
    # 备份旧配置
    mv config.yaml config_backup.yaml
