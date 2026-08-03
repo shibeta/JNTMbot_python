@@ -7,6 +7,7 @@ from urllib.request import getproxies
 import psutil
 import subprocess
 import winreg
+import win32con
 import win32gui
 import win32process
 import win32api
@@ -368,10 +369,14 @@ def get_primary_monitor_dpi_scale():
 
     :return: DPI缩放比例 (例如 1.0, 1.25, 1.5)。
     """
-    return round(
-        win32print.GetDeviceCaps(win32gui.GetDC(0), DESKTOPHORZRES) / win32api.GetSystemMetrics(0),
-        2,
-    )
+    hdc = None
+    try:
+        hdc = win32gui.GetDC(0)
+        dpi_x = win32print.GetDeviceCaps(hdc, win32con.LOGPIXELSX)
+        return dpi_x / 96.0
+    finally:
+        if hdc:
+            win32gui.ReleaseDC(0, hdc)
 
 
 def find_window(window_class: Optional[str] = None, window_title: Optional[str] = None):
