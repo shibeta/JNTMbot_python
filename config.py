@@ -267,7 +267,7 @@ class Config:
         try:
             with open(self.config_filepath, "r", encoding="utf-8") as f:
                 existing_config = self.yaml.load(f)
-                if existing_config is None:
+                if not existing_config:
                     existing_config = {}
         except FileNotFoundError:
             logger.info(f"未找到配置文件 '{self.config_filepath}'，将创建一个新的。")
