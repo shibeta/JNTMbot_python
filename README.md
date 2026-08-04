@@ -18,7 +18,7 @@
 **2.** [**环境要求**](#环境要求)  
 **3.** [**安装指南**](#安装指南)  
 **5.** [**交流与反馈**](#交流与反馈)  
-**6.** [**致谢**](#致谢)
+**6.** [**致谢**](#致谢)  
 
 ## 关于项目
 
@@ -43,7 +43,7 @@
 - 游戏版本：GTA5 增强版 (不支持传承版)
 
 > [!NOTE]
-> 以上为直接运行发行版用户的环境要求。如果您希望从源代码编译或运行，请查阅 [贡献者指南](CONTRIBUTING.md#3-从源码运行) 。
+> 以上为直接运行发行版用户的环境要求。如果您希望从源代码运行，请查阅 [贡献者指南](CONTRIBUTING.md#运行源代码) 。
 
 ## 安装指南
 
@@ -70,7 +70,3 @@
 - **[RapidOCR-json](https://github.com/hiroi-sora/RapidOCR-json)**: RapidOCR 的一个 C++ 实现，比打包后的 Python 程序快。
 - **[node-steam-user](https://github.com/DoctorMcKay/node-steam-user)**: Steam 客户端功能的 Node.js 实现。
 - **[Python-UIAutomation-for-Windows](https://github.com/yinkaisheng/Python-UIAutomation-for-Windows)**: Microsoft UI Automation 的 Python 3 封装。
-
-## 许可证
-
-本项目采用 [MIT License](LICENSE) 开源许可证。
