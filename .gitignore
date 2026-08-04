@@ -13,6 +13,7 @@ logs/
 
 ### DEBUG文件 ###
 debug_screenshot.png
+screenshots/
 
 ### Node.JS ###
 steam_bot/node_modules/
