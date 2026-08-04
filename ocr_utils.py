@@ -1,7 +1,8 @@
 import os
 import sys
+from datetime import datetime
 import threading
-from PIL.Image import fromarray
+from PIL import Image
 import io
 import win32gui
 import win32ui
@@ -52,6 +53,83 @@ class WindowCapturer:
         else:
             self.printwindow_support_hw_acceleration = False
 
+        # GDI 资源缓存
+        self._cached_hwnd = None  # 缓存的目标窗口句柄
+        self._cached_width = 0  # 缓存的目标窗口宽度
+        self._cached_height = 0  # 缓存的目标窗口高度
+        self._memdc = None  # 缓存的从显示器创建的 CompatibleDC
+        self._bmp = None  # 缓存的位图对象
+        self._old_bmp = None  # _memdc 中最初的 Object ，用于释放 _memdc
+
+    def __del__(self):
+        """确保对象销毁时释放资源"""
+        self._cleanup_gdi_cache()
+
+    def _cleanup_gdi_cache(self):
+        """清理缓存的 GDI 资源"""
+        if self._memdc is not None:
+            if self._old_bmp is not None:
+                self._memdc.SelectObject(self._old_bmp)
+            self._memdc.DeleteDC()
+            self._memdc = None
+        if self._bmp is not None:
+            win32gui.DeleteObject(self._bmp.GetHandle())
+            self._bmp = None
+        self._cached_width = 0
+        self._cached_height = 0
+        self._cached_hwnd = None
+
+    def _calculate_window_metrics(self, hwnd: int, include_title_bar: bool) -> tuple:
+        """
+        计算窗口尺寸和所需的 PrintWindow 标志
+        :return: (window_width, window_height, print_flags)
+        """
+        if include_title_bar:
+            window_rect = win32gui.GetWindowRect(hwnd)
+            print_flags = 2 if self.printwindow_support_hw_acceleration else 0
+        else:
+            window_rect = win32gui.GetClientRect(hwnd)
+            print_flags = 3 if self.printwindow_support_hw_acceleration else 1
+
+        if self.dpi_awareness:
+            window_width = window_rect[2] - window_rect[0]
+            window_height = window_rect[3] - window_rect[1]
+        else:
+            proportion = get_primary_monitor_dpi_scale()
+            window_width = int((window_rect[2] - window_rect[0]) * proportion)
+            window_height = int((window_rect[3] - window_rect[1]) * proportion)
+
+        if window_width <= 0 or window_height <= 0:
+            raise Exception("窗口物理尺寸无效，无法截图。")
+
+        return window_width, window_height, print_flags
+
+    def _initialize_gdi_cache(self, hwnd: int, width: int, height: int):
+        """
+        重建 GDI 资源缓存
+        """
+        hwindc = None
+        srcdc = None
+
+        try:
+            hwindc = win32gui.GetWindowDC(hwnd)
+            srcdc = win32ui.CreateDCFromHandle(hwindc)
+            self._memdc = srcdc.CreateCompatibleDC()
+            self._bmp = win32ui.CreateBitmap()
+            self._bmp.CreateCompatibleBitmap(srcdc, width, height)
+            self._old_bmp = self._memdc.SelectObject(self._bmp)
+
+        finally:
+            if srcdc is not None:
+                srcdc.DeleteDC()
+            if hwindc is not None:
+                win32gui.ReleaseDC(hwnd, hwindc)
+
+        # 更新缓存标志
+        self._cached_hwnd = hwnd
+        self._cached_width = width
+        self._cached_height = height
+
     def capture_window(self, hwnd: int, include_title_bar: bool = False):
         """
         使用 Windows User32.dll 的 PrintWindow 捕获一个窗口，返回 numpy 数组。
@@ -63,73 +141,51 @@ class WindowCapturer:
         :return: numpy 数组格式的图片
         :raises ``Exception``: 截图失败
         """
-        hwindc = None
-        srcdc = None
-        memdc = None
-        bmp = None
-        old_bmp = None
         try:
+            # 判断窗口是否有效
+            if not win32gui.IsWindow(hwnd):
+                self._cleanup_gdi_cache()
+                raise Exception(f"窗口句柄 {hwnd} 无效或已关闭。")
+
             # 将窗口取消最小化
             if restore_minimized_window(hwnd):
                 sleep(0.2)
 
-            if include_title_bar:
-                window_rect = win32gui.GetWindowRect(hwnd)
-                if self.printwindow_support_hw_acceleration:
-                    print_flags = 2  # PW_RENDERFULLCONTENT
-                else:
-                    print_flags = None  # no flags
-            else:
-                window_rect = win32gui.GetClientRect(hwnd)
-                if self.printwindow_support_hw_acceleration:
-                    print_flags = 3  # PW_CLIENTONLY | PW_RENDERFULLCONTENT
-                else:
-                    print_flags = 1  # PW_CLIENTONLY
+            # 计算窗口尺寸
+            window_width, window_height, print_flags = self._calculate_window_metrics(hwnd, include_title_bar)
 
-            if self.dpi_awareness:
-                # 启用 DPI 感知时，获取的分辨率就是实际分辨率
-                window_width = window_rect[2] - window_rect[0]
-                window_height = window_rect[3] - window_rect[1]
-            else:
-                # 未启用时，需要手动乘上缩放比
-                proportion = get_primary_monitor_dpi_scale()
-                window_width = (window_rect[2] - window_rect[0]) * proportion
-                window_height = (window_rect[3] - window_rect[1]) * proportion
+            # 目标窗口或窗口尺寸变化时，重建 GDI 资源缓存
+            if (
+                self._cached_hwnd != hwnd
+                or self._cached_width != window_width
+                or self._cached_height != window_height
+            ):
+                logger.debug("截图目标窗口发生变化，重建 GDI 资源缓存。")
+                # 清理
+                self._cleanup_gdi_cache()
+                # 重建
+                self._initialize_gdi_cache(hwnd, window_width, window_height)
 
-            if window_width <= 0 or window_height <= 0:
-                raise Exception("窗口物理尺寸无效，无法截图。")
+            # 检查位图对象和 memdc 对象
+            if self._bmp is None or self._memdc is None:
+                raise Exception("GDI 资源未正确初始化。")
 
-            hwindc = win32gui.GetWindowDC(hwnd)
-            srcdc = win32ui.CreateDCFromHandle(hwindc)
-            memdc = srcdc.CreateCompatibleDC()
-            bmp = win32ui.CreateBitmap()
-            bmp.CreateCompatibleBitmap(srcdc, window_width, window_height)
-            old_bmp = memdc.SelectObject(bmp)
-
-            if windll.user32.PrintWindow(hwnd, memdc.GetSafeHdc(), print_flags) == 0:
+            # 调用 printWindow 截取整个窗口
+            if windll.user32.PrintWindow(hwnd, self._memdc.GetSafeHdc(), print_flags) == 0:
                 raise Exception("PrintWindow API 调用失败。")
 
-            bmp_bits = bmp.GetBitmapBits(True)
-            # 从位图初始化numpy数组
-            # 将 1D 数组重塑为 4通道 图像 (RGBA)
-            screenshot_img_np = np.frombuffer(bmp_bits, dtype="uint8").reshape(
-                window_height, window_width, 4
-            )[:, :, [2, 1, 0, 3]]
+            # 从位图对象中提取位图数据 (1D)
+            bmp_bits = self._bmp.GetBitmapBits(True)
+            # 将 1D 数组重塑为 4通道 numpy数组 (BGRA)
+            bgra_array = np.frombuffer(bmp_bits, dtype=np.uint8).reshape((window_height, window_width, 4))
             # 丢弃不需要的 alpha/padding 通道，仅保留 RGB
+            rgb_array = bgra_array[:, :, 2::-1]
             # 用 np.ascontiguousarray 确保内存是连续的，避免出现 bug
-            return np.ascontiguousarray(screenshot_img_np[:, :, :3])
-        finally:
-            # 释放 GDI 资源
-            if memdc is not None:
-                if old_bmp is not None:
-                    memdc.SelectObject(old_bmp)
-                memdc.DeleteDC()
-            if bmp is not None:
-                win32gui.DeleteObject(bmp.GetHandle())
-            if srcdc is not None:
-                srcdc.DeleteDC()
-            if hwindc is not None:
-                win32gui.ReleaseDC(hwnd, hwindc)
+            return np.ascontiguousarray(rgb_array)
+
+        except Exception as e:
+            self._cleanup_gdi_cache()
+            raise e
 
     def capture_window_area(
         self, hwnd: int, left: float, top: float, width: float, height: float, include_title_bar: bool = False
@@ -177,7 +233,9 @@ class WindowCapturer:
 
         # debug: 保存截图以便排查问题
         # pil_image = Image.fromarray(cropped_image_np)
-        # pil_image.save("debug_screenshot.png")
+        # os.makedirs("screenshots", exist_ok=True)
+        # save_path = os.path.join("screenshots", f"{datetime.now().strftime("%Y-%m-%d_%H_%M_%S")}.png")
+        # pil_image.save(save_path)
 
         return cropped_image_np
 
@@ -191,13 +249,14 @@ class WindowCapturer:
         :return: 字节对象存储的 PNG 图片
         :rtype: bytes
         """
-        pil_image = fromarray(image_np)
+        pil_image = Image.fromarray(image_np)
         byte_stream = io.BytesIO()
         pil_image.save(byte_stream, format="PNG")
 
         # debug: 保存截图以便排查问题
-        # pil_image = Image.fromarray(cropped_image_np)
-        # pil_image.save("debug_screenshot.png")
+        # os.makedirs("screenshots", exist_ok=True)
+        # save_path = os.path.join("screenshots", f"{datetime.now().strftime("%Y-%m-%d_%H_%M_%S")}.png")
+        # pil_image.save(save_path)
 
         return byte_stream.getvalue()
 
@@ -225,7 +284,10 @@ class OCREngine:
                 self.api.stop()
             finally:
                 pass
-        self.emergency_killer_thread = threading.Thread(target=instant_kill_rapidocr, daemon=True, name="OcrEmergencyKiller")
+
+        self.emergency_killer_thread = threading.Thread(
+            target=instant_kill_rapidocr, daemon=True, name="OcrEmergencyKiller"
+        )
         self.emergency_killer_thread.start()
 
         # 检查 OCR 引擎可执行文件是否存在
