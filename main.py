@@ -62,7 +62,7 @@ def main():
     except ArgumentError as e:
         logger.error(f"解析命令行参数时出错: {e}", exc_info=e)
         input("\n按 Enter 键退出...")
-        return
+        return 3
 
     # 加载配置
     try:
@@ -71,7 +71,7 @@ def main():
     except Exception as e:
         logger.error(f"加载配置失败: {e}", exc_info=e)
         input("\n按 Enter 键退出...")
-        return
+        return 4
 
     # 初始化日志
     logger.info("根据配置重新加载日志模块。")
@@ -99,7 +99,7 @@ def main():
     except Exception as e:
         logger.error(f"初始化 OCR 引擎失败: {e}", exc_info=e)
         input("\n按 Enter 键退出...")
-        return
+        return 5
 
     # 初始化 Steam Bot
     if not config.useAlterMessagingMethod:
@@ -110,11 +110,11 @@ def main():
             # 配置文件中的值错误，无须打印错误堆栈。
             logger.error(f"初始化 Steam Bot 失败: {e}")
             input("\n按 Enter 键退出...")
-            return
+            return 6
         except Exception as e:
             logger.error(f"初始化 Steam Bot 失败: {e}", exc_info=e)
             input("\n按 Enter 键退出...")
-            return
+            return 6
     else:
         logger.info("正在初始化 Steam Automation ...")
         try:
@@ -122,7 +122,7 @@ def main():
         except Exception as e:
             logger.error(f"初始化 Steam Automation 失败: {e}", exc_info=e)
             input("\n按 Enter 键退出...")
-            return
+            return 7
 
     # 初始化消息推送
     try:
@@ -130,7 +130,7 @@ def main():
     except Exception as e:
         logger.error(f"初始化消息推送失败: {e}", exc_info=e)
         input("\n按 Enter 键退出...")
-        return
+        return 8
 
     # 初始化游戏控制器
     automator = GTAAutomator(
@@ -141,7 +141,7 @@ def main():
     def should_suppress_health_check():
         """
         如果 Bot 在恢复模式，跳过健康检查。
-        
+
         :return bool: 需要跳过检查时返回 True
         """
 
@@ -222,4 +222,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
