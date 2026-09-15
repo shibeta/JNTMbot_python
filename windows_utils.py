@@ -776,7 +776,7 @@ def get_system_proxy() -> Optional[str]:
         return None
 
 
-def exec_command_detached(command: list[str]):
+def exec_command_detached(command: str):
     """
     以分离模式执行一个命令行指令。
 

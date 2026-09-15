@@ -193,7 +193,7 @@ class LifecycleWorkflow(_BaseWorkflow):
             return
 
         logger.info("动作: 正在通过 Steam 启动 GTA V...")
-        exec_command_detached(["start", "", "steam://rungameid/3240220"])
+        exec_command_detached("start steam://rungameid/3240220")
 
         # 等待 GTA V 窗口出现
         self.wait_for_window_showup()
@@ -475,7 +475,7 @@ class LifecycleWorkflow(_BaseWorkflow):
             raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
 
         steam_url = f"steam://rungame/3240220/76561199074735990/-steamjvp={steam_jvp}"
-        exec_command_detached(["start", "", steam_url])
+        exec_command_detached(f"start {steam_url}")
         sleep(3)
 
         # 等待加入战局

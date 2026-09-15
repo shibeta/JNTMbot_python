@@ -60,7 +60,7 @@ def install_driver(msi_path):
         # 调用 msiexec
         # /package 表示安装
         # subprocess.run 会等待到安装完成
-        result = subprocess.run(["msiexec", "/package", msi_path], shell=True)
+        result = subprocess.run(["msiexec", "/package", msi_path], shell=False)
 
         # 检查返回值
         # 0 = 成功, 3010 = 成功但需要重启系统(通常驱动安装不需要重启系统，只需重启软件)
@@ -430,7 +430,6 @@ class GamepadSimulator:
             setup_vigembus_driver()
             # 函数不会返回
             sys.exit(1)
-            raise
 
     def _check_connected(self) -> bool:
         if not self.pad or self.pad is None:
