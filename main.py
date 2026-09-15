@@ -140,16 +140,19 @@ def main():
 
     # 初始化健康检查
     def should_suppress_health_check():
-        """如果 Bot 在恢复模式，跳过健康检查。"""
-        # 注: 早期版本中该方法还被用于跳过暂停时的检查，目前该功能已在 HealthMonitor 内部实现
+        """
+        如果 Bot 在恢复模式，跳过健康检查。
+        
+        :return bool: 需要跳过检查时返回 True
+        """
         try:
             if automator.is_in_recovery_mode():
-                return False
+                return True
         except Exception as e:
             logger.error(f"健康检查未能获取 Bot 工作模式: {e} , 将进行健康检查。")
-            return True
+            return False
 
-        return True
+        return False
 
     if config.enableHealthCheck:
         logger.warning(f"已启用健康检查。正在初始化监控模块...")
