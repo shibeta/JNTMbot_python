@@ -26,7 +26,7 @@ class HealthMonitor(threading.Thread):
         should_suppress_check_func: Optional[Callable[[], bool]] = None,
     ):
         """
-        初始化健康检查线程，并开始运行。
+        初始化健康检查线程。
 
         :param config: 配置对象
         :param get_last_steam_message_send_time: 获取上一次发送 Steam 消息的本地时间的方法
@@ -72,8 +72,6 @@ class HealthMonitor(threading.Thread):
             logger.warning("不健康时自动退出程序：已启用。")
         else:
             logger.info("不健康时自动退出程序：已禁用。")
-
-        self.start()
 
     def run(self):
         """线程的主执行逻辑。"""

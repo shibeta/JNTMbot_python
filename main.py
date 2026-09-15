@@ -165,6 +165,7 @@ def main():
             push_integration.push_message,
             should_suppress_health_check,
         )
+        monitor.start()
     else:
         logger.warning("未启用健康检查。")
 
