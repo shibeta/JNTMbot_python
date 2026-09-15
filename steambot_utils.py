@@ -379,7 +379,9 @@ class SteamBot:
 
         # 等待 Steam Bot 完成登录，无限期等待
         while self.get_login_status()["loggedIn"] != True:
-            sleep(5)
+            # 收到退出信号直接返回，停止启动
+            if not sleep(5):
+                return
         logger.info("Steam Bot 后端登录成功。")
 
         # 显示登录的用户名
