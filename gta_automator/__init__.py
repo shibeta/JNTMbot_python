@@ -233,7 +233,7 @@ class GTAAutomator:
         if bad_sport_level == "恶意玩家":
             logger.error("当前恶意等级为恶意玩家，无法降低恶意值，退出游戏。")
             # 清空挂机目标计时器
-            self._afk_target_timestamp = None
+            self._recovery_target_timestamp = None
             self.lifecycle_workflow.shutdown()
             raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.BAD_SPORT_LEVEL)
 
