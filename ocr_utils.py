@@ -1,6 +1,5 @@
 import os
 import sys
-from datetime import datetime
 import threading
 from PIL import Image
 import io
