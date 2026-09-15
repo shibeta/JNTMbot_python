@@ -92,7 +92,7 @@ if log_filename:
 
 def set_loglevel(log_level: str):
     """
-    设置日志等级。
+    设置控制台日志等级。
 
     :param log_level: 日志等级: 'DEBUG','INFO','WARNING','ERROR','CRITICAL'
     """
@@ -103,14 +103,10 @@ def set_loglevel(log_level: str):
             f"输入的日志等级无效: {log_level} 。日志等级应当为'DEBUG','INFO','WARNING','ERROR','CRITICAL'中的一个"
         )
 
-    logging_config = DEFAULT_LOGGING_CONFIG.copy()
-    logging_config["handlers"]["console"]["level"] = log_level.upper()
-
-    # 添加增量标记
-    logging_config["incremental"] = True
-
-    # 应用日志设置
-    logging.config.dictConfig(DEFAULT_LOGGING_CONFIG)
+    # 应用设置
+    for handler in logging.getLogger(__name__).handlers:
+        if handler.name == "console":
+            handler.setLevel(log_level.upper())
 
 
 def get_logger(name: str) -> logging.Logger:
