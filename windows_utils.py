@@ -14,7 +14,6 @@ import win32api
 import win32print
 import win32clipboard
 from win32con import (
-    DESKTOPHORZRES,
     SW_RESTORE,
     HWND_TOPMOST,
     HWND_NOTOPMOST,
@@ -27,7 +26,7 @@ from win32con import (
 )
 from typing import Callable, Optional, ParamSpec, TypeVar, Concatenate
 
-from app_lifecycle import sleep_smart as sleep
+from app_lifecycle import sleep_smart, sleep_stoppable
 from logger import get_logger
 
 # 用于装饰器类型注解的泛型变量
@@ -101,7 +100,7 @@ class ClipboardScope:
                     break
                 except Exception:
                     # 剪贴板可能被其他程序占用，稍作等待
-                    sleep(self.retry_interval)
+                    sleep_stoppable(self.retry_interval)
 
             if not is_opened:
                 raise Exception("无法打开剪贴板")
@@ -189,7 +188,7 @@ class ClipboardScope:
         """退出上下文：还原"""
         if self.backup_success:
             # 稍微等待一下，确保之前的粘贴操作（如 Ctrl+V）已被目标程序处理完毕
-            sleep(0.05)
+            sleep_smart(0.05)
 
             try:
                 self._restore()
@@ -462,7 +461,7 @@ def suspend_window_thread_for_duration(hwnd: int, duration_seconds: float):
         raise
 
     try:
-        sleep(duration_seconds)
+        sleep_stoppable(duration_seconds)
     finally:
         logger.info(f"正在恢复线程 {thread_id}...")
         try:
@@ -524,7 +523,7 @@ def suspend_process_for_duration(pid: int, duration_seconds: float):
         proc = psutil.Process(pid)
         logger.info(f"正在挂起进程 {pid}，持续 {duration_seconds} 秒。")
         proc.suspend()
-        sleep(duration_seconds)
+        sleep_stoppable(duration_seconds)
     except psutil.NoSuchProcess:
         raise ValueError(f"无法挂起：未找到 PID 为 {pid} 的进程")
     except Exception as e:
@@ -558,7 +557,7 @@ def resume_process(pid: int, max_retries: int = 5):
     # 检查进程是否仍处于挂起状态
     for retries in range(max_retries - 1):
         # 稍微等待一下，因为 NtResumeProcess 是异步触发的
-        sleep(0.1)
+        sleep_stoppable(0.1)
         try:
             # 注意：如果进程卡死在内核态，status 可能不准，但这是唯一的非侵入式检查手段
             current_status = proc.status()
@@ -650,7 +649,7 @@ def set_active_window(hwnd: int):
         # 如果最小化，从最小化中恢复
         if win32gui.IsIconic(hwnd):
             win32gui.ShowWindow(hwnd, SW_RESTORE)
-            sleep(0.2)  # 等待窗口恢复
+            sleep_smart(0.2)  # 等待窗口恢复
         # 如果不是活动窗口，将其激活
         if hwnd != win32gui.GetForegroundWindow():
             win32gui.SetForegroundWindow(hwnd)
@@ -695,7 +694,7 @@ def set_top_window(hwnd: int):
     try:
         # 如果最小化，从最小化中恢复
         if restore_minimized_window(hwnd):
-            sleep(0.2)  # 等待窗口恢复
+            sleep_smart(0.2)  # 等待窗口恢复
         # 将窗口置顶
         win32gui.SetWindowPos(
             hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
