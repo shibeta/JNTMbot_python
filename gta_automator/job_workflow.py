@@ -74,7 +74,7 @@ class LobbyStateTracker:
         if not is_on_panel:
             self.handle_warning_page_func()
             current_time = time.monotonic()
-            is_on_panel, joining, joined, standby = self.screen.get_job_setup_status(ocr_text)
+            is_on_panel, joining, joined, standby = self.screen.get_job_setup_status()
 
         # 如果能识别到任务面板则说明在大厅中，反之亦然
         self.in_lobby = is_on_panel
