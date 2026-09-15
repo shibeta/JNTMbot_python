@@ -225,7 +225,7 @@ class SteamBotApiClient:
             else:
                 return {"loggedIn": False, "name": ""}
 
-        except requests.HTTPError as e:
+        except SteamBotApiError as e:
             # 未登录时会返回401，这算哪门子 Restful ？
             if e.response is not None and e.response.status_code == 401:
                 return {"loggedIn": False, "name": ""}
@@ -595,7 +595,7 @@ class SteamBot:
         """
         try:
             return self.api_client.get_login_status()
-        except:
+        except SteamBotApiError:
             return {"loggedIn": False, "name": ""}
 
     def get_last_send_system_time(self):

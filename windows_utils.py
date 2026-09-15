@@ -238,7 +238,7 @@ def is_window_handler_exist(hwnd: int) -> bool:
         return False
     try:
         return bool(win32gui.IsWindow(hwnd))
-    except:
+    except Exception:
         return False
 
 
@@ -253,7 +253,7 @@ def get_window_title(hwnd: int) -> Optional[str]:
         return None
     try:
         return win32gui.GetWindowText(hwnd)
-    except:
+    except Exception:
         return None
 
 
@@ -268,7 +268,7 @@ def get_process_name(pid: int) -> Optional[str]:
         return None
     try:
         return psutil.Process(pid).name()
-    except:
+    except Exception:
         return None
 
 
@@ -457,7 +457,7 @@ def suspend_window_thread_for_duration(hwnd: int, duration_seconds: float):
     try:
         logger.info(f"正在挂起线程 {thread_id}，持续 {duration_seconds} 秒。")
         suspend_thread(thread_id)
-    except:
+    except SuspendException:
         logger.error(f"挂起线程 {thread_id} 失败，操作中止。")
         raise
 

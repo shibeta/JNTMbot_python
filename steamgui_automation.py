@@ -50,7 +50,7 @@ class SteamAutomation:
                     # 句柄无效，跳过获取键盘焦点
                     raise ValueError(f"窗口句柄 {original_window_handle} 无效")
                 original_focused_control = auto.GetFocusedControl()
-            except:
+            except Exception:
                 original_window_handle = None
                 original_focused_control = None
 
@@ -76,7 +76,7 @@ class SteamAutomation:
                     ):
                         try:
                             original_focused_control.SetFocus()
-                        except:
+                        except Exception:
                             # 某些控件（如桌面）可能无法被SetFocus
                             pass
 
