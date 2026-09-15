@@ -142,6 +142,9 @@ class HealthMonitor(threading.Thread):
 
     def _on_become_unhealthy(self, reason_list: list[str]):
         """从健康变为不健康时触发。"""
+        # 创建reason_list的副本，避免修改原列表
+        reason_list = reason_list.copy()
+
         # 处理各种错误原因
         unhealthy_detail_list = []
         if "SteamChatTimeout" in reason_list:
