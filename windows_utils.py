@@ -613,7 +613,7 @@ def kill_processes(process_names: list[str]):
 
         except subprocess.CalledProcessError as e:
             # 如果进程不存在，taskkill 会返回错误码，这通常是可以接受的
-            if "not found" in e.stderr:
+            if e.returncode == 128:
                 logger.debug(f"没有找到名为 '{proc_name}' 的正在运行的进程。")
             else:
                 logger.warning(f"无法终止进程 '{proc_name}': {e.stderr}")
