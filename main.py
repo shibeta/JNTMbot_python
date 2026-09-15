@@ -6,6 +6,7 @@ init_lifecycle_manager()
 import sys
 import time
 import os
+import subprocess
 import traceback
 from functools import wraps, partial
 from typing import Callable, ParamSpec, TypeVar
@@ -52,7 +53,7 @@ def interrupt_decorator(main_func: Callable[P, R]) -> Callable[P, R]:
 # --- 主程序执行 ---
 @interrupt_decorator
 def main():
-    os.system(f"title 鸡你太美")
+    subprocess.run("title 鸡你太美", shell=True, check=False)
     global_start_time = time.monotonic()
 
     # 初始化命令行参数
