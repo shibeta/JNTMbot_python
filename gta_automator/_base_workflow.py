@@ -268,7 +268,7 @@ class _BaseWorkflow:
             res.raise_for_status()
             response_lines = res.text.replace("\r", "").split("\n")
         except requests.RequestException as e:
-            raise NetworkError(NetworkErrorContext.FETCH_WARPBOT_INFO)
+            raise NetworkError(NetworkErrorContext.FETCH_WARPBOT_INFO) from e
 
         # 前三行是注释，删除
         raw_bot_lines = response_lines[3:]
