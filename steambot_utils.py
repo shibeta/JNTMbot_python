@@ -171,6 +171,36 @@ class SteamBotApiClient:
             # 丢弃原始的 requests/urllib3 堆栈
             raise SteamBotApiError(error_message, response) from None
 
+    @staticmethod
+    def get(*args, **kwargs):
+        """
+        GET 请求语法糖。
+        自动将后端的错误信息抛出为 SteamBotApiError 异常.
+        """
+        return SteamBotApiClient._make_request(requests.get, *args, **kwargs)
+
+    @staticmethod
+    def post(*args, **kwargs):
+        """
+        POST 请求语法糖。
+        自动将后端的错误信息抛出为 SteamBotApiError 异常.
+        """
+        return SteamBotApiClient._make_request(requests.post, *args, **kwargs)
+
+    def get_with_auth(self, *args, **kwargs):
+        """
+        需要认证的 GET 请求语法糖。
+        自动将后端的错误信息抛出为 SteamBotApiError 异常.
+        """
+        return self._make_authenticated_request(requests.get, *args, **kwargs)
+
+    def post_with_auth(self, *args, **kwargs):
+        """
+        需要认证的 POST 请求语法糖。
+        自动将后端的错误信息抛出为 SteamBotApiError 异常.
+        """
+        return self._make_authenticated_request(requests.post, *args, **kwargs)
+
     def is_healthy(self) -> bool:
         """检查后端服务的健康状况。这个方法不会抛出任何异常。"""
         try:
@@ -187,9 +217,7 @@ class SteamBotApiClient:
         :raises SteamBotApiError: 请求出错
         """
         try:
-            response = self._make_request(
-                requests.get, f"{self.base_url}/status", headers=self.headers, timeout=(5, 20)
-            )
+            response = self.get(f"{self.base_url}/status", headers=self.headers, timeout=(5, 20))
 
             # 如果是 200 OK，表示已登录
             if response.status_code == 200:
@@ -210,9 +238,7 @@ class SteamBotApiClient:
 
         :raises SteamBotApiError: 请求出错
         """
-        response = self._make_request(
-            requests.post, f"{self.base_url}/login", headers=self.headers, timeout=(5, 20)
-        )
+        response = self.post(f"{self.base_url}/login", headers=self.headers, timeout=(5, 20))
 
     def get_userinfo(self) -> dict:
         """
@@ -221,9 +247,7 @@ class SteamBotApiClient:
         :return: {"name": 用户名, "steamID": SteamID, "groups":[{"name": 群组名, "id": 群组ID},...]}
         :raises SteamBotApiError: 请求出错
         """
-        response = self._make_authenticated_request(
-            requests.get, f"{self.base_url}/userinfo", headers=self.headers, timeout=(5, 20)
-        )
+        response = self.get_with_auth(f"{self.base_url}/userinfo", headers=self.headers, timeout=(5, 20))
         return response.json()
 
     def send_group_message(self, group_id: str, channel_id: str, message: str):
@@ -238,8 +262,7 @@ class SteamBotApiClient:
             "message": message,
         }
 
-        self._make_authenticated_request(
-            requests.post,
+        self.post_with_auth(
             f"{self.base_url}/send-message",
             json=payload,
             headers=self.headers,
@@ -253,9 +276,7 @@ class SteamBotApiClient:
         :raises SteamBotApiError: 请求出错
         """
         # 超时时间为 10 秒，比其他方法短，减少退出时的等待时间
-        self._make_authenticated_request(
-            requests.post, f"{self.base_url}/logout", headers=self.headers, timeout=(5, 10)
-        )
+        self.post_with_auth(f"{self.base_url}/logout", headers=self.headers, timeout=(5, 10))
 
     def get_group_channels(self, group_id: str) -> list[dict[str, str | bool]]:
         """
@@ -267,8 +288,7 @@ class SteamBotApiClient:
         """
         payload = {"groupId": group_id}
 
-        response = self._make_authenticated_request(
-            requests.get,
+        response = self.get_with_auth(
             f"{self.base_url}/group-channels",
             params=payload,
             headers=self.headers,
@@ -603,7 +623,7 @@ class SteamBot:
         """关闭所有组件。"""
         logger.info("正在关闭 Steam Bot...")
         # 停止 Supervisor，避免再次重启进程
-        if  self.supervisor is not None:
+        if self.supervisor is not None:
             self.supervisor.stop()
 
         # 通过API请求登出
