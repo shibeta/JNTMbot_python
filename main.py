@@ -1,11 +1,10 @@
-from app_lifecycle import init_lifecycle_manager, toggle_pause, trigger_exit
+from app_lifecycle import init_lifecycle_manager, toggle_pause, trigger_exit, sleep_smart
 
 # 生命周期管理器需要在所有 atexit 方法被注册前初始化
 init_lifecycle_manager()
 
 import sys
 import time
-import os
 import subprocess
 import traceback
 from functools import wraps, partial
@@ -145,6 +144,7 @@ def main():
         
         :return bool: 需要跳过检查时返回 True
         """
+
         try:
             if automator.is_in_recovery_mode():
                 return True
@@ -218,7 +218,7 @@ def main():
                     return 1  # 退出程序
 
                 logger.info(f"未超过连续失败阈值，将在 {wait_before_restart_loop} 秒后重启循环...")
-                time.sleep(wait_before_restart_loop)
+                sleep_smart(wait_before_restart_loop)
 
 
 if __name__ == "__main__":
