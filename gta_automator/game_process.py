@@ -61,7 +61,7 @@ class GameProcess:
         """
         # 仅适用于增强版
         logger.info("正在更新 GTA V 进程信息...")
-        if hwnd and pid:
+        if hwnd is not None and pid is not None:
             logger.debug(f"使用传入的窗口句柄: {hwnd}, 进程ID: {pid} 更新进程信息。")
             self.hwnd, self.pid = hwnd, pid
         else:
