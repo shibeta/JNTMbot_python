@@ -62,7 +62,7 @@ class GameProcess:
         # 仅适用于增强版
         logger.info("正在更新 GTA V 进程信息...")
         if hwnd and pid:
-            logger.debug(f"使用传入的窗口句柄: {self.hwnd}, 进程ID: {self.pid} 更新进程信息。")
+            logger.debug(f"使用传入的窗口句柄: {hwnd}, 进程ID: {pid} 更新进程信息。")
             self.hwnd, self.pid = hwnd, pid
         else:
             info = find_window(self.GTA_WINDOW_CLASS_NAME, self.GTA_WINDOW_TITLE)
