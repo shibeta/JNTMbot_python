@@ -91,7 +91,7 @@ class _BaseWorkflow:
             if self.screen.is_on_story_pause_menu():
                 # 检查能否关闭故事模式暂停菜单，防止游戏卡死在暂停菜单
                 self.action.open_or_close_pause_menu()
-                if not self.screen.is_on_online_pause_menu():
+                if not self.screen.is_on_story_pause_menu():
                     # 能开能关，表示在故事模式中
                     return True
         else:
