@@ -68,7 +68,7 @@ class UniPush:
             url = f"https://www.pushplus.plus/send"
             data = {"token": token, "title": title, "content": msg, "template": "txt"}
             logger.info(f"使用pushplus向微信发送通知 {title}: {msg}")
-            r = requests.post(url=url, json=data)
+            r = requests.post(url=url, json=data, timeout=(5, 20))
             r.raise_for_status()
             logger.info(f"pushplus: {r.json()['msg']}")
         except requests.HTTPError as e:
