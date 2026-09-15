@@ -124,7 +124,7 @@ class OcrAPI:
             for line in res["data"]:
                 print(f"{index}-置信度：{round(line['score'], 2)}，文本：{line['text']}")
                 index+=1
-        elif res["code"] == 100:
+        elif res["code"] == 101:
             print("图片中未识别出文字。")
         else:
             print(f"图片识别失败。错误码：{res['code']}，错误信息：{res['data']}")
