@@ -15,7 +15,14 @@ class GameScreenTextPatterns:
         keywords: Union[str, List[str]],
         escape_spicial_character: bool = True,
     ) -> re.Pattern[str]:
-        """将传入的关键字编译为模式字符串"""
+        """
+        将传入的关键字编译为模式字符串。
+
+        :param keywords: 关键字，可以是单个字符串或字符串列表
+        :param escape_spicial_character: 是否转义特殊字符，默认为 True
+        :return: 编译后的正则表达式模式对象
+        :raises ValueError: 关键字无效或列表中包含非字符串元素
+        """
         if not keywords:
             raise ValueError(f"关键字 {keywords} 无效")
         if isinstance(keywords, str):
