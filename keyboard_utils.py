@@ -152,13 +152,12 @@ class HotKeyManager:
     它支持在运行时动态地添加和移除热键。
     """
 
-    def __init__(self, enable: bool = True, debounce_interval: float = 0.1, refresh_interval: float = 3600.0):
+    def __init__(self, enable: bool = True, debounce_interval: float = 0.1):
         """
         初始化 HotKeyManager 实例。
 
         :param bool enable: 是否立刻启动热键监听器。默认启用
         :param float debounce_interval: 防抖时间间隔（秒），在此时间内重复触发将被忽略。默认 0.1 秒。
-        :param float refresh_interval: 自动刷新底层Hook的间隔时间（秒）。默认 3600 秒。
         """
         # 是否启用
         self.enable: bool = enable
@@ -200,7 +199,7 @@ class HotKeyManager:
 
     def start(self):
         """
-        启动热键管理器服务和看门狗，开始监听管理的热键。
+        启动热键管理器服务，开始监听管理的热键。
         """
         with self._listener_lock:
             self.enable = True
@@ -209,7 +208,7 @@ class HotKeyManager:
 
     def stop(self):
         """
-        停止热键管理器服务和看门狗，并释放所有资源。
+        停止热键管理器服务，并释放所有资源。
         """
         with self._listener_lock:
             self.enable = False
