@@ -13,7 +13,7 @@
 
 ## 环境要求
 
-如需从源码运行本程序，您的开发环境需要满足以下要求：
+如需从源码运行本程序，开发环境需要满足以下要求：
 - Windows 10 Build 18362 (即 19H1) 或更高版本
 - Python >= 3.12
 - Node.js >= v22.0
@@ -33,6 +33,7 @@
 - `health_check.py`: 监控 Bot 是否正常工作。
 - `app_lifecycle.py`: 通过信号量实现外部控制程序暂停和停止的工具类。
 - `logger.py`: 简单的日志格式化工具。
+- `paths.py`: 集中存放程序中引用的所有外部资源路径。
 - `gta_automator`: 封装了所有对 GTA5 的自动化操作逻辑。
 - `steambot_utils.py`: 用于管理 Steam Bot 后端并调用其 API 发送消息。
 - `steamgui_automation.py`: 备用方案，使用 UIAutomation 通过窗口发送 Steam 群组消息。
