@@ -1,6 +1,8 @@
 import ctypes
 from ctypes import wintypes
 import _thread
+import os
+import sys
 import threading
 import atexit
 import time
@@ -22,7 +24,7 @@ _cleanup_done_event = threading.Event()
 # ----------------- 信号控制 API -----------------
 
 
-def trigger_exit(reason:str):
+def trigger_exit(reason: str):
     """触发全局退出信号，并打断主线程"""
     if _exit_event.is_set():
         return
@@ -49,6 +51,53 @@ def is_exiting() -> bool:
 
 def is_paused() -> bool:
     return _pause_event.is_set()
+
+
+# ----------------- 程序重启 -----------------
+
+
+def restart_program():
+    """
+    使用 os.execl() 重启应用程序。
+
+    在重启前，会清理现有的程序资源:
+    - 触发 atexit 中注册的回调
+    - 刷新 stdout 和 stderr 缓冲区
+
+    成功时该函数**不会返回**（当前进程已被新进程替换）。
+
+    :raises ``SystemExit``: 重启失败且用户确认后，以退出码 1 结束进程
+    """
+    logger.info("正在重启应用程序...")
+
+    # 触发 atexit 清理
+    try:
+        atexit._run_exitfuncs()
+    except Exception as e:
+        logger.error(f"执行 atexit 退出回调时发生异常: {e}")
+
+    # 刷新 IO 缓冲区（pythonw / 无控制台启动时，流可能已被关闭或替换）
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.flush()
+        except (AttributeError, OSError, ValueError):
+            pass
+
+    # 重启
+    executable = sys.executable
+    # 打包后 sys.argv[0] 是 exe 自身，不能再作为参数重复传一次
+    args = sys.argv[1:] if getattr(sys, "frozen", False) else sys.argv
+    try:
+        os.execl(executable, executable, *args)
+    except OSError as e:
+        logger.error(f"重启失败: {e}")
+        # stdin 可能已关闭（pythonw、服务、CI），此时 input() 会抛 EOFError，
+        # 必须吞掉它，否则会绕过下面这条 sys.exit(1)
+        try:
+            input("请手动重启程序。按 Enter 键退出...")
+        except (EOFError, OSError):
+            pass
+        sys.exit(1)
 
 
 # ----------------- 睡眠函数封装族 -----------------

@@ -12,16 +12,26 @@ from collections import defaultdict
 from functools import total_ordering
 import bisect
 
-from app_lifecycle import sleep_stoppable as sleep
+from app_lifecycle import restart_program, sleep_stoppable as sleep
 from logger import get_logger
+from paths import VIGEMBUS_DRIVER_PATH_CANDIDATES
 
 logger = get_logger(__name__)
 
-# ViGEmBus 驱动安装程序路径
-VIGEMBUS_DRIVER_PATH_LIST = [
-    "虚拟手柄驱动ViGEmBusSetup_x64.msi",  # 从发行版运行
-    "assets/虚拟手柄驱动ViGEmBusSetup_x64.msi",  # 从源码运行
-]
+
+class GamepadError(Exception):
+    """虚拟手柄相关错误的基类"""
+
+
+class GamepadInitError(GamepadError):
+    """虚拟手柄初始化失败。"""
+
+
+# ViGEmBus 驱动安装程序路径（发行版在程序根目录，源码运行在 assets 目录）
+VIGEMBUS_DRIVER_PATH_LIST = VIGEMBUS_DRIVER_PATH_CANDIDATES
+
+# 手柄底层操作失败后的额外重试次数（总尝试次数 = 本值 + 1）
+GAMEPAD_OPERATION_RETRIES = 1
 
 
 def get_vbus_driver_path():
@@ -30,19 +40,13 @@ def get_vbus_driver_path():
 
     驱动程序可能的路径定义在全局变量 VIGEMBUS_DRIVER_PATH_LIST 中
     """
-    # 获取程序运行的基础目录
-    base_dir = Path(__file__).resolve(strict=True).parent
-
     # 驱动程序可能存在的路径
-    possible_paths = [base_dir.joinpath(path) for path in VIGEMBUS_DRIVER_PATH_LIST]
-    base_dir.joinpath()
-
-    for path in possible_paths:
+    for path in VIGEMBUS_DRIVER_PATH_LIST:
         if path.is_file():
             return path
 
     logger.error("未能在以下预期位置找到驱动安装程序:")
-    for path in possible_paths:
+    for path in VIGEMBUS_DRIVER_PATH_LIST:
         logger.error(f"  - {path}")
 
     return None
@@ -53,8 +57,8 @@ def install_driver(msi_path):
     调用 msiexec 安装 MSI 文件
     """
     logger.info(f"正在启动安装程序包: {msi_path}")
-    logger.info(f'请在安装程序中勾选同意用户条款，并点击"Install"。')
-    logger.info(f'如果弹出UAC用户账户控制窗口，请选择"是"。')
+    logger.info('请在安装程序中勾选同意用户条款，并点击"Install"。')
+    logger.info('如果弹出UAC用户账户控制窗口，请选择"是"。')
 
     try:
         # 调用 msiexec
@@ -75,39 +79,17 @@ def install_driver(msi_path):
         return False
 
 
-def restart_program():
-    """
-    使用 os.execl() 重启应用程序。
-
-    在重启前，会清理现有的程序资源:
-    - 触发 atexit 中注册的回调
-    - 刷新 stdout 和 stderr 缓冲区
-    """
-    logger.info("正在重启应用程序...")
-
-    # 触发 atexit 清理
-    try:
-        atexit._run_exitfuncs()
-    except Exception as e:
-        logger.error(f"执行 atexit 退出回调时发生异常: {e}")
-
-    # 刷新 IO 缓冲区
-    sys.stdout.flush()
-    sys.stderr.flush()
-
-    # 重启
-    python = sys.executable
-    try:
-        os.execl(python, python, *sys.argv)
-    except OSError as e:
-        logger.error(f"重启失败: {e}")
-        input("请手动重启程序。按 Enter 键退出...")
-        sys.exit(1)
-
-
 def setup_vigembus_driver():
     """
-    询问用户是否安装 ViGEmBus 驱动，然后重启应用程序
+    询问用户是否安装 ViGEmBus 驱动，然后重启应用程序。
+
+    该函数永远不会正常返回：
+
+    - 安装驱动成功后调用 `restart_program()`，当前进程被替换为重启后的进程；
+    - 其余情况（用户取消、找不到安装包、安装失败、重启失败）抛
+      `GamepadInitError`，由调用方决定如何退出。
+
+    :raises ``GamepadInitError``: 未能完成驱动安装与重启
     """
     choice = input("是否启动驱动安装程序？(Y/N): ").strip().lower()
     if choice == "y":
@@ -115,45 +97,42 @@ def setup_vigembus_driver():
 
         if not driver_path:
             logger.error("未找到驱动安装文件，请重新下载最新版应用程序。")
-            input("按 Enter 键退出...")
-            sys.exit(1)
+            raise GamepadInitError("未找到 ViGEmBus 驱动安装文件")
 
         if install_driver(driver_path):
             logger.info("驱动安装成功！按 Enter 键重启程序...")
             input()
-            try:
-                restart_program()
-                # 函数不会返回
-                sys.exit(1)
-            except Exception as e:
-                logger.error(f"重启失败: {e}")
-                input("请手动重启程序。按 Enter 键退出...")
-                sys.exit(1)
+            # 成功时当前进程会被新进程替换，不会返回
+            restart_program()
+            raise GamepadInitError("重启程序失败")
         else:
             logger.error(f"驱动安装失败。您可以尝试手动运行安装包: {driver_path}")
-            input("按 Enter 键退出...")
-            sys.exit(1)
+            raise GamepadInitError("ViGEmBus 驱动安装失败")
     else:
         logger.info("您选择了取消。程序无法继续运行。")
-        logger.info(f"请手动运行程序目录下的驱动安装包，可能位于: ")
+        logger.info("请手动运行程序目录下的驱动安装包，可能位于: ")
         for path in VIGEMBUS_DRIVER_PATH_LIST:
             logger.info(f"  - {path}")
-        input("\n按 Enter 键退出...")
-        sys.exit(1)
+        raise GamepadInitError("用户取消了 ViGEmBus 驱动安装")
 
 
 # 导入 vgamepad, 处理驱动安装
 try:
     import vgamepad as vg
 
-except Exception as e:
-    if "VIGEM_ERROR_BUS_NOT_FOUND" in str(e):
-        logger.error("没有安装 ViGEmBus 驱动，或驱动未正确运行。")
-        setup_vigembus_driver()
-        # 函数不会返回
-        sys.exit(1)
-    else:
+except Exception as import_exception:
+    if "VIGEM_ERROR_BUS_NOT_FOUND" not in str(import_exception):
         raise
+
+    logger.error("没有安装 ViGEmBus 驱动，或驱动未正确运行。")
+    try:
+        setup_vigembus_driver()
+    except GamepadInitError as init_error:
+        logger.error(f"虚拟手柄初始化失败: {init_error}")
+        input("按 Enter 键退出...")
+        sys.exit(1)
+    # setup_vigembus_driver() 只会在重启失败时返回，此时已无法继续运行
+    sys.exit(1)
 
 
 class Button(enum.IntFlag):
@@ -406,15 +385,18 @@ class GamepadSimulator:
     """
     用于模拟手柄操作的类。
     在程序退出时，会自动释放所有手柄按键、扳机和摇杆，防止卡住。
+
+    :raises ``GamepadInitError``: 未能创建虚拟手柄，且驱动安装/重启流程也未能完成
+    :raises ``GamepadError``: 除初始化外的底层调用失败，且重试一次后仍然失败
     """
 
     def __init__(self):
         try:
-            # 确保程序退出时虚拟手柄上无输入
-            atexit.register(self.reset)
-
             self.pad = vg.VX360Gamepad()
             logger.debug("虚拟手柄设备已创建。")
+
+            # 确保程序退出时虚拟手柄上无输入
+            atexit.register(self.reset)
 
             # 初始化手柄状态
             self.reset()
@@ -424,25 +406,42 @@ class GamepadSimulator:
             logger.debug("初始化虚拟手柄完成。")
 
         except Exception as e:
-            logger.error(
-                f"初始化虚拟手柄失败: {e}。请确保已安装 ViGEmBus 驱动，并且没有其他程序正在使用 ViGEmBus 模拟手柄。"
-            )
-            setup_vigembus_driver()
-            # 函数不会返回
-            sys.exit(1)
+            raise GamepadError(f"初始化虚拟手柄时出错: {e}") from e
 
-    def _check_connected(self) -> bool:
-        if not self.pad or self.pad is None:
-            logger.error("没有安装虚拟手柄驱动，或没有初始化")
-            return False
-        return True
+    def _execute_with_retry(self, func: Callable[..., object], *args, **kwargs):
+        """
+        带有n次重试的函数执行封装，用于手柄操作出错时自动重试。
+
+        重试次数通过 ``GAMEPAD_OPERATION_RETRIES`` 变量定义。
+
+        :param func: 要使用n次重试执行的方法
+        :raises ``Exception``: 所有执行都失败后，最后一次执行抛出的异常
+        """
+        for attempt in range(GAMEPAD_OPERATION_RETRIES + 1):
+            try:
+                func(*args, **kwargs)
+                return
+            except Exception as e:
+                if attempt < GAMEPAD_OPERATION_RETRIES:
+                    logger.warning(f"执行 {func.__name__} 失败（第 {attempt + 1} 次尝试）: {e}，正在重试...")
+                else:
+                    raise e
+
+    def _update_pad(self):
+        """
+        把当前手柄状态推送给驱动。
+
+        :raises ``GamepadError``: 底层调用失败
+        """
+        try:
+            self._execute_with_retry(self.pad.update)
+        except Exception as e:
+            raise GamepadError(f"更新手柄状态失败: {e}") from e
 
     def reset(self):
         """
         重置手柄状态，松开全部按钮，扳机，摇杆。
         """
-        if not self._check_connected():
-            return
         try:
             self.pad.reset()
             self.pad.update()
@@ -454,28 +453,28 @@ class GamepadSimulator:
         按下一个按钮。
 
         :param button: 要按下的按钮
+        :raises ``GamepadError``: 底层调用失败
         """
-        if not self._check_connected():
-            return
         try:
-            self.pad.press_button(button)
-            self.pad.update()
+            self._execute_with_retry(self.pad.press_button, button)
         except Exception as e:
-            logger.error(f"按下按钮 {button} 时出错: {e}")
+            raise GamepadError(f"按下按钮 {button} 时出错: {e}") from e
+
+        self._update_pad()
 
     def release_button(self, button: AnyButton):
         """
         松开一个按钮。
 
         :param button: 要松开的按钮
+        :raises ``GamepadError``: 底层调用失败
         """
-        if not self._check_connected():
-            return
         try:
-            self.pad.release_button(button)
-            self.pad.update()
+            self._execute_with_retry(self.pad.press_button, button)
         except Exception as e:
-            logger.error(f"松开按钮 {button} 时出错: {e}")
+            raise GamepadError(f"松开按钮 {button} 时出错: {e}") from e
+
+        self._update_pad()
 
     def click_button(self, button: AnyButton, duration_milliseconds: int = 100):
         """
@@ -483,18 +482,20 @@ class GamepadSimulator:
 
         :param button: 要按住的按钮
         :param duration_milliseconds: 持续时间，单位为毫秒
+        :raises ``GamepadError``: 底层调用失败
         """
-        if not self._check_connected():
-            return
         try:
             self.press_button(button)
             sleep(duration_milliseconds / 1000.0)
-        except Exception as e:
-            logger.error(f"点按按钮 {button} 时出错: {e}")
         finally:
             self.release_button(button)
 
     def return_left_joystick_to_center(self):
+        """
+        将左摇杆回中。
+
+        :raises ``GamepadError``: 底层调用失败
+        """
         self.move_left_joystick(JoystickDirection.CENTER)
 
     def move_left_joystick(self, direction: tuple[float, float]):
@@ -502,14 +503,14 @@ class GamepadSimulator:
         推动左摇杆到某位置。
 
         :param direction: 左右方向和后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)
+        :raises ``GamepadError``: 底层调用失败
         """
-        if not self._check_connected():
-            return
         try:
-            self.pad.left_joystick_float(*direction)
-            self.pad.update()
+            self._execute_with_retry(self.pad.left_joystick_float, *direction)
         except Exception as e:
-            logger.error(f"移动左摇杆时出错: {e}")
+            raise GamepadError(f"移动左摇杆时出错: {e}") from e
+
+        self._update_pad()
 
     def hold_left_joystick(self, direction: tuple[float, float], duration_milliseconds: int = 100):
         """
@@ -517,15 +518,18 @@ class GamepadSimulator:
 
         :param direction: 左右方向和后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)
         :param duration_milliseconds: 持续时间，单位为毫秒
+        :raises ``GamepadError``: 底层调用失败
         """
-        if not self._check_connected():
-            return
         self.move_left_joystick(direction)
         sleep(duration_milliseconds / 1000.0)
         self.return_left_joystick_to_center()
-        self.pad.update()
 
     def return_right_joystick_to_center(self):
+        """
+        将右摇杆回中。
+
+        :raises ``GamepadError``: 底层调用失败
+        """
         self.move_right_joystick(JoystickDirection.CENTER)
 
     def move_right_joystick(self, direction: tuple[float, float]):
@@ -533,14 +537,14 @@ class GamepadSimulator:
         推动右摇杆到某位置。
 
         :param direction: 左右方向和后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)
+        :raises ``GamepadError``: 底层调用失败
         """
-        if not self._check_connected():
-            return
         try:
-            self.pad.right_joystick_float(*direction)
-            self.pad.update()
+            self._execute_with_retry(self.pad.right_joystick_float, *direction)
         except Exception as e:
-            logger.error(f"Error moving right stick: {e}")
+            raise GamepadError(f"移动右摇杆时出错: {e}") from e
+
+        self._update_pad()
 
     def hold_right_joystick(self, direction: tuple[float, float], duration_milliseconds: int = 100):
         """
@@ -548,30 +552,32 @@ class GamepadSimulator:
 
         :param direction: 左右方向和后前方向，取值范围为 -1.0 ~ 1.0. (0代表回中)
         :param duration_milliseconds: 持续时间，单位为毫秒
+        :raises ``GamepadError``: 底层调用失败
         """
-        if not self._check_connected():
-            return
         self.move_right_joystick(direction)
         sleep(duration_milliseconds / 1000.0)
         self.return_right_joystick_to_center()
-        self.pad.update()
 
     def press_left_trigger(self, pressure_float: float):
         """
         按压左扳机到指定压力值。
 
         :param pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
+        :raises ``GamepadError``: 底层调用失败
         """
-        if not self._check_connected():
-            return
         try:
-            self.pad.left_trigger_float(value_float=pressure_float)
-            self.pad.update()
+            self._execute_with_retry(self.pad.left_trigger_float, pressure_float)
         except Exception as e:
-            logger.error(f"按压左扳机时出错: {e}")
+            raise GamepadError(f"按压左扳机时出错: {e}") from e
+
+        self._update_pad()
 
     def release_left_trigger(self):
-        """完全松开左扳机。"""
+        """
+        完全松开左扳机。
+
+        :raises ``GamepadError``: 底层调用失败
+        """
         self.press_left_trigger(TriggerPressure.released)
 
     def hold_left_trigger(self, pressure_float: float, duration_milliseconds: int = 100):
@@ -580,9 +586,8 @@ class GamepadSimulator:
 
         :param pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
         :param duration_milliseconds: 持续时间，单位为毫秒。
+        :raises ``GamepadError``: 底层调用失败
         """
-        if not self._check_connected():
-            return
         self.press_left_trigger(pressure_float)
         sleep(duration_milliseconds / 1000.0)
         self.release_left_trigger()
@@ -592,17 +597,19 @@ class GamepadSimulator:
         按压右扳机到指定压力值。
 
         :param pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
+        :raises ``GamepadError``: 底层调用失败
         """
-        if not self._check_connected():
-            return
         try:
-            self.pad.right_trigger_float(value_float=pressure_float)
-            self.pad.update()
+            self._execute_with_retry(self.pad.right_joystick_float, pressure_float)
         except Exception as e:
-            logger.error(f"按压右扳机时出错: {e}")
+            raise GamepadError(f"按压右扳机时出错: {e}") from e
 
     def release_right_trigger(self):
-        """完全松开右扳机。"""
+        """
+        完全松开右扳机。
+
+        :raises ``GamepadError``: 底层调用失败
+        """
         self.press_right_trigger(TriggerPressure.released)
 
     def hold_right_trigger(self, pressure_float: float, duration_milliseconds: int = 100):
@@ -611,9 +618,8 @@ class GamepadSimulator:
 
         :param pressure_float: 压力值，取值范围为 0.0 (松开) ~ 1.0 (完全按下)。
         :param duration_milliseconds: 持续时间，单位为毫秒。
+        :raises ``GamepadError``: 底层调用失败
         """
-        if not self._check_connected():
-            return
         self.press_right_trigger(pressure_float)
         sleep(duration_milliseconds / 1000.0)
         self.release_right_trigger()
@@ -625,8 +631,6 @@ class GamepadSimulator:
         :param micro: 一个宏对象。
         :param reset_at_end: 宏播放完毕后是否松开所有键。默认松开
         """
-        if not self._check_connected():
-            return
         if not micro:
             logger.warning("宏为空，不执行任何操作。")
             return
@@ -666,8 +670,8 @@ class GamepadSimulator:
                     else:
                         logger.warning(f"未知的手柄动作: {event.action_name}")
 
-                # 5. 更新手柄状态
-                self.pad.update()
+                # 更新手柄状态
+                self._update_pad()
 
                 actual_time_ms = round((time.monotonic() - start_time_monotonic) * 1000)
                 logger.debug(f"[{actual_time_ms}ms / 目标 {timestamp_ms}ms] 执行: {', '.join(log_actions)}")
@@ -676,40 +680,42 @@ class GamepadSimulator:
             # 重置手柄
             if reset_at_end:
                 logger.debug("宏播放完毕，重置手柄状态。")
-                self.pad.reset()
-                self.pad.update()
+                self.reset()
             else:
                 logger.debug("宏播放完毕，不重置手柄状态。")
 
 
 # --- 使用示例 ---
 if __name__ == "__main__":
-    from time import sleep, monotonic
     from pprint import pprint
     from random import random, uniform
+    from time import monotonic
+    from time import sleep as blocking_sleep
+
     from vgamepad import XUSB_BUTTON
 
-    gamepad = GamepadSimulator()
-    if not gamepad.pad:
-        print("Gamepad not connected.  Exiting test.")
-        exit()
+    try:
+        gamepad = GamepadSimulator()
+    except GamepadInitError as e:
+        print(f"Gamepad not connected.  Exiting test. ({e})")
+        exit(1)
 
     print("--- 手柄测试 ---")
     print("按下 A 键...")
     gamepad.click_button(XUSB_BUTTON.XUSB_GAMEPAD_A, 500)
-    sleep(1)
+    blocking_sleep(1)
     print("按下 START 键...")
     gamepad.click_button(Button.START, 500)
-    sleep(1)
+    blocking_sleep(1)
     print("按下 BACK 键...")
     gamepad.click_button(Button.BACK, 500)
-    sleep(1)
+    blocking_sleep(1)
     print("左摇杆向前50%...")
     gamepad.move_left_joystick((0, 0.5))
-    sleep(1)
+    blocking_sleep(1)
     print("左摇杆复位...")
     gamepad.move_left_joystick(JoystickDirection.CENTER)
-    sleep(1)
+    blocking_sleep(1)
     print("右摇杆向后50%...")
     gamepad.hold_right_joystick(JoystickDirection.HALF_DOWN, 1000)
     print("左扳机下压60%...")
@@ -763,7 +769,7 @@ if __name__ == "__main__":
     print("开始拉后并随机舒婷，快去用股裂吓死你的街霸好友吧! (按 Ctrl+C 退出)")
     # 蹲后
     gamepad.move_left_joystick(JoystickDirection.FULL_LEFTDOWN)
-    sleep(5)
+    blocking_sleep(5)
     # 随机舒婷
     end_time = monotonic() + 20
     while monotonic() < end_time:
@@ -774,6 +780,6 @@ if __name__ == "__main__":
         else:
             print("舒婷。")
             gamepad.play_macro(bad_shooting_macro, False)
-        sleep(uniform(0.5, 5))
+        blocking_sleep(uniform(0.5, 5))
     else:
         print("相信对面已经被无敌龟男打爆了。")

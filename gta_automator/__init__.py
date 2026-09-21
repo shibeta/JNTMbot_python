@@ -26,6 +26,8 @@ class BotMode(Enum):
 class GTAAutomator:
     """
     用于自动化操作 GTA V 的类。
+
+    :raises ``GamepadInitError``: 初始化虚拟手柄失败（当未传入 `gamepad` 且创建失败时）
     """
 
     def __init__(
