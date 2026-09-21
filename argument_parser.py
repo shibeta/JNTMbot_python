@@ -1,6 +1,10 @@
 import argparse
 from argparse import ArgumentError
 
+# 将 ArgumentError 导出给其他文件使用
+__all__ = ["ArgumentError", "ArgumentParser"]
+
+
 class ArgumentParser:
     """
     管理和解析命令行参数的封装类。
