@@ -1,3 +1,5 @@
+# 本文件由 config.py 生成，请不要删除其中的配置项。
+# 程序启动时会自动补全缺失的配置项，并保留你已经修改过的值和注释。
 # 开启调试模式，日志输出将非常详细
 debug: false
 # Steam Bot后端的监听地址
@@ -8,6 +10,8 @@ steamBotPort: 13091
 steamBotToken: '0x4445414442454546'
 # Steam Bot使用的代理，格式为"http://127.0.0.1:8080"或"socks5h://127.0.0.1:1080"。"system"表示使用系统代理，留空则不使用代理。建议使用HTTP代理
 steamBotProxy: system
+# GTA V 增强版在 Steam 上的 App ID，用于通过 Steam 启动游戏和加入战局，一般不需要修改
+gameAppId: '3240220'
 # 要发送消息的Steam群组ID，程序启动时可以读取到
 steamGroupId: '37660928'
 # 要发送消息的Steam群组频道ID，程序启动时可以读取到
@@ -42,6 +46,12 @@ delaySuspendTimePanelDisappear: 5
 delaySuspendTimeJobStart: 10
 # 当bot变成问题玩家后是否自动挂机清除恶意值。设置为False后变成问题玩家会退出程序。
 autoReduceBadSportOnDodgyPlayer: true
+# 两次恶意值检查之间的最小间隔 (秒)，用于减少检查恶意值带来的停顿
+badSportCheckInterval: 3600
+# 自动挂机清除恶意值时，累计挂机的目标时长 (秒)(默认 20 小时)，达到该时长后会切回德瑞 Bot
+recoveryTotalDuration: 72000
+# 自动挂机清除恶意值时，单次挂机的时长 (秒)(默认 10 分钟)。每挂完一段都会重新检查恶意值，因此在挂机期间变成恶意玩家也能被及时发现
+recoveryChunkSize: 600
 # 禁用在事务所内起床后自动移动到任务触发点，改为要求用户手动将角色移动到任务触发点
 manualMoveToPoint: false
 # 全部玩家已加入时立即开始差事而不等待 (绕过 "startMatchDelay" 时间)

@@ -66,7 +66,7 @@ def main():
 
     # 加载配置
     try:
-        config = Config(command_line_args["config_file_path"])
+        config = Config.load(command_line_args["config_file_path"])
         logger.info("配置加载成功。")
     except Exception as e:
         logger.error(f"加载配置失败: {e}", exc_info=e)
