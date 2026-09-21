@@ -32,7 +32,7 @@ class OcrAPI:
             startupinfo.dwFlags = subprocess.CREATE_NEW_CONSOLE | subprocess.STARTF_USESHOWWINDOW
             startupinfo.wShowWindow = subprocess.SW_HIDE
         self.ret = subprocess.Popen(  # 打开管道
-            [exePath, *args], cwd=cwd,
+            f'"{exePath}"{args}', cwd=cwd,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             startupinfo=startupinfo  # 开启静默模式
