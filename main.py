@@ -1,4 +1,5 @@
 from app_lifecycle import init_lifecycle_manager, toggle_pause, trigger_exit, sleep_smart
+from gamepad_utils import GamepadInitError
 
 # 生命周期管理器需要在所有 atexit 方法被注册前初始化
 init_lifecycle_manager()
@@ -15,7 +16,7 @@ from logger import set_loglevel, get_logger
 from config import Config
 
 from argument_parser import ArgumentParser, ArgumentError
-from ocr_utils import OCREngine
+from ocr_utils import OCREngine, OcrError
 from steambot_utils import SteamBot
 from steamgui_automation import SteamAutomation
 from push_utils import UniPush
@@ -133,9 +134,14 @@ def main():
         return 8
 
     # 初始化游戏控制器
-    automator = GTAAutomator(
-        config, ocr_engine.ocr_window, steam_bot.send_group_message, push_integration.push_message
-    )
+    try:
+        automator = GTAAutomator(
+            config, ocr_engine.ocr_window, steam_bot.send_group_message, push_integration.push_message
+        )
+    except GamepadInitError as e:
+        logger.error(f"初始化虚拟手柄失败: {e}")
+        input("\n按 Enter 键退出...")
+        return 9
 
     # 初始化健康检查
     def should_suppress_health_check():
@@ -155,7 +161,7 @@ def main():
         return False
 
     if config.enableHealthCheck:
-        logger.warning(f"已启用健康检查。正在初始化监控模块...")
+        logger.warning("已启用健康检查。正在初始化监控模块...")
         health_check_exit_func = partial(trigger_exit, "触发 BOT 不健康自动退出")
         monitor = HealthMonitor(
             config,
@@ -190,6 +196,14 @@ def main():
             wait_before_restart_loop = min(2**main_loop_consecutive_error_count * 5, 120)
 
             logger.error(f"主循环中发生错误: {e}", exc_info=e)
+
+            # OCR 引擎故障，重启 OCR 引擎
+            if isinstance(e, OcrError):
+                try:
+                    ocr_engine.restart()
+                except OcrError as restart_error:
+                    logger.error(f"重启 OCR 引擎失败，将在下一轮循环重试: {restart_error}")
+
 
             # 恶意/问题玩家，退出程序
             if isinstance(e, UnexpectedGameState) and e.actual_state in (

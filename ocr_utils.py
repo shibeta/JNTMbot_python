@@ -28,6 +28,10 @@ OCR_EXECUTABLE_PATH = os.path.join(os.getcwd(), "RapidOCR-json.exe")
 rapidocr_lock = threading.Lock()
 
 
+class OcrError(RuntimeError):
+    """OCR 基础设施故障"""
+
+
 class WindowCapturer:
     """
     基于 PrintWindow 捕获窗口内容，支持被遮挡窗口和高DPI环境。
@@ -142,9 +146,9 @@ class WindowCapturer:
         """
         try:
             # 判断窗口是否有效
-            if not win32gui.IsWindow(hwnd):
+            if not is_window_handler_exist(hwnd):
                 self._cleanup_gdi_cache()
-                raise Exception(f"窗口句柄 {hwnd} 无效或已关闭。")
+                raise Exception(f"窗口句柄 {hwnd} 无效。")
 
             # 将窗口取消最小化
             if restore_minimized_window(hwnd):
@@ -182,9 +186,9 @@ class WindowCapturer:
             # 用 np.ascontiguousarray 确保内存是连续的，避免出现 bug
             return np.ascontiguousarray(rgb_array)
 
-        except Exception as e:
+        except Exception:
             self._cleanup_gdi_cache()
-            raise e
+            raise
 
     def capture_window_area(
         self, hwnd: int, left: float, top: float, width: float, height: float, include_title_bar: bool = False
@@ -271,8 +275,10 @@ class OCREngine:
         """
         logger.info("正在初始化 OCR 引擎...")
 
+        # 保存启动参数，用于重启
+        self.args = args
+
         # 使用哨兵进程确保程序退出时 OCR 引擎立即被关闭
-        # atexit.register(self.shutdown)
         def instant_kill_rapidocr():
             # 通过等待信号量实现的挂起基本不耗费性能
             _exit_event.wait()
@@ -313,6 +319,25 @@ class OCREngine:
                 self.api.stop()
         except Exception as e:
             logger.error(f"关闭 OCR 引擎时出错: {e}")
+
+    def restart(self):
+        """
+        重启 RapidOCR-json.exe 子进程。
+
+        :raises ``OcrError``: 重建子进程失败
+        """
+        logger.warning("正在重启 OCR 引擎...")
+        with rapidocr_lock:
+            try:
+                self.api.stop()
+            except Exception as e:
+                # 子进程可能已经死了，关不掉不是问题
+                logger.debug(f"关闭旧的 OCR 引擎进程时出错: {e}")
+            try:
+                self.api = OcrAPI(OCR_EXECUTABLE_PATH, argsStr=self.args)
+            except Exception as e:
+                raise OcrError(f"重启 OCR 引擎失败: {e}") from e
+        logger.warning("OCR 引擎已重启。")
 
     def _get_physical_rect(self, hwnd: int, include_title_bar: bool) -> tuple[int, int, int, int]:
         """
@@ -355,49 +380,46 @@ class OCREngine:
         :param width: 截图区域的相对宽度 (0.0 to 1.0)。
         :param height: 截图区域的相对高度 (0.0 to 1.0)。
         :param include_title_bar: 是否将标题栏和边框计算在内。(True: 基于完整窗口截图 False: 基于客户区截图 (排除标题栏和边框))
-        :return: 识别出的所有文本拼接成的字符串。
-        :raises ``ValueError``: 提供的窗口句柄无效。
+        :return: 识别出的所有文本拼接成的字符串。识别不到文字时返回空字符串。
+        :raises ``ValueError``: 提供的窗口句柄或截图坐标无效。
+        :raises ``OcrError``: OCR 基础设施故障。
         """
-        if not is_window_handler_exist(hwnd):
-            logger.error(f"要截图的窗口 {hwnd} 是一个无效的窗口句柄。")
-            raise ValueError(f"无效的窗口句柄: {hwnd}")
+        # 截图
+        # logger.debug(
+        #     f"开始对窗口 {hwnd} 截图，{'不' if not include_title_bar else ''}包括标题栏，截图范围 {left}, {top}, {width}, {height} 。"
+        # )
+        screenshot_np = self.screen_capturer.capture_window_area(
+            hwnd, left, top, width, height, include_title_bar
+        )
+        logger.debug("截图完成。")
 
+        # 转换为 PNG 格式
+        screenshot_png = self.screen_capturer.to_png(screenshot_np)
+
+        # 调用 OcrAPI 的 runBytes 方法进行识别
         try:
-            # 截图
-            # logger.debug(
-            #     f"开始对窗口 {hwnd} 截图，{'不' if not include_title_bar else ''}包括标题栏，截图范围 {left}, {top}, {width}, {height} 。"
-            # )
-            screenshot_np = self.screen_capturer.capture_window_area(
-                hwnd, left, top, width, height, include_title_bar
-            )
-            logger.debug(f"截图完成。")
-            screenshot_png = self.screen_capturer.to_png(screenshot_np)
-
-            # 调用 OcrAPI 的 runBytes 方法进行识别
             # logger.debug("将截图字节流发送到 C++ 引擎进行 OCR。")
             with rapidocr_lock:
                 result = self.api.runBytes(screenshot_png)
             # logger.debug("从 C++ 引擎收到 OCR 结果。")
-
-            # 解析返回的 JSON 结果
-            if result and result.get("code") == 100:
-                if not result.get("data"):
-                    logger.debug("OCR 识别结果为空。")
-                    return ""
-                # 拼接所有识别到的文本
-                recognized_text = "".join([line["text"] for line in result["data"]])
-                logger.debug(f"OCR 识别结果: {recognized_text}")
-                return recognized_text
-            elif result and result.get("code") == 101:
-                logger.debug("图片中未识别出文字。")
-                return ""
-            else:
-                error_msg = result.get("data", "未知错误") if result else "无返回结果"
-                logger.error(f"OCR 识别失败。代码: {result.get('code', 'N/A')}, 信息: {error_msg}")
-                return ""
-
         except Exception as e:
-            logger.error(f"执行 OCR 过程中发生异常: {e}")
+            raise OcrError(f"OCR 后端出错: {e}") from e
+
+        # 解析返回的 JSON 结果
+        if result and result.get("code") == 100:
+            if not result.get("data"):
+                logger.debug("OCR 识别结果为空。")
+                return ""
+            # 拼接所有识别到的文本
+            recognized_text = "".join([line["text"] for line in result["data"]])
+            logger.debug(f"OCR 识别结果: {recognized_text}")
+            return recognized_text
+        elif result and result.get("code") == 101:
+            logger.debug("图片中未识别出文字。")
+            return ""
+        else:
+            error_msg = result.get("data", "未知错误") if result else "无返回结果"
+            logger.error(f"OCR 识别失败。代码: {result.get('code', 'N/A')}, 信息: {error_msg}")
             return ""
 
 
