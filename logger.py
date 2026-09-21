@@ -2,9 +2,13 @@ import logging
 import logging.config
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import Any, Optional
 
+from paths import LOG_DIR, LOG_FILE_PATH
+
+# 尝试导入 colorlog 库
+colorlog: Optional[type] = None
 try:
-    # 尝试导入 colorlog 库
     import colorlog
 except ImportError:
     # 导入失败保留为 None, 稍后回退到不带颜色的日志
@@ -25,7 +29,7 @@ class UIautomationFilter(logging.Filter):
 # 默认日志配置字典
 # 格式化日志输出到文件和终端, 日志等级为 debug
 # 过滤器 UIautomationFilter
-DEFAULT_LOGGING_CONFIG = {
+DEFAULT_LOGGING_CONFIG: dict[str, Any] = {
     "version": 1,
     "disable_existing_loggers": False,  # 保持为 False 以避免清除掉其他软件包添加的 logger
     "filters": {"silence_uiautomation_less_than_info": {"()": f"{__name__}.UIautomationFilter"}},
@@ -61,7 +65,7 @@ DEFAULT_LOGGING_CONFIG = {
         "file": {
             "class": "logging.handlers.RotatingFileHandler",
             "formatter": "file_formatter",
-            "filename": "logs/app.log",
+            "filename": str(LOG_FILE_PATH),
             "maxBytes": 10485760,  # 10MB
             "backupCount": 5,
             "encoding": "utf8",
@@ -77,9 +81,8 @@ DEFAULT_LOGGING_CONFIG = {
 
 if "handlers" in DEFAULT_LOGGING_CONFIG and "file" in DEFAULT_LOGGING_CONFIG["handlers"]:
     # 如果启用了文件日志，则确保日志文件夹已创建
-    log_filename = Path(DEFAULT_LOGGING_CONFIG["handlers"]["file"]["filename"]).absolute()
-    log_dir = log_filename.parent
-    log_dir.mkdir(parents=True, exist_ok=True)
+    log_filename: Path | None = Path(DEFAULT_LOGGING_CONFIG["handlers"]["file"]["filename"])
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
 else:
     log_filename = None
 
@@ -104,9 +107,12 @@ def set_loglevel(log_level: str):
         )
 
     # 应用设置
-    for handler in logging.getLogger(__name__).handlers:
+    for handler in logging.getLogger().handlers:
         if handler.name == "console":
             handler.setLevel(log_level.upper())
+            return
+
+    logging.getLogger(__name__).warning("未找到控制台日志处理器，因此没有应用控制台日志等级设置。")
 
 
 def get_logger(name: str) -> logging.Logger:
