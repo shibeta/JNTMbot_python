@@ -24,7 +24,7 @@ from win32con import (
     SWP_SHOWWINDOW,
     WM_CLOSE,
 )
-from typing import Callable, Concatenate
+from typing import Callable, ClassVar, Concatenate
 
 from app_lifecycle import sleep_smart, sleep_stoppable
 from logger import get_logger
@@ -35,13 +35,9 @@ logger = get_logger(__name__)
 class SuspendException(Exception):
     """挂起进程或线程时，触发的异常"""
 
-    pass
-
 
 class ResumeException(Exception):
     """恢复进程或线程时，触发的异常"""
-
-    pass
 
 
 class ClipboardScope:
@@ -56,7 +52,7 @@ class ClipboardScope:
     CF_GDIOBJLAST = 0x03FF
 
     # 不支持备份的单点格式集合 (GDI句柄、元文件句柄、显示格式等)
-    unsupported_formats = {
+    unsupported_formats: ClassVar[set[int]] = {
         win32clipboard.CF_BITMAP,
         win32clipboard.CF_PALETTE,
         win32clipboard.CF_ENHMETAFILE,
@@ -69,7 +65,7 @@ class ClipboardScope:
     }
 
     # 不支持备份的格式范围列表 [(min, max), ...]
-    unsupported_ranges = [
+    unsupported_ranges: ClassVar[list[tuple[int, int]]] = [
         (CF_GDIOBJFIRST, CF_GDIOBJLAST),  # 应用程序定义的 GDI 对象
     ]
 
@@ -139,7 +135,7 @@ class ClipboardScope:
                     # 读取数据
                     data = win32clipboard.GetClipboardData(fmt)
                     self.backup_data[fmt] = data
-                except Exception as e:
+                except Exception:
                     # 某些私有格式或锁定内存可能读取失败，忽略以保证整体流程
                     # logger.debug(f"无法读取剪贴板格式 {fmt}: {e}")
                     pass
@@ -413,7 +409,7 @@ def suspend_thread(tid: int):
             if result < 0:
                 raise SuspendException(f"调用 SuspendThread API 失败，线程TID: {tid}")
             return result
-    except (IOError, Exception) as e:
+    except (OSError, Exception) as e:
         raise SuspendException(f"挂起线程 {tid} 时发生异常: {e}") from e
 
 
@@ -431,7 +427,7 @@ def resume_thread(tid: int) -> int:
             if result < 0:
                 raise ResumeException(f"调用 ResumeThread API 失败，线程TID: {tid}")
             return result
-    except (IOError, Exception) as e:
+    except (OSError, Exception) as e:
         raise ResumeException(f"恢复线程 {tid} 时发生异常: {e}") from e
 
 
@@ -520,8 +516,8 @@ def suspend_process_for_duration(pid: int, duration_seconds: float):
         logger.info(f"正在挂起进程 {pid}，持续 {duration_seconds} 秒。")
         proc.suspend()
         sleep_stoppable(duration_seconds)
-    except psutil.NoSuchProcess:
-        raise ValueError(f"无法挂起：未找到 PID 为 {pid} 的进程")
+    except psutil.NoSuchProcess as e:
+        raise ValueError(f"无法挂起：未找到 PID 为 {pid} 的进程") from e
     except Exception as e:
         raise SuspendException(f"挂起进程 {pid} 时发生异常: {e}") from e
     finally:
@@ -540,8 +536,8 @@ def resume_process(pid: int, max_retries: int = 5):
     """
     try:
         proc = psutil.Process(pid)
-    except psutil.NoSuchProcess:
-        raise ValueError(f"无法从挂起恢复：未找到 PID 为 {pid} 的进程")
+    except psutil.NoSuchProcess as e:
+        raise ValueError(f"无法从挂起恢复：未找到 PID 为 {pid} 的进程") from e
 
     try:
         proc.resume()
@@ -603,7 +599,7 @@ def kill_processes(process_names: list[str]):
             command = ["taskkill", "/F", "/IM", proc_name, "/T"]
 
             # 使用 subprocess.run 来执行命令，并抑制输出
-            result = subprocess.run(command, check=True, capture_output=True, text=True)
+            subprocess.run(command, check=True, capture_output=True, text=True)
             logger.info(f"已发送终止命令给所有名为 '{proc_name}' 的进程。")
 
         except subprocess.CalledProcessError as e:
@@ -789,5 +785,4 @@ def exec_command_detached(command: str):
             close_fds=True,
         )
     except Exception as e:
-        command_string = " ".join(command)
-        raise Exception(f"执行命令 '{command_string}' 失败: {e}") from e
+        raise Exception(f"执行命令 '{command}' 失败: {e}") from e
