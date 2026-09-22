@@ -4,13 +4,15 @@ import threading
 import signal
 import time
 import atexit
-from typing import Callable
+from typing import Any, Callable
 import requests
+from requests.api import _HeadersMapping
 from requests.exceptions import JSONDecodeError
 
 from app_lifecycle import sleep_smart as sleep
 from config import Config
 from logger import get_logger
+from paths import STEAM_BOT_EXECUTABLE_PATH, STEAM_BOT_SCRIPT_PATH
 from windows_utils import get_system_proxy
 
 logger = get_logger(__name__)
@@ -99,7 +101,7 @@ class ProcessManager:
 class SteamBotApiClient:
     """负责与 Steam Bot 后端进行 HTTP API 通信。"""
 
-    def __init__(self, base_url: str, headers: dict):
+    def __init__(self, base_url: str, headers: _HeadersMapping):
         self.base_url = base_url
         self.headers = headers
 
@@ -150,26 +152,31 @@ class SteamBotApiClient:
             response.raise_for_status()
             return response
         except requests.RequestException as e:
-            error_message = f"请求发生错误: {str(e)}"
+            error_message = f"请求发生错误: {e!s}"
             if hasattr(e, "response"):
-                response = e.response
+                error_response: requests.Response | None = e.response
             else:
-                response = None
+                error_response = None
 
             # 尝试从响应体解析更具体的错误信息
-            if response is not None:
+            if error_response is not None:
                 try:
-                    error_info = response.json()
+                    error_info = error_response.json()
                     err_code = error_info.get("error", "Unknown Error")
-                    err_details = error_info.get("details", response.text)
-                    error_message = f"API 错误 [{response.status_code}]: {err_code} - {err_details}"
+                    err_details = error_info.get("details", error_response.text)
+                    error_message = f"API 错误 [{error_response.status_code}]: {err_code} - {err_details}"
                 except (JSONDecodeError, ValueError):
                     # JSON 解析失败，回退到使用原始文本
                     # 截断消息以防日志爆炸
-                    error_message = f"API 错误 [{response.status_code}] (非JSON响应{', 已截断' if len(response.text) > 200 else ''}): {response.text[:200]}"
+                    if len(error_response.text) > 200:
+                        error_message = f"API 错误 [{error_response.status_code}] (非JSON响应, 已截断): {error_response.text}"
+                    else:
+                        error_message = (
+                            f"API 错误 [{error_response.status_code}] (非JSON响应): {error_response.text}"
+                        )
 
             # 丢弃原始的 requests/urllib3 堆栈
-            raise SteamBotApiError(error_message, response) from None
+            raise SteamBotApiError(error_message, error_response) from None
 
     @staticmethod
     def get(*args, **kwargs):
@@ -209,7 +216,7 @@ class SteamBotApiClient:
         except Exception:
             return False
 
-    def get_login_status(self) -> dict:
+    def get_login_status(self) -> dict[str, Any]:
         """
         调用 /status API，获取Bot的登录状态。
 
@@ -227,12 +234,13 @@ class SteamBotApiClient:
 
         except SteamBotApiError as e:
             # 未登录时会返回401，这算哪门子 Restful ？
+            # TODO: 设计一个更加 Restful 的后端
             if e.response is not None and e.response.status_code == 401:
                 return {"loggedIn": False, "name": ""}
             else:
                 raise
 
-    def login(self):
+    def login(self) -> None:
         """
         调用 /login API，让 Bot 进行登录操作。
 
@@ -240,7 +248,7 @@ class SteamBotApiClient:
         """
         response = self.post(f"{self.base_url}/login", headers=self.headers, timeout=(5, 20))
 
-    def get_userinfo(self) -> dict:
+    def get_userinfo(self) -> dict[str, Any]:
         """
         调用 /userinfo API，获取Bot的用户名，SteamID，群组列表。
 
@@ -377,9 +385,6 @@ class SteamBot:
         self.last_send_monotonic_time = time.monotonic()  # 上次向 Steam 发送消息的相对时间
         self.last_send_system_time = time.time()  # 上次向 Steam 发送消息的系统时间，仅作参考
 
-        # 确保程序退出时 steam_bot 进程一并被关闭
-        atexit.register(self.shutdown)
-
         # ProcessManager 管理 Steam Bot 进程启停
         command = self._build_command()
         self.process_manager = ProcessManager(command)
@@ -391,6 +396,11 @@ class SteamBot:
 
         # Supervisor 监控并自动重启 Steam Bot
         self.supervisor = Supervisor(self.process_manager, self.api_client)
+
+        # 确保程序退出时 steam_bot 进程一并被关闭
+        atexit.register(self.shutdown)
+
+        # 启动 Supervisor, Supervisor 会启动 Steam Bot
         self.supervisor.start()
 
         # 等待 Steam Bot 启动
@@ -398,7 +408,7 @@ class SteamBot:
             raise TimeoutError("启动超时，未能在 30 秒内准备就绪。")
 
         # 等待 Steam Bot 完成登录，无限期等待
-        while self.get_login_status()["loggedIn"] != True:
+        while not self.get_login_status()["loggedIn"]:
             # 收到退出信号直接返回，停止启动
             if not sleep(5):
                 return
@@ -424,14 +434,14 @@ class SteamBot:
         :raises ``FileNotFoundError``: 未找到后端可执行文件或脚本
         """
         node_executable = "node"
-        script_path = "./steam_bot/server.js"
-        executable_path = "./steam_bot.exe"
+        script_path = STEAM_BOT_SCRIPT_PATH
+        executable_path = STEAM_BOT_EXECUTABLE_PATH
 
-        if os.path.exists(executable_path):
+        if executable_path.exists():
             # 优先用打包好的 exe
-            command = [executable_path]
+            command = [str(executable_path)]
         elif os.path.exists(script_path):
-            command = [node_executable, script_path]
+            command = [node_executable, str(script_path)]
         else:
             raise FileNotFoundError(f'未找到 "{executable_path}" 或 "{script_path}"')
 
@@ -471,7 +481,7 @@ class SteamBot:
         """
         if userinfo is not None:
             # 验证其含有 "groups" 键
-            if not "groups" in userinfo:
+            if "groups" not in userinfo:
                 raise TypeError("给定的用户信息无效，应当为 get_userinfo() 的返回值")
             bot_userinfo = userinfo
         else:
@@ -553,7 +563,7 @@ class SteamBot:
             logger.error(f'向 Steam 群组 "{self.config.steamGroupId}" 发送消息失败: {e}', exc_info=e)
             raise
 
-    def get_userinfo(self) -> dict:
+    def get_userinfo(self) -> dict[str, Any]:
         """
         获取用户信息，包括用户名，SteamID，群组列表。
 
@@ -587,7 +597,7 @@ class SteamBot:
         self.api_client.login()
         logger.info("登录请求已成功发送。")
 
-    def get_login_status(self) -> dict:
+    def get_login_status(self) -> dict[str, bool | str]:
         """
         获取登录状态。这个方法永远不会抛出异常。
 
@@ -623,8 +633,8 @@ class SteamBot:
         """关闭所有组件。"""
         logger.info("正在关闭 Steam Bot...")
         # 停止 Supervisor，避免再次重启进程
-        if self.supervisor is not None:
-            self.supervisor.stop()
+        # if self.supervisor is not None:
+        self.supervisor.stop()
 
         # 通过API请求登出
         try:
