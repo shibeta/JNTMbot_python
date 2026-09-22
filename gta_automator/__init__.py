@@ -1,6 +1,6 @@
 from enum import Enum, auto
 import time
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from app_lifecycle import sleep_smart as sleep
 from config import Config
@@ -36,7 +36,7 @@ class GTAAutomator:
         ocr_func: OcrFuncProtocol,
         send_steam_message_func: Callable[[str], Any],
         push_message_func: Callable[[str, str], Any],
-        gamepad: Optional[GamepadSimulator] = None,
+        gamepad: GamepadSimulator | None = None,
     ):
         # 初始化底层模块
         process = GameProcess()
@@ -55,13 +55,13 @@ class GTAAutomator:
         self.push_message = push_message_func
 
         # 上一次恶意值检查结果为清白玩家的时间戳，None 表示尚未进行过恶意值检查
-        self._last_clean_player_verified_timestamp: Optional[float] = None
+        self._last_clean_player_verified_timestamp: float | None = None
         # 恶意值检查间隔 (秒)
         self.bad_sport_check_interval: float = 3600
         # 问题玩家是否自动挂机降恶意值
         self.recovery_on_dodgy_player = config.autoReduceBadSportOnDodgyPlayer
         # 降低恶意值时，挂机结束的目标时间戳，None 表示当前没有正在进行的挂机任务
-        self._recovery_target_timestamp: Optional[float] = None
+        self._recovery_target_timestamp: float | None = None
         # 降低恶意值时，总挂机目标: 20 小时
         self._recovery_total_duration = 20 * 3600
         # 降低恶意值时，单次挂机的时长: 10 分钟

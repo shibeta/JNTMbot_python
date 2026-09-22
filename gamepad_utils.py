@@ -4,7 +4,7 @@ import subprocess
 import sys
 import copy
 import time
-from typing import Callable, Optional, Union
+from typing import Callable
 import atexit
 from collections import defaultdict
 from functools import total_ordering
@@ -158,7 +158,7 @@ class Button(enum.IntFlag):
     RIGHT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER
 
 
-AnyButton = Union[vg.XUSB_BUTTON, Button]
+AnyButton = vg.XUSB_BUTTON | Button
 
 
 class JoystickDirection(tuple[float, float]):
@@ -234,7 +234,7 @@ class Macro:
     事件在添加时会自动排序，使其始终保持可播放状态。
     """
 
-    def __init__(self, events: Optional[list[MacroEvent]] = None):
+    def __init__(self, events: list[MacroEvent] | None = None):
         self._events: list[MacroEvent] = []
         if events:
             # 允许从一个已有的、排序好的事件列表初始化
@@ -270,7 +270,7 @@ class Macro:
         # 使用 copy.deepcopy 确保事件对象也是新的，虽然在这里不是必须，但是个好习惯
         return Macro(copy.deepcopy(self._events))
 
-    def time_shift(self, offset_ms: Optional[int] = None):
+    def time_shift(self, offset_ms: int | None = None):
         """
         返回一个所有事件时间戳都平移了指定毫秒数的新宏。
 

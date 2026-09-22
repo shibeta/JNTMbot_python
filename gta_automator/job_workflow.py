@@ -1,5 +1,5 @@
 import time
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from app_lifecycle import sleep_smart as sleep
 from logger import get_logger
@@ -59,7 +59,7 @@ class LobbyStateTracker:
         # 最新一次检查时待命状态的玩家数
         self.standby_count = 0
 
-    def update(self, ocr_text: Optional[str] = None):
+    def update(self, ocr_text: str | None = None):
         """
         从屏幕上获取最新的大厅状态。这个方法会自动处理警告页面。
 

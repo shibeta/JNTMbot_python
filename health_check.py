@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 import threading
 import time
-from typing import Any, Callable, Optional
+from typing import Any, Callable
 
 from app_lifecycle import sleep_smart as sleep, is_exiting
 from config import Config
@@ -23,7 +23,7 @@ class HealthMonitor(threading.Thread):
         get_last_steam_message_send_monotonic_time: Callable[[], float],
         exit_func: Callable[[], Any],
         push_func: Callable[[str, str], Any],
-        should_suppress_check_func: Optional[Callable[[], bool]] = None,
+        should_suppress_check_func: Callable[[], bool] | None = None,
     ):
         """
         初始化健康检查线程。
@@ -174,7 +174,7 @@ class HealthMonitor(threading.Thread):
         logger.info("Bot 状态已恢复健康。")
         self._send_notification("状态恢复健康", "现在一切正常。")
 
-    def _on_unhealthy(self, reason: Optional[str] = None):
+    def _on_unhealthy(self, reason: str | None = None):
         """检查结果为不健康时触发。"""
         if reason == "SteamChatTimeout":
             logger.warning(

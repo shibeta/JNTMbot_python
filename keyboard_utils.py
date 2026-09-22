@@ -1,6 +1,6 @@
 import threading
 import time
-from typing import Any, List, Optional, Set, Tuple, Union, Callable, Dict
+from typing import Any, List, Set, Tuple, Callable, Dict
 from pynput.keyboard import Controller, KeyCode, Key, GlobalHotKeys
 
 from app_lifecycle import sleep_stoppable as sleep, is_exiting
@@ -19,7 +19,7 @@ class KeyboardSimulator:
     """
 
     # 定义一个类型别名，方便注解
-    KeyType = Union[KeyCode, Key, str]
+    KeyType = KeyCode | Key | str
 
     def __init__(self):
         """
@@ -59,7 +59,7 @@ class KeyboardSimulator:
                 if key in self._pressed_keys:
                     self._pressed_keys.remove(key)
 
-    def click(self, keys: Union[KeyType, List[KeyType], Tuple[KeyType, ...]], milliseconds: int = 90) -> None:
+    def click(self, keys: KeyType | List[KeyType] | Tuple[KeyType, ...], milliseconds: int = 90) -> None:
         """
         模拟单击指定的单个或多个按键（按下后释放）。
 
@@ -225,7 +225,7 @@ class HotKeyManager:
         self,
         hotkey: str,
         callback: Callable[[], Any],
-        debounce: Optional[float] = None,
+        debounce: float | None = None,
         auto_update: bool = True,
     ):
         """

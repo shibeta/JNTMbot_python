@@ -2,7 +2,7 @@ import sys
 from dataclasses import Field, dataclass, field
 from dataclasses import fields as dataclass_fields
 from pathlib import Path
-from typing import Any, Callable, Optional, ParamSpec, TypeVar
+from typing import Any, Callable, TypeVar
 
 from ruamel.yaml import YAML, YAMLError
 from ruamel.yaml.comments import CommentedMap
@@ -28,7 +28,7 @@ class ConfigValidationError(ConfigError):
     """配置项的类型或取值不合法。"""
 
 
-_Checker = Callable[[Any], Optional[str]]
+_Checker = Callable[[Any], str | None]
 """配置项校验函数：合法时返回 ``None``，不合法时返回给用户看的说明。"""
 
 # 用于配置项校验的常量
@@ -37,12 +37,10 @@ _FALSE_WORDS = {"false", "no", "off", "0"}
 _TYPE_NAMES = {bool: "布尔值 (true/false)", int: "整数", float: "数字", str: "字符串"}
 
 
-def _check_range(
-    minimum: Optional[float] = None, maximum: Optional[float] = None, unit: str = ""
-) -> _Checker:
+def _check_range(minimum: float | None = None, maximum: float | None = None, unit: str = "") -> _Checker:
     """数值范围校验函数生成器"""
 
-    def check(value: Any) -> Optional[str]:
+    def check(value: Any) -> str | None:
         if minimum is not None and value < minimum:
             return f"不能小于 {minimum}{unit}（当前为 {value}）"
         if maximum is not None and value > maximum:
@@ -55,7 +53,7 @@ def _check_range(
 def _check_not_empty(what: str) -> _Checker:
     """空值校验函数生成器"""
 
-    def check(value: Any) -> Optional[str]:
+    def check(value: Any) -> str | None:
         if not str(value).strip():
             return f"{what}不能为空"
         return None
@@ -66,7 +64,7 @@ def _check_not_empty(what: str) -> _Checker:
 def _check_digits(what: str) -> _Checker:
     """纯数字格式校验函数生成器"""
 
-    def check(value: Any) -> Optional[str]:
+    def check(value: Any) -> str | None:
         if not str(value).isdigit():
             return f"{what}必须全部由数字组成（当前为 {value!r}）"
         return None
@@ -74,7 +72,7 @@ def _check_digits(what: str) -> _Checker:
     return check
 
 
-def _check_proxy(value: Any) -> Optional[str]:
+def _check_proxy(value: Any) -> str | None:
     """简单的代理字符串格式校验函数生成器"""
     if value in ("", "system"):
         return None
@@ -92,7 +90,7 @@ _FILE_HEADER = (
 )
 
 
-def _opt(default: T, comment: str, check: Optional[_Checker] = None) -> T:
+def _opt(default: T, comment: str, check: _Checker | None = None) -> T:
     """
     声明一个会写入配置文件的配置项。
 
@@ -108,7 +106,7 @@ def _runtime_state(default: T = None) -> T:
     return field(default=default, init=False, repr=False, compare=False, metadata={"yaml": False})
 
 
-def _declared_kind(spec: Field) -> Optional[type]:
+def _declared_kind(spec: Field) -> type | None:
     """取出字段声明的类型，只关心本模块用到的几种。"""
     for kind in (bool, int, float, str):
         if spec.type is kind:
@@ -131,7 +129,7 @@ def _matches_type(value: Any, kind: type) -> bool:
     return isinstance(value, kind)
 
 
-def _coerce_value(spec: Field, value: Any) -> tuple[Any, Optional[str]]:
+def _coerce_value(spec: Field, value: Any) -> tuple[Any, str | None]:
     """
     把从 YAML 中读到的值转换成字段声明的类型。
 
@@ -396,7 +394,7 @@ class Config:
         self.validate()
 
     @classmethod
-    def load(cls, config_filepath: Optional[str | Path] = None) -> "Config":
+    def load(cls, config_filepath: str | Path | None = None) -> "Config":
         """
         读取配置文件并返回配置对象。
 
@@ -418,7 +416,7 @@ class Config:
         return config
 
     @staticmethod
-    def _resolve_path(config_filepath: Optional[str | Path]) -> Path:
+    def _resolve_path(config_filepath: str | Path | None) -> Path:
         """把配置文件路径解析成绝对路径，相对路径以程序所在目录为基准。"""
         if config_filepath is None:
             return BASE_DIR / "config.yaml"
@@ -463,7 +461,7 @@ class Config:
                     f"（但会原样保留在文件中）: {', '.join(unknown)}"
                 )
 
-    def _load_document(self) -> Optional[CommentedMap]:
+    def _load_document(self) -> CommentedMap | None:
         """
         读取并解析配置文件。
 
@@ -526,7 +524,7 @@ class Config:
                 + "\n".join(problems)
             )
 
-    def save(self, config_filepath: Optional[str | Path] = None) -> bool:
+    def save(self, config_filepath: str | Path | None = None) -> bool:
         """
         把当前配置写回配置文件。
 

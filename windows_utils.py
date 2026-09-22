@@ -24,7 +24,7 @@ from win32con import (
     SWP_SHOWWINDOW,
     WM_CLOSE,
 )
-from typing import Callable, Optional, ParamSpec, TypeVar, Concatenate
+from typing import Callable, ParamSpec, TypeVar, Concatenate
 
 from app_lifecycle import sleep_smart, sleep_stoppable
 from logger import get_logger
@@ -241,7 +241,7 @@ def is_window_handler_exist(hwnd: int) -> bool:
         return False
 
 
-def get_window_title(hwnd: int) -> Optional[str]:
+def get_window_title(hwnd: int) -> str | None:
     """
     获取一个窗口句柄的标题
 
@@ -256,7 +256,7 @@ def get_window_title(hwnd: int) -> Optional[str]:
         return None
 
 
-def get_process_name(pid: int) -> Optional[str]:
+def get_process_name(pid: int) -> str | None:
     """
     获取一个进程的进程名
 
@@ -271,7 +271,7 @@ def get_process_name(pid: int) -> Optional[str]:
         return None
 
 
-def get_window_thread_id(hwnd: int) -> Optional[int]:
+def get_window_thread_id(hwnd: int) -> int | None:
     """
     获取一个窗口的线程ID
 
@@ -378,7 +378,7 @@ def get_primary_monitor_dpi_scale():
             win32gui.ReleaseDC(0, hdc)
 
 
-def find_window(window_class: Optional[str] = None, window_title: Optional[str] = None):
+def find_window(window_class: str | None = None, window_title: str | None = None):
     """
     通过窗口类名, 窗口标题查找窗口，返回窗口句柄和进程ID。
 
@@ -740,7 +740,7 @@ def get_document_fold_path() -> Path:
     return documents_path
 
 
-def get_steam_exe_path() -> Optional[str]:
+def get_steam_exe_path() -> str | None:
     """
     从 Windows 注册表中获取 steam.exe 的路径。
 
@@ -760,7 +760,7 @@ def get_steam_exe_path() -> Optional[str]:
         return None
 
 
-def get_system_proxy() -> Optional[str]:
+def get_system_proxy() -> str | None:
     """
     使用 urllib3 获取系统代理。优先获取 HTTP 代理，其次是 SOCKS 代理。
 

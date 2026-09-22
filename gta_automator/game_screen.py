@@ -1,5 +1,5 @@
 import re
-from typing import List, Optional, Protocol, Union
+from typing import List, Protocol
 
 from logger import get_logger
 
@@ -12,7 +12,7 @@ logger = get_logger(__name__.split(".")[-1])
 class GameScreenTextPatterns:
     @staticmethod
     def _compile_to_pattern(
-        keywords: Union[str, List[str]],
+        keywords: str | List[str],
         escape_spicial_character: bool = True,
     ) -> re.Pattern[str]:
         """
@@ -127,7 +127,7 @@ class GameScreen:
     def _search_text_in_text(
         self,
         text: str,
-        query_text: Union[str, List[str], re.Pattern[str]],
+        query_text: str | List[str] | re.Pattern[str],
     ) -> bool:
         """
         辅助函数，用于检查文本是否存在于给定的字符串中。
@@ -142,7 +142,7 @@ class GameScreen:
 
     def _search_text_in_area(
         self,
-        query_text: Union[str, List[str], re.Pattern[str]],
+        query_text: str | List[str] | re.Pattern[str],
         left: float,
         top: float,
         width: float,
@@ -160,8 +160,8 @@ class GameScreen:
 
     def search_text(
         self,
-        query_text: Union[str, List[str], re.Pattern[str]],
-        ocr_text: Optional[str],
+        query_text: str | List[str] | re.Pattern[str],
+        ocr_text: str | None,
         left: float,
         top: float,
         width: float,
@@ -195,7 +195,7 @@ class GameScreen:
         else:
             return self._search_text_in_area(query_text, left, top, width, height)
 
-    def get_job_setup_status(self, ocr_text: Optional[str] = None) -> tuple[bool, int, int, int]:
+    def get_job_setup_status(self, ocr_text: str | None = None) -> tuple[bool, int, int, int]:
         """
         检查差事面板状态，包括是否在面板中，以及加入的玩家数。
 
@@ -218,7 +218,7 @@ class GameScreen:
             # 不在面板中则跳过识别直接返回-1
             return False, -1, -1, -1
 
-    def get_bad_sport_level_of_first_player_in_list(self, ocr_text: Optional[str] = None) -> str:
+    def get_bad_sport_level_of_first_player_in_list(self, ocr_text: str | None = None) -> str:
         """
         读取玩家列表中第一个玩家的恶意等级。
 
@@ -238,7 +238,7 @@ class GameScreen:
             return "未知等级"
 
     # --- 状态检查方法 ---
-    def is_on_mainmenu_brightness_or_warning_page(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_mainmenu_brightness_or_warning_page(self, ocr_text: str | None = None) -> bool:
         """
         检查游戏是否在主菜单的亮度调整页面或警告页面。
 
@@ -253,7 +253,7 @@ class GameScreen:
             0.2,
         )
 
-    def is_on_mainmenu_gtaplus_advertisement_page(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_mainmenu_gtaplus_advertisement_page(self, ocr_text: str | None = None) -> bool:
         """
         检查游戏是否在主菜单的gta+广告页面。
 
@@ -268,7 +268,7 @@ class GameScreen:
             0.2,
         )
 
-    def is_on_mainmenu_logout(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_mainmenu_logout(self, ocr_text: str | None = None) -> bool:
         """
         检查游戏是否在登出的主菜单页面。
         注意无法确认是在线页面还是 GTA+ 页面，因为两个页面的 OCR 结果是相同的。
@@ -277,7 +277,7 @@ class GameScreen:
         """
         return self.search_text("已登出", ocr_text, 0, 0, 1, 1)
 
-    def is_on_mainmenu(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_mainmenu(self, ocr_text: str | None = None) -> bool:
         """
         检查游戏是否在主菜单的在线页面。
 
@@ -285,7 +285,7 @@ class GameScreen:
         """
         return self.search_text("移动标签", ocr_text, 0.5, 0.8, 0.5, 0.2)
 
-    def is_on_mainmenu_storymode_page(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_mainmenu_storymode_page(self, ocr_text: str | None = None) -> bool:
         """
         检查游戏是否在主菜单的故事页面。
 
@@ -293,7 +293,7 @@ class GameScreen:
         """
         return self.search_text("故事模式", ocr_text, 0, 0.5, 0.7, 0.5)
 
-    def is_on_onlinemode_info_panel(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_onlinemode_info_panel(self, ocr_text: str | None = None) -> bool:
         """
         检查游戏是否在在线模式的左上角显示玩家信息的菜单。
 
@@ -301,7 +301,7 @@ class GameScreen:
         """
         return self.search_text("在线模式", ocr_text, 0, 0, 0.5, 0.1)
 
-    def is_respawned_in_agency(self, ocr_text: Optional[str] = None) -> bool:
+    def is_respawned_in_agency(self, ocr_text: str | None = None) -> bool:
         """
         检查玩家是否已在事务所的床上复活。
 
@@ -309,7 +309,7 @@ class GameScreen:
         """
         return self.search_text("床", ocr_text, 0, 0, 0.5, 0.5)
 
-    def is_on_job_panel(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_job_panel(self, ocr_text: str | None = None) -> bool:
         """
         检查当前是否在差事面板界面。
 
@@ -317,7 +317,7 @@ class GameScreen:
         """
         return self.search_text(GameScreenTextPatterns.IS_ON_JOB_PANEL_LEFT_SCREEN, ocr_text, 0, 0, 0.5, 0.5)
 
-    def is_on_first_job_setup_page(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_first_job_setup_page(self, ocr_text: str | None = None) -> bool:
         """
         检查当前是否在差事准备面板的第一页。
 
@@ -325,7 +325,7 @@ class GameScreen:
         """
         return self.search_text(GameScreenTextPatterns.IS_ON_FIRST_JOB_SETUP_PAGE, ocr_text, 0, 0, 1, 1)
 
-    def is_on_second_job_setup_page(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_second_job_setup_page(self, ocr_text: str | None = None) -> bool:
         """
         检查当前是否在差事准备面板的第二页。
 
@@ -333,7 +333,7 @@ class GameScreen:
         """
         return self.search_text(GameScreenTextPatterns.IS_ON_SECOND_JOB_SETUP_PAGE, ocr_text, 0, 0, 1, 1)
 
-    def is_on_scoreboard(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_scoreboard(self, ocr_text: str | None = None) -> bool:
         """
         检查当前是否在差事失败的计分板界面。
 
@@ -341,7 +341,7 @@ class GameScreen:
         """
         return self.search_text(GameScreenTextPatterns.IS_ON_SCOREBOARD, ocr_text, 0, 0, 0.5, 0.5)
 
-    def is_job_marker_found(self, ocr_text: Optional[str] = None) -> bool:
+    def is_job_marker_found(self, ocr_text: str | None = None) -> bool:
         """
         检查是否找到了差事的黄色光圈提示。
 
@@ -349,7 +349,7 @@ class GameScreen:
         """
         return self.search_text(GameScreenTextPatterns.IS_JOB_MARKER_FOUND, ocr_text, 0, 0, 0.5, 0.5)
 
-    def is_job_started(self, ocr_text: Optional[str] = None) -> bool:
+    def is_job_started(self, ocr_text: str | None = None) -> bool:
         """
         检查是否在别惹德瑞任务中。
 
@@ -357,7 +357,7 @@ class GameScreen:
         """
         return self.search_text(GameScreenTextPatterns.IS_JOB_STARTED, ocr_text, 0, 0.8, 1, 0.2)
 
-    def is_job_starting(self, ocr_text: Optional[str] = None) -> bool:
+    def is_job_starting(self, ocr_text: str | None = None) -> bool:
         """
         检查任务是否在启动中。
 
@@ -365,7 +365,7 @@ class GameScreen:
         """
         return self.search_text(GameScreenTextPatterns.IS_JOB_STARTING, ocr_text, 0.5, 0.8, 0.5, 0.2)
 
-    def is_on_warning_page(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_warning_page(self, ocr_text: str | None = None) -> bool:
         """
         检查是否在黑屏警告页面。
 
@@ -373,7 +373,7 @@ class GameScreen:
         """
         return self.search_text(GameScreenTextPatterns.IS_ON_WARNING_PAGE, ocr_text, 0.25, 0, 0.5, 0.6)
 
-    def is_on_exit_confirm_page(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_exit_confirm_page(self, ocr_text: str | None = None) -> bool:
         """
         检查是否在确认退出页面。
 
@@ -381,7 +381,7 @@ class GameScreen:
         """
         return self.search_text("退出", ocr_text, 0.25, 0.2, 0.5, 0.5)
 
-    def is_confirm_option_available(self, ocr_text: Optional[str] = None) -> bool:
+    def is_confirm_option_available(self, ocr_text: str | None = None) -> bool:
         """
         检查右下角是否出现"是""否"选项。
 
@@ -391,7 +391,7 @@ class GameScreen:
             GameScreenTextPatterns.IS_CONFIRM_OPTION_AVAILABLE, ocr_text, 0.5, 0.8, 0.5, 0.2
         )
 
-    def is_on_bad_pcsetting_warning_page(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_bad_pcsetting_warning_page(self, ocr_text: str | None = None) -> bool:
         """
         检查是否在因 pcsetting.bin 损坏而无法进入在线模式的警告页面。
 
@@ -399,7 +399,7 @@ class GameScreen:
         """
         return self.search_text(GameScreenTextPatterns.IS_ON_BAD_PCSETTING_WARNING_PAGE, ocr_text, 0, 0, 1, 1)
 
-    def is_on_online_service_policy_page(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_online_service_policy_page(self, ocr_text: str | None = None) -> bool:
         """
         检查是否在需要确认 RockStar Games 在线服务政策的页面。
 
@@ -407,7 +407,7 @@ class GameScreen:
         """
         return self.search_text("在线服务政策", ocr_text, 0, 0, 0.7, 0.5)
 
-    def is_online_service_policy_loaded(self, ocr_text: Optional[str] = None) -> bool:
+    def is_online_service_policy_loaded(self, ocr_text: str | None = None) -> bool:
         """
         检查是否在需要确认 RockStar Games 在线服务政策的页面，并且已经完全加载。
 
@@ -423,7 +423,7 @@ class GameScreen:
             # 如果不在在线服务政策页面，直接返回False
             return False
 
-    def is_on_privacy_policy_page(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_privacy_policy_page(self, ocr_text: str | None = None) -> bool:
         """
         检查是否在隐私政策页面。
 
@@ -431,7 +431,7 @@ class GameScreen:
         """
         return self.search_text("隐私政策", ocr_text, 0, 0, 0.7, 0.5)
 
-    def is_on_term_of_service_page(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_term_of_service_page(self, ocr_text: str | None = None) -> bool:
         """
         检查是否在服务条款页面。
 
@@ -439,7 +439,7 @@ class GameScreen:
         """
         return self.search_text("服务条款", ocr_text, 0, 0, 0.7, 0.5)
 
-    def is_on_pause_menu(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_pause_menu(self, ocr_text: str | None = None) -> bool:
         """
         检查是否在暂停菜单，无论是在线模式还是故事模式。
 
@@ -447,7 +447,7 @@ class GameScreen:
         """
         return self.search_text(GameScreenTextPatterns.IS_ON_PAUSE_MENU, ocr_text, 0, 0.1, 0.5, 0.4)
 
-    def is_on_story_pause_menu(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_story_pause_menu(self, ocr_text: str | None = None) -> bool:
         """
         检查是否在故事模式的暂停菜单。
 
@@ -455,7 +455,7 @@ class GameScreen:
         """
         return self.search_text(GameScreenTextPatterns.IS_ON_STORY_PAUSE_MENU, ocr_text, 0, 0.1, 0.8, 0.4)
 
-    def is_on_online_pause_menu(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_online_pause_menu(self, ocr_text: str | None = None) -> bool:
         """
         检查是否在在线模式的暂停菜单。
 
@@ -463,7 +463,7 @@ class GameScreen:
         """
         return self.search_text(GameScreenTextPatterns.IS_ON_ONLINE_PAUSE_MENU, ocr_text, 0, 0.1, 0.8, 0.4)
 
-    def is_on_go_online_menu(self, ocr_text: Optional[str] = None) -> bool:
+    def is_on_go_online_menu(self, ocr_text: str | None = None) -> bool:
         """
         检查是否在"进入在线模式"菜单。
 

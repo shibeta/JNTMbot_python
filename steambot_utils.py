@@ -4,7 +4,7 @@ import threading
 import signal
 import time
 import atexit
-from typing import Callable, Optional
+from typing import Callable
 import requests
 from requests.exceptions import JSONDecodeError
 
@@ -22,7 +22,7 @@ class SteamBotApiError(Exception):
     用于封装后端返回的错误，并隐藏 requests 内部冗长的堆栈信息。
     """
 
-    def __init__(self, message: str, response: Optional[requests.Response] = None):
+    def __init__(self, message: str, response: requests.Response | None = None):
         self.response = response
         self.status_code = response.status_code if response is not None else None
         super().__init__(message)
@@ -33,7 +33,7 @@ class ProcessManager:
 
     def __init__(self, command: list[str]):
         self.command = command
-        self.process: Optional[subprocess.Popen] = None
+        self.process: subprocess.Popen | None = None
         self.lock = threading.Lock()
 
     def is_running(self) -> bool:
@@ -458,7 +458,7 @@ class SteamBot:
 
         return command
 
-    def verify_group_config(self, userinfo: Optional[dict] = None):
+    def verify_group_config(self, userinfo: dict | None = None):
         """
         验证配置中的 Steam 群组 ID 和频道名称是否有效。无效将抛出异常
 

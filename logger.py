@@ -2,12 +2,12 @@ import logging
 import logging.config
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from paths import LOG_DIR, LOG_FILE_PATH
 
 # 尝试导入 colorlog 库
-colorlog: Optional[type] = None
+colorlog: type | None = None
 try:
     import colorlog
 except ImportError:

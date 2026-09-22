@@ -1,4 +1,3 @@
-from typing import Optional
 import atexit
 
 from logger import get_logger
@@ -40,8 +39,8 @@ class GameProcess:
 
     def __init__(
         self,
-        hwnd: Optional[int] = None,
-        pid: Optional[int] = None,
+        hwnd: int | None = None,
+        pid: int | None = None,
     ):
         self.hwnd = hwnd  # 窗口句柄
         self.pid = pid  # 进程ID
@@ -53,7 +52,7 @@ class GameProcess:
         self.update_info()
         self.resume()
 
-    def update_info(self, hwnd: Optional[int] = None, pid: Optional[int] = None):
+    def update_info(self, hwnd: int | None = None, pid: int | None = None):
         """
         传入窗口句柄和 PID ，更新对象的信息。
 

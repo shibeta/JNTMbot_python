@@ -1,7 +1,6 @@
 import struct
 from pathlib import Path
 import time
-from typing import Optional
 import requests
 
 from app_lifecycle import sleep_smart as sleep
@@ -103,7 +102,7 @@ class _BaseWorkflow:
         self.process.suspend(self.config.suspendGTATime)
         logger.info("卡单人战局完成。")
 
-    def handle_warning_page(self, ocr_text: Optional[str] = None) -> bool:
+    def handle_warning_page(self, ocr_text: str | None = None) -> bool:
         """
         如果当前在警告页面，则确认警告。
 

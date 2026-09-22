@@ -1,5 +1,4 @@
 import time
-from typing import Optional
 
 from app_lifecycle import sleep_smart as sleep
 from logger import get_logger
@@ -407,7 +406,7 @@ class LifecycleWorkflow(_BaseWorkflow):
             # 循环结束仍未加载成功
             raise OperationTimeout(OperationTimeoutContext.JOIN_ONLINE_SESSION)
 
-    def handle_online_service_policy_page(self, ocr_text: Optional[str] = None) -> bool:
+    def handle_online_service_policy_page(self, ocr_text: str | None = None) -> bool:
         """
         如果当前在"RockStar Games 在线服务政策"页面，则勾选"我已阅读"并提交。
 
