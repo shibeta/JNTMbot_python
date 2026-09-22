@@ -1,15 +1,11 @@
 from functools import wraps
-from typing import Callable, TypeVar, ParamSpec
+from typing import Callable
 import uiautomation as auto
 from windows_utils import ClipboardScope
 import time
 
 from app_lifecycle import sleep_smart as sleep
 from logger import get_logger
-
-# 用于装饰器类型注解的泛型变量
-P = ParamSpec("P")  # 捕获函数的参数列表 (args, kwargs)
-R = TypeVar("R")  # 捕获函数的返回值类型
 
 logger = get_logger(__name__)
 
@@ -34,7 +30,7 @@ class SteamAutomation:
         logger.info("Steam Automation 初始化完成。")
 
     @staticmethod
-    def _preserve_focus_decorator(func: Callable[P, R]) -> Callable[P, R]:
+    def _preserve_focus_decorator[**P, R](func: Callable[P, R]) -> Callable[P, R]:
         """
         用于自动还原之前的键盘焦点的装饰器。
 

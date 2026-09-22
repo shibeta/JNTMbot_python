@@ -2,16 +2,13 @@ import sys
 from dataclasses import Field, dataclass, field
 from dataclasses import fields as dataclass_fields
 from pathlib import Path
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable
 
 from ruamel.yaml import YAML, YAMLError
 from ruamel.yaml.comments import CommentedMap
 
 from logger import get_logger
 from paths import BASE_DIR
-
-# 用于类型注解的泛型变量
-T = TypeVar("T")  # 捕获函数的返回值类型
 
 logger = get_logger(__name__)
 
@@ -90,7 +87,7 @@ _FILE_HEADER = (
 )
 
 
-def _opt(default: T, comment: str, check: _Checker | None = None) -> T:
+def _opt[T](default: T, comment: str, check: _Checker | None = None) -> T:
     """
     声明一个会写入配置文件的配置项。
 
@@ -101,7 +98,7 @@ def _opt(default: T, comment: str, check: _Checker | None = None) -> T:
     return field(default=default, metadata={"yaml": True, "comment": comment, "check": check})
 
 
-def _runtime_state(default: T = None) -> T:
+def _runtime_state[T](default: T = None) -> T:
     """声明一个**不写入配置文件**的运行期状态字段。"""
     return field(default=default, init=False, repr=False, compare=False, metadata={"yaml": False})
 

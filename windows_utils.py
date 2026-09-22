@@ -24,14 +24,10 @@ from win32con import (
     SWP_SHOWWINDOW,
     WM_CLOSE,
 )
-from typing import Callable, ParamSpec, TypeVar, Concatenate
+from typing import Callable, Concatenate
 
 from app_lifecycle import sleep_smart, sleep_stoppable
 from logger import get_logger
-
-# 用于装饰器类型注解的泛型变量
-P = ParamSpec("P")  # 捕获函数的参数列表 (args, kwargs)
-R = TypeVar("R")  # 捕获函数的返回值类型
 
 logger = get_logger(__name__)
 
@@ -84,7 +80,7 @@ class ClipboardScope:
         self.backup_success = False
 
     @staticmethod
-    def _clipboard_guard(
+    def _clipboard_guard[**P, R](
         func: Callable[Concatenate["ClipboardScope", P], R],
     ) -> Callable[Concatenate["ClipboardScope", P], R]:
         """用于打开和关闭剪贴板的装饰器"""
@@ -196,7 +192,7 @@ class ClipboardScope:
                 logger.error(f"还原剪贴板整体失败: {e} ，原有内容可能会丢失。")
 
     @staticmethod
-    def _preserve_clipboard_decorator(func: Callable[P, R]) -> Callable[P, R]:
+    def _preserve_clipboard_decorator[**P, R](func: Callable[P, R]) -> Callable[P, R]:
         """
         用于自动还原剪贴板内容的装饰器。
         """

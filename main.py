@@ -9,7 +9,7 @@ import time
 import subprocess
 import traceback
 from functools import wraps, partial
-from typing import Callable, ParamSpec, TypeVar
+from typing import Callable
 
 from keyboard_utils import HotKeyManager
 from logger import set_loglevel, get_logger
@@ -24,14 +24,10 @@ from gta_automator import GTAAutomator
 from health_check import HealthMonitor
 from gta_automator.exception import *
 
-# 用于装饰器类型注解的泛型变量
-P = ParamSpec("P")  # 捕获函数的参数列表 (args, kwargs)
-R = TypeVar("R")  # 捕获函数的返回值类型
-
 logger = get_logger("main")
 
 
-def interrupt_decorator(main_func: Callable[P, R]) -> Callable[P, R]:
+def interrupt_decorator[**P, R](main_func: Callable[P, R]) -> Callable[P, R]:
     """
     用于处理退出的装饰器。
     """
@@ -203,7 +199,6 @@ def main():
                     ocr_engine.restart()
                 except OcrError as restart_error:
                     logger.error(f"重启 OCR 引擎失败，将在下一轮循环重试: {restart_error}")
-
 
             # 恶意/问题玩家，退出程序
             if isinstance(e, UnexpectedGameState) and e.actual_state in (
