@@ -58,8 +58,7 @@ class SteamAutomation:
                     # 检查当前的前台窗口和发送消息前是否是同一个窗口
                     try:
                         current_window_handle = auto.GetForegroundWindow()
-                    except Exception as e:
-                        # logger.error(f"获取前台窗口句柄失败: {e}")
+                    except Exception:
                         current_window_handle = None
 
                     foreground_window_changed = original_window_handle != current_window_handle
@@ -282,7 +281,7 @@ class SteamAutomation:
 
         try:
             self.send_message_to_steam_chat_window(message)
-            logger.info(f"消息发送成功。")
+            logger.info("消息发送成功。")
             self.reset_send_timer()
 
         except Exception as e:
