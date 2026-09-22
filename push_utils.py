@@ -1,3 +1,5 @@
+from typing import Any
+
 import requests
 
 from config import Config
@@ -32,7 +34,7 @@ class UniPush:
         """
         # 微信推送检查
         is_push_config_valid = True
-        if config.enableWechatPush == True:
+        if config.enableWechatPush:
             if not config.pushplusToken:
                 logger.error("已启用微信推送，但没有提供 pushplus token。")
                 logger.info(
@@ -65,8 +67,8 @@ class UniPush:
         :param msg: 内容，需要点开消息才能看到
         """
         try:
-            url = f"https://www.pushplus.plus/send"
-            data = {"token": token, "title": title, "content": msg, "template": "txt"}
+            url = "https://www.pushplus.plus/send"
+            data: dict[str, Any] = {"token": token, "title": title, "content": msg, "template": "txt"}
             logger.info(f"使用pushplus向微信发送通知 {title}: {msg}")
             r = requests.post(url=url, json=data, timeout=(5, 20))
             r.raise_for_status()
@@ -79,6 +81,6 @@ class UniPush:
                 except ValueError:
                     logger.error(f"pushplus: ({resp.status_code}) {resp.text}")
             else:
-                logger.error(f"pushplus 请求失败且无响应")
+                logger.error("pushplus 请求失败且无响应")
         except requests.RequestException as e:
             logger.error(f"调用 pushplus API 时发生致命错误: {e}")
