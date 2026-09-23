@@ -153,7 +153,7 @@ class OnlineWorkflow(_BaseWorkflow):
         在线上模式挂机防踢。
         会定期检查是否在在线战局中。如果不在，将抛出异常。
 
-        本方法的执行时间并不精确，请勿依赖本方法计时。
+        方法实现上有几秒误差，长时间挂机可以忽略，但不适合短时间挂机。
 
         :param float afk_time: 要挂机的时间(秒)
         :param float online_check_interval: 每隔多久检查一次是否在线上(秒)
@@ -163,7 +163,7 @@ class OnlineWorkflow(_BaseWorkflow):
         end_time = time.monotonic() + afk_time
         while True:
             # 检查是否还在在线战局中
-            # 这个方法执行需要时间，因此挂机时间是不可靠的
+            # 注意 OCR 会引入几秒钟误差
             if not self.check_if_in_onlinemode():
                 raise UnexpectedGameState(
                     {GameState.ONLINE_FREEMODE, GameState.IN_MISSION}, GameState.UNKNOWN
