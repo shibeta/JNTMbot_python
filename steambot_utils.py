@@ -6,7 +6,6 @@ import time
 import atexit
 from typing import Any, Callable
 import requests
-from requests.api import _HeadersMapping
 from requests.exceptions import JSONDecodeError
 
 from app_lifecycle import sleep_smart as sleep
@@ -101,7 +100,7 @@ class ProcessManager:
 class SteamBotApiClient:
     """负责与 Steam Bot 后端进行 HTTP API 通信。"""
 
-    def __init__(self, base_url: str, headers: _HeadersMapping):
+    def __init__(self, base_url: str, headers: dict):
         self.base_url = base_url
         self.headers = headers
 
