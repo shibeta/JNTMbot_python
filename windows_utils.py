@@ -1,4 +1,5 @@
 from functools import wraps
+import os
 from pathlib import Path
 from contextlib import contextmanager
 import ctypes.wintypes
@@ -754,12 +755,22 @@ def get_steam_exe_path() -> str | None:
 
 def get_system_proxy() -> str | None:
     """
-    使用 urllib3 获取系统代理。优先获取 HTTP 代理，其次是 SOCKS 代理。
+    使用 urllib 获取系统代理。优先获取 HTTP 代理，其次是 SOCKS 代理。
 
     :return: 代理字符串。如果未找到，返回 None
     """
-    http_proxy = getproxies().get("http", None)
-    socks_proxy = getproxies().get("socks", None)
+    # getproxies_environment() 会错误地将 NODE_USE_ENV_PROXY 视为一个代理
+    # 因此先将其从环境变量中移除, 获取系统代理后再还原
+    node_env_proxy = os.environ.pop("NODE_USE_ENV_PROXY", None)
+    try:
+        sysyem_proxy = getproxies()
+    finally:
+        if node_env_proxy is not None:
+            os.environ["NODE_USE_ENV_PROXY"] = node_env_proxy
+
+    # 由于 http 代理总能自动代理 dns, 因此优先使用 http 代理
+    http_proxy = sysyem_proxy.get("http", None)
+    socks_proxy = sysyem_proxy.get("socks", None)
     if http_proxy:
         return http_proxy
     elif socks_proxy:
