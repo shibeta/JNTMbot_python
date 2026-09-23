@@ -137,7 +137,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         :param force: 如果为 True，则强制关闭游戏而不尝试常规退出
         :raise ``UnexpectedGameState(expected=GameState.ON, actual=GameState.UNKNOWN)``: 重启游戏失败次数过多
         """
-        logger.info(f"动作: 正在重启 GTA V...")
+        logger.info("动作: 正在重启 GTA V...")
 
         # 关闭游戏
         if force:
@@ -162,7 +162,7 @@ class LifecycleWorkflow(_BaseWorkflow):
                 # 游戏成功启动
                 break
             else:
-                logger.warning(f"GTA V 重启失败。将重试 {max_retry_times-1-retry_times} 次。")
+                logger.warning(f"GTA V 重启失败。将重试 {max_retry_times - 1 - retry_times} 次。")
                 continue
         else:
             # 达到最大失败次数后抛出异常
@@ -192,7 +192,7 @@ class LifecycleWorkflow(_BaseWorkflow):
             return
 
         logger.info("动作: 正在通过 Steam 启动 GTA V...")
-        exec_command_detached("start steam://rungameid/3240220")
+        exec_command_detached(["explorer.exe", f"steam://rungameid/{self.config.gameAppId}"])
 
         # 等待 GTA V 窗口出现
         self.wait_for_window_showup()
@@ -473,8 +473,10 @@ class LifecycleWorkflow(_BaseWorkflow):
         if not self.process.is_game_started():
             raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
 
-        steam_url = f"steam://rungame/3240220/76561199074735990/-steamjvp={steam_jvp}"
-        exec_command_detached(f"start {steam_url}")
+        # TODO: 加入参数合法性检查，避免命令注入
+
+        steam_url = f"steam://rungame/{self.config.gameAppId}/76561199074735990/-steamjvp={steam_jvp}"
+        exec_command_detached(["explorer.exe", steam_url])
         sleep(3)
 
         # 等待加入战局

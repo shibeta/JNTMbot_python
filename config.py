@@ -281,7 +281,7 @@ class Config:
         _check_range(minimum=1, unit=" 秒"),
     )
     recoveryChunkSize: int = _opt(
-        10 * 60,
+        600,
         "自动挂机清除恶意值时，单次挂机的时长 (秒)(默认 10 分钟)。每挂完一段都会重新检查恶意值，"
         "因此在挂机期间变成恶意玩家也能被及时发现",
         _check_range(minimum=1, unit=" 秒"),
