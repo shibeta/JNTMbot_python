@@ -148,7 +148,7 @@ class JobWorkflow(_BaseWorkflow):
         config: Config,
         send_steam_message_func: Callable[[str], Any],
     ):
-        super(JobWorkflow, self).__init__(screen, input, process, config)
+        super().__init__(screen, input, process, config)
         self.send_steam_message_func = send_steam_message_func
         self.lobby_tracker = LobbyStateTracker(
             screen,
