@@ -65,8 +65,6 @@ class NetworkErrorContext(enum.Enum):
 class GameAutomatorException(Exception):
     """所有游戏自动化相关错误的基类。"""
 
-    pass
-
 
 class OperationTimeout(GameAutomatorException):
     """操作在规定时间内未完成的错误。"""
