@@ -1,4 +1,3 @@
-from enum import Enum, auto
 import time
 from typing import Any, Callable
 
@@ -7,6 +6,7 @@ from config import Config
 from gamepad_utils import GamepadSimulator
 from logger import get_logger
 
+from .constant import *
 from .exception import *
 from .game_process import GameProcess
 from .game_screen import GameScreen, OcrFuncProtocol
@@ -16,11 +16,6 @@ from .online_workflow import OnlineWorkflow
 from .job_workflow import JobWorkflow
 
 logger = get_logger(__name__)
-
-
-class BotMode(Enum):
-    DRE = auto()  # 德瑞 Bot
-    RECOVERY = auto()  # 恢复模式 (挂机降低恶意值)
 
 
 class GTAAutomator:
@@ -57,15 +52,15 @@ class GTAAutomator:
         # 上一次恶意值检查结果为清白玩家的时间戳，None 表示尚未进行过恶意值检查
         self._last_clean_player_verified_timestamp: float | None = None
         # 恶意值检查间隔 (秒)
-        self.bad_sport_check_interval: float = 3600
+        self.bad_sport_check_interval: float = config.badSportCheckInterval
         # 问题玩家是否自动挂机降恶意值
         self.recovery_on_dodgy_player = config.autoReduceBadSportOnDodgyPlayer
         # 降低恶意值时，挂机结束的目标时间戳，None 表示当前没有正在进行的挂机任务
         self._recovery_target_timestamp: float | None = None
         # 降低恶意值时，总挂机目标: 20 小时
-        self._recovery_total_duration = 20 * 3600
+        self._recovery_total_duration = config.recoveryTotalDuration
         # 降低恶意值时，单次挂机的时长: 10 分钟
-        self._recovery_chunk_size = 10 * 60
+        self._recovery_chunk_size = config.recoveryChunkSize
 
     def is_in_recovery_mode(self):
         """
@@ -152,7 +147,7 @@ class GTAAutomator:
                 if e.actual_state == GameState.DODGY_PLAYER_LEVEL:
                     if self.recovery_on_dodgy_player:
                         # 如果启用自动挂机降恶意值，切换到恢复模式
-                        logger.warning(f"检测到问题玩家状态，切换至恢复模式。")
+                        logger.warning("检测到问题玩家状态，切换至恢复模式。")
                         self.push_message("恶意值过高(问题玩家)", "Bot 将开始挂机以降低恶意值。")
                         self.bot_mode = BotMode.RECOVERY
                         self._recovery_target_timestamp = None  # 重置计时
@@ -211,7 +206,7 @@ class GTAAutomator:
         # 初始化或恢复计时器
         if self._recovery_target_timestamp is None:
             self._recovery_target_timestamp = time.monotonic() + self._recovery_total_duration
-            logger.info(f"开启新的恶意值恢复任务，目标时长: {self._recovery_total_duration/3600:.1f} 小时")
+            logger.info(f"开启新的恶意值恢复任务，目标时长: {self._recovery_total_duration / 3600:.1f} 小时")
 
         remaining = self._recovery_target_timestamp - time.monotonic()
 
@@ -232,7 +227,7 @@ class GTAAutomator:
                 logger.error("检查恶意值失败，退出游戏。")
                 self.lifecycle_workflow.shutdown()
             raise
-        if bad_sport_level == "恶意玩家":
+        if bad_sport_level is PlayerLevel.BAD_SPORT:
             logger.error("当前恶意等级为恶意玩家，无法降低恶意值，退出游戏。")
             # 清空挂机目标计时器
             self._recovery_target_timestamp = None
@@ -240,13 +235,12 @@ class GTAAutomator:
             raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.BAD_SPORT_LEVEL)
 
         # 其他恶意等级无条件执行挂机
-        logger.info(f"当前恶意等级为 {bad_sport_level}，开始挂机以降低恶意值。")
+        logger.info(f"当前恶意等级为 {bad_sport_level.value}，开始挂机以降低恶意值。")
 
-        # 执行挂机
-        # 每次只挂机 _recovery_chunk_size (例如10分钟) 或者 剩余时间
+        # 分段挂机, 注意最后一段只挂剩余时间
         current_chunk = min(self._recovery_chunk_size, remaining)
 
-        logger.info(f"执行恢复模式挂机: {current_chunk/60:.1f} 分钟 (总剩余: {remaining/3600:.2f} 小时)")
+        logger.info(f"执行恢复模式挂机: {current_chunk / 60:.1f} 分钟 (总剩余: {remaining / 3600:.2f} 小时)")
 
         try:
             self.online_workflow.afk(current_chunk)
@@ -280,7 +274,7 @@ class GTAAutomator:
         # 进入差事准备面板
         try:
             self.job_workflow.enter_and_wait_for_job_panel()
-        except OperationTimeout as e:
+        except OperationTimeout:
             # 等待差事面板打开超时
             logger.warning("等待差事面板打开超时，尝试回到自由模式。")
             self.job_workflow.exit_job_panel()
@@ -303,7 +297,7 @@ class GTAAutomator:
         except UnexpectedGameState as e:
             # 有待命状态玩家，退出差事
             if e.actual_state == GameState.BAD_JOB_PANEL_STANDBY_PLAYER:
-                logger.warning(f"发现待命状态玩家。退出差事。")
+                logger.warning("发现待命状态玩家。退出差事。")
                 self.job_workflow.exit_job_panel()
                 return
             else:
@@ -311,7 +305,7 @@ class GTAAutomator:
         except UIElementNotFound as e:
             # 意外离开差事面板，退出差事
             if e.element_not_found == UIElement.JOB_SETUP_PANEL:
-                logger.warning(f"不知为何离开了面板。退出差事。")
+                logger.warning("不知为何离开了面板。退出差事。")
                 self.job_workflow.exit_job_panel()
                 return
             else:
@@ -365,7 +359,7 @@ class GTAAutomator:
         判断是否需要检查恶意值:
         - 游戏刚刚重启
         - 第一次运行
-        - 距离上次检查超过 1 小时
+        - 距离上次检查超过 ``badSportCheckInterval``
 
         :param game_restarted: 本次流程启动时是否重启了游戏
         :return bool: 需要进行恶意值检查
@@ -377,7 +371,7 @@ class GTAAutomator:
             logger.info("触发恶意值检查: 尚未检查过。")
             return True
         elif (time.monotonic() - self._last_clean_player_verified_timestamp) > self.bad_sport_check_interval:
-            logger.info(f"触发恶意值检查: 距离上次检查已超过 {self.bad_sport_check_interval/60:.0f} 分钟。")
+            logger.info(f"触发恶意值检查: 距离上次检查已超过 {self.bad_sport_check_interval / 60:.0f} 分钟。")
             return True
 
         return False
@@ -401,15 +395,15 @@ class GTAAutomator:
                 self.lifecycle_workflow.shutdown()
             raise
 
-        if bad_sport_level != "清白玩家":
-            logger.warning(f"当前恶意等级为 {bad_sport_level} ，恶意值过高。")
-            if bad_sport_level == "问题玩家":
+        if bad_sport_level is not PlayerLevel.CLEAN:
+            logger.warning(f"当前恶意等级为 {bad_sport_level.value} ，恶意值过高。")
+            if bad_sport_level is PlayerLevel.DODGY:
                 raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.DODGY_PLAYER_LEVEL)
             else:
                 # 恶意玩家
                 raise UnexpectedGameState(GameState.CLEAN_PLAYER_LEVEL, GameState.BAD_SPORT_LEVEL)
 
-        logger.info(f"当前恶意等级为 {bad_sport_level} ，恶意值正常。")
+        logger.info(f"当前恶意等级为 {bad_sport_level.value} ，恶意值正常。")
 
         # 检查通过，更新时间戳
         self._last_clean_player_verified_timestamp = time.monotonic()

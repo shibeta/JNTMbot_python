@@ -13,29 +13,13 @@ from windows_utils import (
     suspend_process_for_duration,
 )
 
+from .constant import *
+
 logger = get_logger(__name__.split(".")[-1])
 
 
 class GameProcess:
     """封装与游戏窗口和进程相关的各种方法"""
-
-    # 与 GTA V 增强版相关的进程名称列表
-    GTA_ASSOCIATED_PROCESS_NAMES = [
-        "GTA5.exe",
-        "GTA5_Enhanced.exe",
-        "GTA5_Enhanced_BE.exe",
-        "PlayGTAV.exe",
-        "RockstarErrorHandler.exe",
-        "RockstarService.exe",
-        "SocialClubHelper.exe",
-        "Launcher.exe",
-    ]
-    # GTA V 增强版进程名
-    GTA_PROCESS_NAME = "GTA5_Enhanced.exe"
-    # GTA V 增强版窗口标题
-    GTA_WINDOW_TITLE = "Grand Theft Auto V"
-    # GTA V 增强版窗口类名
-    GTA_WINDOW_CLASS_NAME = "sgaWindow"
 
     def __init__(
         self,
@@ -64,7 +48,7 @@ class GameProcess:
             logger.debug(f"使用传入的窗口句柄: {hwnd}, 进程ID: {pid} 更新进程信息。")
             self.hwnd, self.pid = hwnd, pid
         else:
-            info = find_window(self.GTA_WINDOW_CLASS_NAME, self.GTA_WINDOW_TITLE)
+            info = find_window(GTA_WINDOW_CLASS_NAME, GTA_WINDOW_TITLE)
             if info:
                 self.hwnd, self.pid = info
                 logger.info(f"更新 GTA V 进程信息完成。窗口句柄: {self.hwnd}, 进程ID: {self.pid}")
@@ -107,7 +91,7 @@ class GameProcess:
 
     def kill(self):
         """杀死 GTA V 所有相关进程，并且清除窗口句柄和 PID 。"""
-        kill_processes(self.GTA_ASSOCIATED_PROCESS_NAMES)
+        kill_processes(GTA_ASSOCIATED_PROCESS_NAMES)
         self.hwnd, self.pid = None, None
 
     def request_exit(self):
@@ -129,7 +113,7 @@ class GameProcess:
         检查游戏是否启动。
         **注意这个方法不会检查或修改对象记录的游戏信息，需要手动更新**。
         """
-        window_info = find_window(GameProcess.GTA_WINDOW_CLASS_NAME, GameProcess.GTA_WINDOW_TITLE)
+        window_info = find_window(GTA_WINDOW_CLASS_NAME, GTA_WINDOW_TITLE)
         if window_info:
             return True
         else:
@@ -137,14 +121,14 @@ class GameProcess:
 
     def is_hwnd_valid(self) -> bool:
         """检查窗口句柄是否有效。"""
-        if self.hwnd and self.GTA_WINDOW_TITLE == get_window_title(self.hwnd):
+        if self.hwnd and GTA_WINDOW_TITLE == get_window_title(self.hwnd):
             return True
         else:
             return False
 
     def is_pid_vaild(self) -> bool:
         """检查进程 PID 是否有效。"""
-        if self.pid and self.GTA_PROCESS_NAME == get_process_name(self.pid):
+        if self.pid and GTA_PROCESS_NAME == get_process_name(self.pid):
             return True
         else:
             return False

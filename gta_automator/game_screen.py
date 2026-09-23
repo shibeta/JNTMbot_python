@@ -5,6 +5,7 @@ from logger import get_logger
 
 from .exception import *
 from .game_process import GameProcess
+from .constant import *
 
 logger = get_logger(__name__.split(".")[-1])
 
@@ -218,7 +219,7 @@ class GameScreen:
             # 不在面板中则跳过识别直接返回-1
             return False, -1, -1, -1
 
-    def get_bad_sport_level_of_first_player_in_list(self, ocr_text: str | None = None) -> str:
+    def get_bad_sport_level_of_first_player_in_list(self, ocr_text: str | None = None) -> PlayerLevel:
         """
         读取玩家列表中第一个玩家的恶意等级。
 
@@ -229,13 +230,13 @@ class GameScreen:
             ocr_text = self.ocr_game_window(0.5, 0, 0.5, 0.5)
 
         if "清白" in ocr_text:
-            return "清白玩家"
+            return PlayerLevel.CLEAN
         elif "问题" in ocr_text:
-            return "问题玩家"
+            return PlayerLevel.DODGY
         elif "恶意" in ocr_text:
-            return "恶意玩家"
+            return PlayerLevel.BAD_SPORT
         else:
-            return "未知等级"
+            return PlayerLevel.UNKNOWN
 
     # --- 状态检查方法 ---
     def is_on_mainmenu_brightness_or_warning_page(self, ocr_text: str | None = None) -> bool:

@@ -5,6 +5,7 @@ from logger import get_logger
 
 from ._base_workflow import _BaseWorkflow
 from .exception import *
+from .constant import *
 
 logger = get_logger(__name__.split(".")[-1])
 
@@ -45,7 +46,6 @@ class OnlineWorkflow(_BaseWorkflow):
 
     def _recover_by_do_nothing(self):
         """有的时候，什么都不做就是最好的"""
-        pass
 
     def _recover_by_brute_force_back(self):
         """通过狂按 B 键来退出任何可能卡住的子菜单"""
@@ -114,12 +114,12 @@ class OnlineWorkflow(_BaseWorkflow):
             {GameState.ONLINE_FREEMODE, GameState.IN_MISSION, GameState.ONLINE_PAUSED}, GameState.UNKNOWN
         )
 
-    def get_bad_sport_level(self) -> str:
+    def get_bad_sport_level(self) -> PlayerLevel:
         """
         在在线模式中，获取当前角色的恶意等级。
         只能在单人战局中使用，因为该方法实际用于检查战局内第一个玩家的恶意等级。
 
-        :return: 恶意等级字符串，如 "清白玩家", "问题玩家", "恶意玩家"
+        :return: 恶意等级
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         :raises ``UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)``: 读取恶意等级失败
         :raises ``UIElementNotFound(UIElement.PAUSE_MENU)``: 打开暂停菜单失败
@@ -131,21 +131,21 @@ class OnlineWorkflow(_BaseWorkflow):
         sleep(0.5)  # 等待玩家列表加载
         # 读取恶意等级
         bad_sport_level = self.screen.get_bad_sport_level_of_first_player_in_list()
-        if bad_sport_level == "未知等级":
+        if bad_sport_level is PlayerLevel.UNKNOWN:
             # 重试最多三次
             for _ in range(3):
                 logger.warning("读取恶意等级失败，正在重试...")
                 sleep(0.5)
                 bad_sport_level = self.screen.get_bad_sport_level_of_first_player_in_list()
-                if bad_sport_level != "未知等级":
+                if bad_sport_level is not PlayerLevel.UNKNOWN:
                     break
 
         # 关闭暂停菜单
         self.action.open_or_close_pause_menu()
-        if bad_sport_level == "未知等级":
+        if bad_sport_level is PlayerLevel.UNKNOWN:
             raise UIElementNotFound(UIElement.BAD_SPORT_LEVEL_INDICATOR)
 
-        logger.info(f"当前角色的恶意等级为 {bad_sport_level} 。")
+        logger.info(f"当前角色的恶意等级为 {bad_sport_level.value} 。")
         return bad_sport_level
 
     def afk(self, afk_time: float, online_check_interval: float = 60):
