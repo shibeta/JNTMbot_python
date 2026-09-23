@@ -185,10 +185,10 @@ class Config:
     debug: bool = _opt(False, "开启调试模式，日志输出将非常详细")
 
     # ---- Steam Bot 后端 ----
-    steamBotHost: str = _opt("127.0.0.1", "Steam Bot后端的监听地址", _check_not_empty("监听地址"))
+    steamBotHost: str = _opt("127.0.0.1", "Steam Bot后端的监听地址", _check_not_empty("Steam Bot后端监听地址"))
     steamBotPort: int = _opt(13091, "Steam Bot后端的监听端口", _check_range(minimum=1, maximum=65535))
     steamBotToken: str = _opt(
-        "0x4445414442454546", "访问Steam Bot后端的认证Token", _check_not_empty("认证 Token")
+        "0x4445414442454546", "访问Steam Bot后端的认证Token", _check_not_empty("Steam Bot后端认证Token")
     )
     steamBotProxy: str = _opt(
         "system",
@@ -197,22 +197,22 @@ class Config:
     )
 
     # ---- Steam 游戏 ----
-    gameAppId: str = _opt(
-        "3240220",
+    gameAppId: int = _opt(
+        3240220,
         "GTA V 增强版在 Steam 上的 App ID，用于通过 Steam 启动游戏和加入战局，一般不需要修改",
-        _check_digits("App ID"),
+        _check_digits("GTA V增强版App ID"),
     )
 
     # ---- Steam 群组消息 ----
     steamGroupId: str = _opt(
         "37660928",
         "要发送消息的Steam群组ID，程序启动时可以读取到",
-        _check_not_empty("群组 ID"),
+        _check_not_empty("Steam群组ID"),
     )
     steamChannelId: str = _opt(
         "163168791",
         "要发送消息的Steam群组频道ID，程序启动时可以读取到",
-        _check_not_empty("频道 ID"),
+        _check_not_empty("Steam群组频道ID"),
     )
     useAlterMessagingMethod: bool = _opt(
         False,
