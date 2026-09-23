@@ -768,21 +768,21 @@ def get_system_proxy() -> str | None:
         return None
 
 
-def exec_command_detached(command: str):
+def exec_command_detached(command_list: list):
     """
     以分离模式执行一个命令行指令。
 
-    :param command: 要执行的命令行指令
+    :param command: 命令列表，例如 ["my_app.exe", "-arg1", "val1"]
     :raises ``Exception``: 启动命令失败
     """
     try:
         # subprocess.Popen 可以避免阻塞主进程
         # CREATE_BREAKAWAY_FROM_JOB 使主程序退出时不会关闭子进程
         subprocess.Popen(
-            command,
-            shell=True,
+            command_list,
+            shell=False,
             creationflags=subprocess.CREATE_BREAKAWAY_FROM_JOB,
             close_fds=True,
         )
     except Exception as e:
-        raise Exception(f"执行命令 '{command}' 失败: {e}") from e
+        raise Exception(f"执行命令 '{' '.join(command_list)}' 失败: {e}") from e
