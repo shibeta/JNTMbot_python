@@ -286,7 +286,7 @@ class SteamBotApiClient:
         # 超时时间为 10 秒，比其他方法短，减少退出时的等待时间
         self.post_with_auth(f"{self.base_url}/logout", headers=self.headers, timeout=(5, 10))
 
-    def get_group_channels(self, group_id: str) -> list[dict[str, str | bool]]:
+    def get_group_channels(self, group_id: str) -> list[dict[str, Any]]:
         """
         调用 /group-channels API，获取指定群组的文字频道列表。
 
@@ -597,7 +597,7 @@ class SteamBot:
         self.api_client.login()
         logger.info("登录请求已成功发送。")
 
-    def get_login_status(self) -> dict[str, bool | str]:
+    def get_login_status(self) -> dict[str, Any]:
         """
         获取登录状态。这个方法永远不会抛出异常。
 
