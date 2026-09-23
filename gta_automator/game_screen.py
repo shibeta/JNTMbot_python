@@ -87,6 +87,8 @@ class OcrFuncProtocol(Protocol):
         :param float height: 截图区域的相对高度 (0.0 to 1.0)。
         :param bool include_title_bar: 是否将标题栏和边框计算在内。(True: 基于完整窗口截图 False: 基于客户区截图 (排除标题栏和边框))
         :return: 识别出的所有文本拼接成的字符串。
+        :raises ``ValueError``: 传入的参数无效
+        :raises ``OcrError``: OCR 引擎故障
         """
         ...
 
@@ -109,6 +111,7 @@ class GameScreen:
         对游戏窗口的指定区域执行 OCR，并返回识别结果。
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
+        :raises ``OcrError``: OCR 引擎故障，调用方应重启后端后重试
         """
         if not self.process.hwnd:
             raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
@@ -184,7 +187,7 @@ class GameScreen:
                 return False
         elif isinstance(query_text, re.Pattern):
             if not query_text.pattern:
-                logger.warning(f"传入了从空字符串编译的Pattern。")
+                logger.warning("传入了从空字符串编译的Pattern。")
                 return False
         else:
             if not query_text:
