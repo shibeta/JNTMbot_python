@@ -13,7 +13,7 @@ from typing import Callable
 
 from keyboard_utils import HotKeyManager
 from logger import set_loglevel, get_logger
-from config import Config
+from config import ConfigManager
 
 from argument_parser import ArgumentParser, ArgumentError
 from ocr_utils import OCREngine, OcrError
@@ -63,7 +63,7 @@ def main():
 
     # 加载配置
     try:
-        config = Config.load(command_line_args["config_file_path"])
+        config = ConfigManager(command_line_args["config_file_path"]).load()
         logger.info("配置加载成功。")
     except Exception as e:
         logger.error(f"加载配置失败: {e}", exc_info=e)

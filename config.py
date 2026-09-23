@@ -33,6 +33,12 @@ _TRUE_WORDS = {"true", "yes", "on", "1"}
 _FALSE_WORDS = {"false", "no", "off", "0"}
 _TYPE_NAMES = {bool: "布尔值 (true/false)", int: "整数", float: "数字", str: "字符串"}
 
+# 程序初始化配置文件时，自动添加在配置文件开头的说明
+_FILE_HEADER = (
+    "本文件由 config.py 生成，请不要删除其中的配置项。\n"
+    "程序启动时会自动补全缺失的配置项，并保留你已经修改过的值和注释。"
+)
+
 
 def _check_range(minimum: float | None = None, maximum: float | None = None, unit: str = "") -> _Checker:
     """数值范围校验函数生成器"""
@@ -79,12 +85,6 @@ def _check_proxy(value: Any) -> str | None:
 
 
 _ms_check = _check_range(minimum=0, unit=" 毫秒")
-
-# 程序初始化配置文件时，自动添加在配置文件开头的说明
-_FILE_HEADER = (
-    "本文件由 config.py 生成，请不要删除其中的配置项。\n"
-    "程序启动时会自动补全缺失的配置项，并保留你已经修改过的值和注释。"
-)
 
 
 def _opt[T](default: T, comment: str, check: _Checker | None = None) -> T:
@@ -171,21 +171,28 @@ def _coerce_value(spec: Field, value: Any) -> tuple[Any, str | None]:
     return value, None
 
 
+def _new_yaml() -> YAML:
+    yaml = YAML()
+    yaml.indent(mapping=2, sequence=4, offset=2)
+    yaml.preserve_quotes = True
+    return yaml
+
+
 @dataclass
 class Config:
     """
     程序的所有配置项。
 
-    字段的声明顺序也是写进 ``config.yaml`` 的顺序，字段的默认值就是新建配置文件时的取值。
-
-    用法: `config = Config.load(路径)`
+    字段的声明顺序即为写进 ``config.yaml`` 的顺序，字段的默认值就是新建配置文件时的取值。
     """
 
     # ---- 通用 ----
     debug: bool = _opt(False, "开启调试模式，日志输出将非常详细")
 
     # ---- Steam Bot 后端 ----
-    steamBotHost: str = _opt("127.0.0.1", "Steam Bot后端的监听地址", _check_not_empty("Steam Bot后端监听地址"))
+    steamBotHost: str = _opt(
+        "127.0.0.1", "Steam Bot后端的监听地址", _check_not_empty("Steam Bot后端监听地址")
+    )
     steamBotPort: int = _opt(13091, "Steam Bot后端的监听端口", _check_range(minimum=1, maximum=65535))
     steamBotToken: str = _opt(
         "0x4445414442454546", "访问Steam Bot后端的认证Token", _check_not_empty("Steam Bot后端认证Token")
@@ -372,125 +379,20 @@ class Config:
     # 配置文件绝对路径
     config_filepath: Path = _runtime_state(BASE_DIR / "config.yaml")
 
-    def __post_init__(self) -> None:
-        """
-        适用于 dataclass 的初始化方法
-        """
-        # 磁盘上的原始文档，用于在写回时保留用户的注释和自定义配置项
-        self._raw_document: CommentedMap = CommentedMap()
-        self._yaml = _new_yaml()
-        # 是否需要把补全后的配置写回文件
-        self._needs_write: bool = False
-        # 需要由程序补上注释的配置项（新建文件时是全部，读取已有文件时只有文件里缺少的那些）
-        # 已经存在于文件中的配置项一律保留文件里的注释，不会被程序改写
-        self._keys_needing_comment: set[str] = {spec.name for spec in self._schema_fields()}
-        # 写入的目标文件是否还不存在（或内容为空），此时会额外写上文件开头的说明
-        self._is_new_file: bool = True
-
-        # 检查配置项是否合法
-        self.validate()
-
     @classmethod
-    def load(cls, config_filepath: str | Path | None = None) -> "Config":
+    def _schema_fields(cls) -> list[Field]:
         """
-        读取配置文件并返回配置对象。
+        返回所有会写入配置文件的字段，顺序与声明顺序一致。
 
-        文件不存在时会按默认值创建一份带注释的配置；文件缺少某些配置项时会用默认值补全，
-        并把补全后的内容写回文件。
-
-        :param config_filepath: 配置文件路径。相对路径会以**程序所在目录**为基准，而不是
-            当前工作目录；为 ``None`` 时使用 ``<程序目录>/config.yaml``
-        :raises ConfigParseError: 文件无法读取，或者不是合法的 YAML 键值对文档
-        :raises ConfigValidationError: 存在类型或取值不合法的配置项
+        :return: 包含所有 YAML 配置项字段信息的列表
         """
-        config = cls()
-        config.config_filepath = cls._resolve_path(config_filepath)
-        logger.info(f"正在从 '{config.config_filepath}' 加载配置文件...")
-        config._read()
-        config.validate()
-        if config._needs_write:
-            config.save()
-        return config
-
-    @staticmethod
-    def _resolve_path(config_filepath: str | Path | None) -> Path:
-        """把配置文件路径解析成绝对路径，相对路径以程序所在目录为基准。"""
-        if config_filepath is None:
-            return BASE_DIR / "config.yaml"
-        path = Path(config_filepath).expanduser()
-        if not path.is_absolute():
-            path = BASE_DIR / path
-        return path.resolve()
-
-    def _read(self) -> None:
-        """把配置文件的内容读进本对象，并记录是否需要把补全结果写回文件。"""
-        document = self._load_document()
-        schema = self._schema_fields()
-        known_names = {spec.name for spec in schema}
-
-        # 文件不存在时 document 为 None，此时所有配置项都使用默认值
-        self._raw_document = document if document is not None else CommentedMap()
-        self._is_new_file = document is None or len(document) == 0
-        self._needs_write = document is None
-
-        missing = []
-        for spec in schema:
-            if document is not None and spec.name in document:
-                value, note = _coerce_value(spec, document[spec.name])
-                if note is not None:
-                    logger.warning(note)
-                    self._needs_write = True
-            else:
-                value = spec.default
-                missing.append(spec.name)
-                self._needs_write = True
-            setattr(self, spec.name, value)
-
-        if missing:
-            logger.info(f"配置文件缺少以下配置项，将用默认值补全: {', '.join(missing)}")
-        self._keys_needing_comment = set(missing)
-
-        if document is not None:
-            unknown = sorted(set(document) - known_names)
-            if unknown:
-                logger.warning(
-                    "配置文件中的以下配置项不是本程序支持的配置项，将被忽略"
-                    f"（但会原样保留在文件中）: {', '.join(unknown)}"
-                )
-
-    def _load_document(self) -> CommentedMap | None:
-        """
-        读取并解析配置文件。
-
-        :return: 解析得到的文档；文件不存在时返回 ``None``
-        :raises ConfigParseError: 文件无法读取，或者不是 YAML 键值对文档
-        """
-        if self.config_filepath.is_dir():
-            raise ConfigParseError(f"配置文件路径 '{self.config_filepath}' 是一个文件夹，不是一个文件。")
-
-        try:
-            with open(self.config_filepath, encoding="utf-8") as f:
-                document = self._yaml.load(f)
-        except FileNotFoundError:
-            logger.info(f"未找到配置文件 '{self.config_filepath}'，将按默认值创建一个新的。")
-            return None
-        except OSError as e:
-            raise ConfigParseError(f"无法读取配置文件 '{self.config_filepath}': {e}") from e
-        except YAMLError as e:
-            raise ConfigParseError(f"配置文件 '{self.config_filepath}' 不是合法的 YAML: {e}") from e
-
-        if document is None:
-            logger.warning(f"配置文件 '{self.config_filepath}' 是空的。")
-            return CommentedMap()
-        if not isinstance(document, CommentedMap):
-            raise ConfigParseError(
-                f"配置文件 '{self.config_filepath}' 的顶层必须是一组 '配置项: 值'，而不是 {type(document).__name__}。"
-            )
-        return document
+        return [spec for spec in dataclass_fields(cls) if spec.metadata.get("yaml")]
 
     def validate(self) -> None:
         """
         检查全部配置项的类型和取值范围。
+
+        本方法会对配置数据进行业务逻辑检查，如有问题则集中抛出。
 
         :raises ConfigValidationError: 存在不合法的配置项，异常信息中会一次性列出全部问题
         """
@@ -509,11 +411,12 @@ class Config:
                 if problem is not None:
                     problems.append(f"  - {spec.name}: {problem}")
 
-        # 只有启用 useAlterMessagingMethod 时才检查 AlterMessagingMethodWindowTitle
-        if self.useAlterMessagingMethod and not self.AlterMessagingMethodWindowTitle.strip():
-            problems.append(
-                "  - AlterMessagingMethodWindowTitle: 启用 useAlterMessagingMethod 时不能为空，否则会匹配到任意窗口"
-            )
+        # 特定业务逻辑校验
+        if getattr(self, "useAlterMessagingMethod", False):
+            if not getattr(self, "AlterMessagingMethodWindowTitle", "").strip():
+                problems.append(
+                    "  - AlterMessagingMethodWindowTitle: 启用 useAlterMessagingMethod 时不能为空"
+                )
 
         if problems:
             raise ConfigValidationError(
@@ -521,71 +424,171 @@ class Config:
                 + "\n".join(problems)
             )
 
-    def save(self, config_filepath: str | Path | None = None) -> bool:
+
+class ConfigManager:
+    """
+    配置文件的读取、合并和保存管理器。
+
+    负责处理底层的文件 I/O、YAML 解析、缺失配置项的自动修补。
+
+    用法: `config = ConfigManager("config.yaml").load()`
+    """
+
+    def __init__(self, config_filepath: str | Path | None = None):
         """
-        把当前配置写回配置文件。
+        初始化配置管理器。
 
-        只修改配置值，不影响用户注释和未定义的配置项。
-
-        :param config_filepath: 写入的目标路径，默认为本对象正在使用的配置文件
-        :return bool: 写入成功返回 ``True``，写入失败返回 ``False``
+        :param config_filepath: 配置文件路径。相对路径会以**程序所在目录**为基准，而不是
+            当前工作目录；为 ``None`` 时使用 ``<程序目录>/config.yaml``
         """
-        target = self.config_filepath if config_filepath is None else self._resolve_path(config_filepath)
+        self.config_filepath = self._resolve_path(config_filepath)
+        self._yaml = _new_yaml()
+        self._raw_document: CommentedMap = CommentedMap()
+        self._is_new_file = False
+        self._needs_write = False
 
-        document = self._raw_document
-        for spec in self._schema_fields():
-            document[spec.name] = getattr(self, spec.name)
-            if spec.name in self._keys_needing_comment:
-                document.yaml_set_comment_before_after_key(spec.name, before=spec.metadata["comment"])
+    @staticmethod
+    def _resolve_path(filepath: str | Path | None) -> Path:
+        """
+        把配置文件路径解析成绝对路径，相对路径以程序所在目录为基准。
 
-        if self._is_new_file:
-            document.yaml_set_start_comment(_FILE_HEADER)
+        :param filepath: 传入的原始路径字符串或 Path 对象
+        :return: 解析后的绝对路径 Path 对象
+        """
+        if filepath is None:
+            return BASE_DIR / "config.yaml"
+        path = Path(filepath).expanduser()
+        if not path.is_absolute():
+            path = BASE_DIR / path
+        return path.resolve()
+
+    def load(self) -> Config:
+        """
+        读取配置文件并返回配置对象。
+
+        文件不存在时会按默认值创建一份带注释的配置；文件缺少某些配置项时会用默认值补全，
+        并在原文件中按声明顺序精确插入缺项后写回文件。
+
+        :return: 经过读取、合并和校验后的 Config 实例
+        :raises ConfigParseError: 文件无法读取，或者不是合法的 YAML 键值对文档
+        :raises ConfigValidationError: 存在类型或取值不合法的配置项
+        """
+        logger.info(f"正在从 '{self.config_filepath}' 加载配置文件...")
+
+        self._load_document()
+        config = self._merge_and_build_config()
+        config.validate()
+
+        if self._needs_write:
+            self.save()
+
+        return config
+
+    def _load_document(self) -> None:
+        """
+        读取并解析配置文件到内存中。
+
+        将解析结果存入 ``self._raw_document``。文件不存在或为空时会创建一个新的空文档对象。
+
+        :raises ConfigParseError: 文件无法读取，或者不是 YAML 键值对文档
+        """
+        if self.config_filepath.is_dir():
+            raise ConfigParseError(f"配置文件路径 '{self.config_filepath}' 是一个文件夹。")
 
         try:
-            # 使用 Windows 风格的换行符
-            with open(target, "w", encoding="utf-8", newline="\n") as f:
-                self._yaml.dump(document, f)
+            with open(self.config_filepath, encoding="utf-8") as f:
+                document = self._yaml.load(f)
+        except FileNotFoundError:
+            logger.info(f"未找到配置文件 '{self.config_filepath}'，将按默认值创建一个新的。")
+            document = None
         except OSError as e:
-            logger.error(f"无法写入配置文件 '{target}': {e}")
-            logger.error("程序会继续使用内存中的配置，但本次的改动在退出后会丢失。")
+            raise ConfigParseError(f"无法读取配置文件 '{self.config_filepath}': {e}") from e
+        except YAMLError as e:
+            raise ConfigParseError(f"配置文件 '{self.config_filepath}' 不是合法的 YAML: {e}") from e
+
+        if document is None or len(document) == 0:
+            self._is_new_file = True
+            self._needs_write = True
+            self._raw_document = CommentedMap()
+        elif not isinstance(document, CommentedMap):
+            raise ConfigParseError("配置文件顶层必须是一组键值对。")
+        else:
+            self._raw_document = document
+
+    def _merge_and_build_config(self) -> Config:
+        """
+        比对配置声明，生成 Config 对象，并在 raw_document 中按正确顺序插入缺失项。
+
+        会执行基础的值类型强制转换 (如字符串转布尔值)，并标识出未知配置项。
+
+        :return: 合并并转换类型后的完整 Config 实例
+        """
+        config = Config()
+        config.config_filepath = self.config_filepath
+
+        schema = Config._schema_fields()
+        missing_keys = []
+
+        # 按 dataclass 声明顺序遍历，从而确保正确的索引位置
+        for index, spec in enumerate(schema):
+            name = spec.name
+            if name in self._raw_document:
+                # 键已存在：处理类型转换
+                value, note = _coerce_value(spec, self._raw_document[name])
+                if note is not None:
+                    logger.warning(note)
+                    self._needs_write = True
+                setattr(config, name, value)
+            else:
+                # 键不存在：插入默认值，并在 CommentedMap 的准确位置(index)插入，保证顺序
+                self._raw_document.insert(index, name, spec.default)
+                # 为新插入的项添加注释
+                self._raw_document.yaml_set_comment_before_after_key(name, before=spec.metadata["comment"])
+                missing_keys.append(name)
+                self._needs_write = True
+
+        if missing_keys:
+            logger.info(f"配置文件缺少以下配置项，将用默认值补全: {', '.join(missing_keys)}")
+
+        # 检查未知的过期配置项
+        known_names = {spec.name for spec in schema}
+        unknown = sorted(set(self._raw_document.keys()) - known_names)
+        if unknown and not self._is_new_file:
+            logger.warning(f"配置文件中包含未知配置项，将被忽略（原样保留）: {', '.join(unknown)}")
+
+        return config
+
+    def save(self) -> bool:
+        """
+        把合并补全后的内容写回配置文件。
+
+        只增加缺失的配置项或更新错误的值类型，完全保留用户的注释、排版和未定义的配置项。
+
+        :return: 写入成功返回 ``True``，写入失败返回 ``False``
+        """
+        if self._is_new_file:
+            self._raw_document.yaml_set_start_comment(_FILE_HEADER)
+
+        try:
+            with open(self.config_filepath, "w", encoding="utf-8", newline="\n") as f:
+                self._yaml.dump(self._raw_document, f)
+        except OSError as e:
+            logger.error(f"无法写入配置文件 '{self.config_filepath}': {e}")
             return False
 
-        logger.info(f"配置已写入 '{target}'。")
+        logger.info(f"配置已写入 '{self.config_filepath}'。")
         return True
-
-    @classmethod
-    def _schema_fields(cls) -> list[Field]:
-        """返回所有会写入配置文件的字段，顺序与声明顺序一致。"""
-        return [spec for spec in dataclass_fields(cls) if spec.metadata.get("yaml")]
-
-
-def _new_yaml() -> YAML:
-    """创建一个写配置文件用的 YAML 实例。"""
-    yaml = YAML()
-    yaml.indent(mapping=2, sequence=4, offset=2)
-    # 保留用户自己书写的引号，避免写回时把整个文件重新格式化
-    yaml.preserve_quotes = True
-    return yaml
 
 
 def main() -> int:
-    """
-    按当前 schema 生成一份带注释的配置文件。
-
-    用法::
-
-        python config.py [目标文件]
-
-    不指定目标文件时写入 ``<程序目录>/config.yaml.example``。
-    """
-    config = Config()
+    # 默认保存到 config.yaml.example
     target = sys.argv[1] if len(sys.argv) > 1 else "config.yaml.example"
-    if not config.save(target):
-        return 1
-    print(f"已生成配置文件 {config.config_filepath if Path(target).is_absolute() else BASE_DIR / target}")
+    manager = ConfigManager(target)
+    # 因为文件不存在，load 会自动触发新建、按顺序填入并保存
+    manager.load()
+    print(f"已生成配置文件 {manager.config_filepath}")
     return 0
 
 
 if __name__ == "__main__":
-    ret_code = main()
-    sys.exit(ret_code)
+    sys.exit(main())
