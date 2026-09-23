@@ -1,7 +1,6 @@
 import struct
 from pathlib import Path
 import time
-import requests
 
 from app_lifecycle import sleep_smart as sleep
 from config import Config
@@ -245,7 +244,7 @@ class _BaseWorkflow:
             except FileNotFoundError:
                 logger.error(f"清理 {settings_file} 失败: 文件不存在。")
                 continue
-            except IOError as e:
+            except OSError as e:
                 logger.error(f"清理 {settings_file} 失败: IO错误: {e}")
                 continue
             except Exception as e:
@@ -255,38 +254,3 @@ class _BaseWorkflow:
             logger.info(f"清理完成: {settings_file}")
 
         logger.info("修复 pc_setting.bin 无法进线上完成。")
-
-    def get_mageangela_jobwarp_bot_steamjvp(self) -> list[str]:
-        """
-        从 mageangela 的接口获取差传 Bot 的战局链接。
-
-        :raises ``NetworkError(NetworkErrorContext.FETCH_WARPBOT_INFO)``: 从 mageangela 的接口获取差传 Bot 的战局链接时发生网络错误
-        """
-        try:
-            res = requests.get("http://quellgtacode.mageangela.cn:52014/botJvp/", timeout=10)
-            res.raise_for_status()
-            response_lines = res.text.replace("\r", "").split("\n")
-        except requests.RequestException as e:
-            raise NetworkError(NetworkErrorContext.FETCH_WARPBOT_INFO) from e
-
-        # 前三行是注释，删除
-        raw_bot_lines = response_lines[3:]
-        # 保留的行格式类似于
-        """
-        差传1-郑州联通(12bot)|Vm9Y1LlGNdnAwXDOmiAAAAAAEaRdRXe%3D%3D
-        差传2-郑州移动(13bot)|
-        赞助1-小羊咩咩(辅助瞄准差传)|fJEwz2fHrrBAwhKsZ2AAAAAAEaRdRXeAh0S%3D%3D
-        """
-
-        list_bot_steamjvp = []
-        for line in raw_bot_lines:
-            # 以防万一，清理无关行
-            if "|" not in line:
-                continue
-            _, jvp_id = line.split("|", 1)
-            # Bot 挂掉后，"|"后将没有内容
-            if not jvp_id:
-                continue
-            list_bot_steamjvp.append(jvp_id)
-
-        return list_bot_steamjvp
