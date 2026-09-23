@@ -1,4 +1,5 @@
 from enum import Enum, auto
+import re
 
 
 class BotMode(Enum):
@@ -37,3 +38,9 @@ GTA_WINDOW_TITLE = "Grand Theft Auto V"
 
 # GTA V 增强版窗口类名
 GTA_WINDOW_CLASS_NAME = "sgaWindow"
+
+# 检查加入游戏用的 steam_jvp 格式用的正则对象
+# 格式: 被 URL 编码后的 base64 编码字符串
+STEAM_JVP_PATTERN = re.compile(
+    r"^(?:(?:[A-Za-z0-9]|%2[BFbf]){4})*(?:(?:[A-Za-z0-9]|%2[BFbf]){4}|(?:[A-Za-z0-9]|%2[BFbf]){3}%3[Dd]|(?:[A-Za-z0-9]|%2[BFbf]){2}(?:%3[Dd]){2})$"
+)

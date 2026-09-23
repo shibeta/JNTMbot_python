@@ -4,6 +4,7 @@ from app_lifecycle import sleep_smart as sleep
 from logger import get_logger
 from windows_utils import exec_command_detached
 
+from .constant import *
 from .exception import *
 from ._base_workflow import _BaseWorkflow
 
@@ -462,6 +463,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         该方法只能在游戏启动后才能运行，因为游戏未启动时使用 steam://rungame/ 会出现一个程序无法处理的弹窗。
 
         :param steam_jvp: URL 编码后的 steam_jvp 参数
+        :raises ``ValueError``: steam_jvp 参数格式不正确
         :raises ``OperationTimeout(OperationTimeoutContext.ONLINE_SESSION_JOIN)``: 加入战局时超时
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         :raises ``UnexpectedGameState(expected=GameState.ONLINE_FREEMODE, actual=GameState.BAD_PCSETTING_BIN)``: 由于 pc_setting.bin 问题无法进入在线模式
@@ -473,7 +475,11 @@ class LifecycleWorkflow(_BaseWorkflow):
         if not self.process.is_game_started():
             raise UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)
 
-        # TODO: 加入参数合法性检查，避免命令注入
+        # 检查参数合法性，避免命令注入
+        if not STEAM_JVP_PATTERN.fullmatch(steam_jvp):
+            logger.error(f"非法的 steam_jvp: {steam_jvp}")
+            logger.error("正确的 steam_jvp 应当是 URL 编码后的 base64 编码字符串。")
+            raise ValueError("steam_jvp 非法")
 
         steam_url = f"steam://rungame/{self.config.gameAppId}/76561199074735990/-steamjvp={steam_jvp}"
         exec_command_detached(["explorer.exe", steam_url])
