@@ -1,0 +1,87 @@
+[project.urls]
+Homepage = "https://github.com/shibeta/JNTMbot_python"
+Repository = "https://github.com/shibeta/JNTMbot_python.git"
+"Bug Tracker" = "https://github.com/shibeta/JNTMbot_python/issues"
+
+[project]
+name = "JNTMbot_python"
+version = "1.5.1"
+description = "德瑞Bot自动开车脚本"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "colorlog",
+    "comtypes",
+    "numpy",
+    "Pillow",
+    "psutil",
+    "pynput",
+    "pywin32",
+    "requests",
+    "ruamel.yaml",
+    "uiautomation",
+    "vgamepad",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pip-tools",               # 用于导出 txt 依赖树
+    "pyinstaller",             # 打包工具
+    "pyinstaller-versionfile", # 生成 exe 版本信息
+    "ruff",                    # 格式化与检查
+    "mypy",                    # 类型检查
+    "pytest",                  # 测试框架
+    "pytest-cov",              # 测试覆盖率
+]
+
+[build-system]
+# 暂时没用用处，因为不需要发包
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = [] # 不进行常规的 Python 源码打包
+
+[tool.hatch.build.targets.sdist]
+include = []
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = ["venv", "build", "dist", "RapidOCR_api.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "PIE"]
+ignore = [
+    "E501",   # 忽略长行
+    "RUF001",
+    "RUF002",
+    "RUF003", # 忽略中文标点
+    "UP006",
+    "UP035",
+    "UP045",  # 忽略类型注解
+]
+
+[tool.ruff.lint.per-file-ignores]
+# main.py 需要在导入前初始化 lifecycle manager
+"main.py" = ["E402"]
+
+[tool.ruff.format]
+# 不格式化外部引入库
+exclude = ["RapidOCR_api.py"]
+
+[tool.mypy]
+python_version = "3.12"
+files = ["."]
+# vgamepad / comtypes / uiautomation / pynput 没有类型存根
+ignore_missing_imports = true
+
+# [tool.pytest.ini_options]
+# testpaths = ["tests"]
+# addopts = "-q"
+
+[tool.coverage.run]
+# 没有包所以指定扫描所有文件，通过 omit 忽略不需要扫描的文件夹和文件
+source = ["."]
+omit = ["venv/*", "build/*", "dist/*", "steam_bot/*", "tests/*"]

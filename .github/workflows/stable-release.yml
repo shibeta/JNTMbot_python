@@ -4,12 +4,6 @@ on:
   # 只允许手动触发
   workflow_dispatch:
     inputs:
-      tag_name:
-        description: '要创建的 tag (例如 v1.0.0)'
-        required: true
-      release_name:
-        description: 'Release 的标题 (例如 Version 1.0.0)'
-        required: true
       body:
         description: 'Release 的描述内容 (支持 Markdown)'
         required: false
@@ -25,6 +19,8 @@ jobs:
   build_python:
     name: Build Python Executable
     runs-on: windows-latest
+    outputs:
+      product_version: ${{steps.export_envs.outputs.product_version}}
     permissions:
       contents: read
     env:
@@ -45,20 +41,6 @@ jobs:
           Write-Host "Waiting for ViGEmBus driver to settle..."
           Start-Sleep -Seconds 5
 
-      # 格式化 tag name 以符合 PyInstaller 版本号要求
-      - name: Format Tag for PyInstaller
-        shell: pwsh
-        run: |
-          $tagName = "${{ github.event.inputs.tag_name }}"
-          # 如果 tag 以 'v' 开头，则移除它
-          if ($tagName.StartsWith("v")) {
-            $version = $tagName.Substring(1)
-          } else {
-            $version = $tagName
-          }
-          echo "PRODUCT_VERSION=$version" >> $env:GITHUB_ENV
-          Write-Host "Formatted version for PyInstaller: $version"
-
       - name: Set up Python
         uses: actions/setup-python@v6
         with:
@@ -69,6 +51,22 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
+
+      # 从 pyproject.toml 导出应用版本
+      - name: Parse pyproject.toml metadata
+        shell: pwsh
+        run: |
+          python -c "
+          import tomllib, os
+          with open('pyproject.toml', 'rb') as f:
+              project = tomllib.load(f).get('project', {})
+              
+          env_file = os.environ.get('GITHUB_ENV')
+          with open(env_file, 'a', encoding='utf-8') as env:
+              env.write(f'PRODUCT_VERSION={project.get(\"version\", \"1.0.0\")}\n')
+          "
+          # 验证提取结果
+          Write-Host "Version: $env:PRODUCT_VERSION"
 
       - name: Generate PyInstaller Version Info
         shell: pwsh
@@ -142,6 +140,12 @@ jobs:
         with:
           name: python-artifact
           path: ./dist/${{ env.PRODUCT_NAME }}/
+
+      # 导出版本号供发布时使用
+      - name: Export Envs for Release Job
+        id: export_envs
+        run: |
+          echo "product_version=${{ env.PRODUCT_VERSION }}" >> $env:GITHUB_OUTPUT
 
   # --- 构建 Node.js 部分 ---
   build_node:
@@ -217,8 +221,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           files: ${{ steps.package.outputs.zip_path }}
-          tag_name: ${{ github.event.inputs.tag_name }}
-          name: ${{ github.event.inputs.release_name }}
+          tag_name: ${{ needs.build_python.outputs.product_version }}
+          name: ${{ needs.build_python.outputs.product_version }}
           body: |
             ${{ github.event.inputs.body }}
             ---
