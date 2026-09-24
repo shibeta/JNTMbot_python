@@ -11,7 +11,7 @@ steamBotToken: '0x4445414442454546'
 # Steam Bot使用的代理，格式为"http://127.0.0.1:8080"或"socks5h://127.0.0.1:1080"。"system"表示使用系统代理，留空则不使用代理。建议使用HTTP代理
 steamBotProxy: system
 # GTA V 增强版在 Steam 上的 App ID，用于通过 Steam 启动游戏和加入战局，一般不需要修改
-gameAppId: '3240220'
+gameAppId: 3240220
 # 要发送消息的Steam群组ID，程序启动时可以读取到
 steamGroupId: '37660928'
 # 要发送消息的Steam群组频道ID，程序启动时可以读取到

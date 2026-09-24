@@ -441,22 +441,23 @@ class ConfigManager:
         :param config_filepath: 配置文件路径。相对路径会以**程序所在目录**为基准，而不是
             当前工作目录；为 ``None`` 时使用 ``<程序目录>/config.yaml``
         """
-        self.config_filepath = self._resolve_path(config_filepath)
+        if config_filepath:
+            self.config_filepath = self._resolve_path(config_filepath)
+        else:
+            self.config_filepath = self._resolve_path("config.yaml")
         self._yaml = _new_yaml()
         self._raw_document: CommentedMap = CommentedMap()
         self._is_new_file = False
         self._needs_write = False
 
     @staticmethod
-    def _resolve_path(filepath: str | Path | None) -> Path:
+    def _resolve_path(filepath: str | Path) -> Path:
         """
         把配置文件路径解析成绝对路径，相对路径以程序所在目录为基准。
 
         :param filepath: 传入的原始路径字符串或 Path 对象
         :return: 解析后的绝对路径 Path 对象
         """
-        if filepath is None:
-            return BASE_DIR / "config.yaml"
         path = Path(filepath).expanduser()
         if not path.is_absolute():
             path = BASE_DIR / path
@@ -581,12 +582,19 @@ class ConfigManager:
 
 
 def main() -> int:
-    # 默认保存到 config.yaml.example
-    target = sys.argv[1] if len(sys.argv) > 1 else "config.yaml.example"
+    # 如果传入了目标文件，则更新它。未传入则删除并重新生成 config.yaml.example
+    if len(sys.argv) > 1:
+        target = sys.argv[1]
+    else:
+        target = "config.yaml.example"
+        target_filepath = ConfigManager._resolve_path(target)
+        # 如果是文件夹则不删除，避免误删文件
+        if target_filepath.exists() and target_filepath.is_file():
+            target_filepath.unlink()
+
     manager = ConfigManager(target)
-    # 因为文件不存在，load 会自动触发新建、按顺序填入并保存
     manager.load()
-    print(f"已生成配置文件 {manager.config_filepath}")
+    print(f"已{"更新" if len(sys.argv) > 1 else "重新生成"}配置文件 {manager.config_filepath}")
     return 0
 
 
