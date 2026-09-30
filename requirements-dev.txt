@@ -105,7 +105,7 @@ typing-extensions==4.16.0
     # via mypy
 uiautomation==2.0.29
     # via JNTMbot_python (pyproject.toml)
-urllib3==2.7.0
+urllib3==2.8.0
     # via requests
 vgamepad==0.1.0
     # via JNTMbot_python (pyproject.toml)
