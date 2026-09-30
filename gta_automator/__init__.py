@@ -319,7 +319,7 @@ class GTAAutomator:
         try:
             self.job_workflow.handle_post_job_start()
         except OperationTimeout as e:
-            if e.context == OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR or OperationTimeoutContext.CHARACTER_LAND:
+            if e.context in (OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR, OperationTimeoutContext.CHARACTER_LAND):
                 timeout_context = e.context.value
                 # 在差事中检查状态超时，尝试更换战局
                 # 在差事中退出游戏可能导致恶意值增加，所以这里选择切换战局
