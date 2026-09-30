@@ -4,8 +4,8 @@ from app_lifecycle import sleep_smart as sleep
 from logger import get_logger
 
 from ._base_workflow import _BaseWorkflow
-from .exception import *
-from .constant import *
+from .constant import PlayerLevel
+from .exception import GameState, UIElement, UIElementNotFound, UnexpectedGameState
 
 logger = get_logger(__name__.split(".")[-1])
 
@@ -165,9 +165,7 @@ class OnlineWorkflow(_BaseWorkflow):
             # 检查是否还在在线战局中
             # 注意 OCR 会引入几秒钟误差
             if not self.check_if_in_onlinemode():
-                raise UnexpectedGameState(
-                    {GameState.ONLINE_FREEMODE, GameState.IN_MISSION}, GameState.UNKNOWN
-                )
+                raise UnexpectedGameState({GameState.ONLINE_FREEMODE, GameState.IN_MISSION}, GameState.UNKNOWN)
 
             # 当剩余时间短于检查间隔时，休眠并退出循环
             remaining_time = end_time - time.monotonic()

@@ -2,18 +2,23 @@ import atexit
 
 from logger import get_logger
 from windows_utils import (
-    SuspendException,
     ResumeException,
+    SuspendException,
+    close_window,
     find_window,
     get_process_name,
     get_window_title,
-    close_window,
     kill_processes,
     resume_process,
     suspend_process_for_duration,
 )
 
-from .constant import *
+from .constant import (
+    GTA_ASSOCIATED_PROCESS_NAMES,
+    GTA_PROCESS_NAME,
+    GTA_WINDOW_CLASS_NAME,
+    GTA_WINDOW_TITLE,
+)
 
 logger = get_logger(__name__.split(".")[-1])
 
@@ -114,21 +119,12 @@ class GameProcess:
         **注意这个方法不会检查或修改对象记录的游戏信息，需要手动更新**。
         """
         window_info = find_window(GTA_WINDOW_CLASS_NAME, GTA_WINDOW_TITLE)
-        if window_info:
-            return True
-        else:
-            return False
+        return bool(window_info)
 
     def is_hwnd_valid(self) -> bool:
         """检查窗口句柄是否有效。"""
-        if self.hwnd and GTA_WINDOW_TITLE == get_window_title(self.hwnd):
-            return True
-        else:
-            return False
+        return bool(self.hwnd and get_window_title(self.hwnd) == GTA_WINDOW_TITLE)
 
     def is_pid_vaild(self) -> bool:
         """检查进程 PID 是否有效。"""
-        if self.pid and GTA_PROCESS_NAME == get_process_name(self.pid):
-            return True
-        else:
-            return False
+        return bool(self.pid and get_process_name(self.pid) == GTA_PROCESS_NAME)

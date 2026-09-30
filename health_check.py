@@ -1,9 +1,10 @@
-from datetime import datetime, timedelta
 import threading
 import time
+from datetime import datetime, timedelta
 from typing import Any, Callable
 
-from app_lifecycle import sleep_smart as sleep, is_exiting
+from app_lifecycle import is_exiting
+from app_lifecycle import sleep_smart as sleep
 from config import Config
 from logger import get_logger
 
@@ -117,9 +118,7 @@ class HealthMonitor(threading.Thread):
             last_send_monotonic_time = self.get_last_steam_message_send_monotonic_time()
             elapsed_time = time.monotonic() - last_send_monotonic_time
             # 转换为整数以输出更好看的时间
-            logger.debug(
-                f"健康检查：距离上次通过 Steam 发送消息已过去 {timedelta(seconds=int(elapsed_time))}。"
-            )
+            logger.debug(f"健康检查：距离上次通过 Steam 发送消息已过去 {timedelta(seconds=int(elapsed_time))}。")
 
             if elapsed_time > self.steam_chat_timeout_threshold * 60:
                 is_healthy_now = False

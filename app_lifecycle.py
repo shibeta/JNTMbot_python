@@ -1,11 +1,12 @@
-import ctypes
-from ctypes import wintypes
 import _thread
+import atexit
+import ctypes
 import os
 import sys
 import threading
-import atexit
 import time
+from contextlib import suppress
+from ctypes import wintypes
 
 from logger import get_logger
 
@@ -78,10 +79,8 @@ def restart_program():
 
     # 刷新 IO 缓冲区（pythonw / 无控制台启动时，流可能已被关闭或替换）
     for stream in (sys.stdout, sys.stderr):
-        try:
+        with suppress(AttributeError, OSError, ValueError):
             stream.flush()
-        except (AttributeError, OSError, ValueError):
-            pass
 
     # 重启
     executable = sys.executable
@@ -93,10 +92,8 @@ def restart_program():
         logger.error(f"重启失败: {e}")
         # stdin 可能已关闭（pythonw、服务、CI），此时 input() 会抛 EOFError，
         # 必须吞掉它，否则会绕过下面这条 sys.exit(1)
-        try:
+        with suppress(EOFError, OSError):
             input("请手动重启程序。按 Enter 键退出...")
-        except (EOFError, OSError):
-            pass
         sys.exit(1)
 
 

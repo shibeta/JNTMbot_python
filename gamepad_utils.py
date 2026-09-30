@@ -1,16 +1,18 @@
 from __future__ import annotations
+
+import atexit
+import bisect
+import copy
 import enum
 import subprocess
 import sys
-import copy
 import time
-from typing import Callable
-import atexit
 from collections import defaultdict
 from functools import total_ordering
-import bisect
+from typing import Callable
 
-from app_lifecycle import restart_program, sleep_stoppable as sleep
+from app_lifecycle import restart_program
+from app_lifecycle import sleep_stoppable as sleep
 from logger import get_logger
 from paths import VIGEMBUS_DRIVER_PATH_CANDIDATES
 
@@ -158,7 +160,7 @@ class Button(enum.IntFlag):
     RIGHT_SHOULDER = vg.XUSB_BUTTON.XUSB_GAMEPAD_RIGHT_SHOULDER
 
 
-AnyButton = vg.XUSB_BUTTON | Button
+type AnyButton = vg.XUSB_BUTTON | Button
 
 
 class JoystickDirection(tuple[float, float]):
@@ -756,9 +758,7 @@ if __name__ == "__main__":
     print("通过fitter创建一个小舒婷")
     # 将按X键后移20ms，来打出小舒婷
     fist_and_back_macro = shooting_macro.filter(lambda event: event.time_ms > 10)
-    bad_shooting_macro = shooting_macro.filter(lambda event: event.time_ms <= 10).append(
-        fist_and_back_macro, 20
-    )
+    bad_shooting_macro = shooting_macro.filter(lambda event: event.time_ms <= 10).append(fist_and_back_macro, 20)
 
     print("生成的 '小舒婷' 宏:")
     for event in bad_shooting_macro:

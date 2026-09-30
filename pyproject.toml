@@ -74,8 +74,12 @@ exclude = ["RapidOCR_api.py"]
 [tool.mypy]
 python_version = "3.12"
 files = ["."]
-# vgamepad / comtypes / uiautomation / pynput 没有类型存根
+# vgamepad / comtypes / pywin32 / pynput 没有类型存根
 ignore_missing_imports = true
+# 不检查外部引入库和 Node.js 项目
+exclude = ['RapidOCR_api.py$', "steam_bot/"]
+exclude_gitignore = true
+check_untyped_defs = false
 
 # [tool.pytest.ini_options]
 # testpaths = ["tests"]

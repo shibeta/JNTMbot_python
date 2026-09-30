@@ -1,28 +1,27 @@
-from app_lifecycle import init_lifecycle_manager, toggle_pause, trigger_exit, sleep_smart
+from app_lifecycle import init_lifecycle_manager, sleep_smart, toggle_pause, trigger_exit
 from gamepad_utils import GamepadInitError
 
 # 生命周期管理器需要在所有 atexit 方法被注册前初始化
 init_lifecycle_manager()
 
+import subprocess
 import sys
 import time
-import subprocess
 import traceback
-from functools import wraps, partial
+from functools import partial, wraps
 from typing import Callable
 
-from keyboard_utils import HotKeyManager
-from logger import set_loglevel, get_logger
+from argument_parser import ArgumentError, ArgumentParser
 from config import ConfigManager
-
-from argument_parser import ArgumentParser, ArgumentError
+from gta_automator import GTAAutomator
+from gta_automator.exception import GameState, UnexpectedGameState
+from health_check import HealthMonitor
+from keyboard_utils import HotKeyManager
+from logger import get_logger, set_loglevel
 from ocr_utils import OCREngine, OcrError
+from push_utils import UniPush
 from steambot_utils import SteamBot
 from steamgui_automation import SteamAutomation
-from push_utils import UniPush
-from gta_automator import GTAAutomator
-from health_check import HealthMonitor
-from gta_automator.exception import *
 
 logger = get_logger("main")
 

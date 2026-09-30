@@ -4,9 +4,17 @@ from app_lifecycle import sleep_smart as sleep
 from logger import get_logger
 from windows_utils import exec_command_detached
 
-from .constant import *
-from .exception import *
 from ._base_workflow import _BaseWorkflow
+from .constant import STEAM_JVP_PATTERN
+from .exception import (
+    GameAutomatorException,
+    GameState,
+    OperationTimeout,
+    OperationTimeoutContext,
+    UIElement,
+    UIElementNotFound,
+    UnexpectedGameState,
+)
 
 logger = get_logger(__name__.split(".")[-1])
 
@@ -66,7 +74,17 @@ class LifecycleWorkflow(_BaseWorkflow):
                             logger.info("已通过常规方法退出游戏，等待 20 秒以让 RockStar 启动器响应。")
                             sleep(20)
                         else:
-                            logger.warning("通过常规方法退出游戏失败。")
+                            raise UnexpectedGameState(GameState.OFF, GameState.UNKNOWN)
+                    else:
+                        raise UIElementNotFound(UIElement.EXIT_CONFIRM_BUTTON)
+                else:
+                    raise UIElementNotFound(UIElement.EXIT_CONFIRM_PAGE)
+
+        except UnexpectedGameState:
+            logger.warning("通过常规方法退出游戏失败: 等待游戏进程关闭超时。")
+
+        except UIElementNotFound as e:
+            logger.warning(f"通过常规方法退出游戏失败: 找不到页面元素 {e.element_not_found}")
 
         except Exception as e:
             logger.warning(f"通过常规方法退出游戏时，发生异常: {e}")
@@ -187,9 +205,7 @@ class LifecycleWorkflow(_BaseWorkflow):
         # 游戏启动则仅更新 pid 和 hwnd
         if self.process.is_game_started():
             self.process.update_info()
-            logger.warning(
-                "在游戏运行时，调用启动游戏方法将仅更新 GTA V 窗口信息。如果需要重启，请调用重启方法。"
-            )
+            logger.warning("在游戏运行时，调用启动游戏方法将仅更新 GTA V 窗口信息。如果需要重启，请调用重启方法。")
             return
 
         logger.info("动作: 正在通过 Steam 启动 GTA V...")

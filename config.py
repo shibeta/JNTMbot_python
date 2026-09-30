@@ -98,7 +98,7 @@ def _opt[T](default: T, comment: str, check: _Checker | None = None) -> T:
     return field(default=default, metadata={"yaml": True, "comment": comment, "check": check})
 
 
-def _runtime_state[T](default: T = None) -> T:
+def _runtime_state[T](default: T) -> T:
     """声明一个**不写入配置文件**的运行期状态字段。"""
     return field(default=default, init=False, repr=False, compare=False, metadata={"yaml": False})
 
@@ -190,9 +190,7 @@ class Config:
     debug: bool = _opt(False, "开启调试模式，日志输出将非常详细")
 
     # ---- Steam Bot 后端 ----
-    steamBotHost: str = _opt(
-        "127.0.0.1", "Steam Bot后端的监听地址", _check_not_empty("Steam Bot后端监听地址")
-    )
+    steamBotHost: str = _opt("127.0.0.1", "Steam Bot后端的监听地址", _check_not_empty("Steam Bot后端监听地址"))
     steamBotPort: int = _opt(13091, "Steam Bot后端的监听端口", _check_range(minimum=1, maximum=65535))
     steamBotToken: str = _opt(
         "0x4445414442454546", "访问Steam Bot后端的认证Token", _check_not_empty("Steam Bot后端认证Token")
@@ -268,9 +266,7 @@ class Config:
         _check_range(minimum=0),
     )
     suspendGTATime: int = _opt(13, "卡单持续时间 (秒)", _check_range(minimum=0, unit=" 秒"))
-    delaySuspendTimePanelDisappear: int = _opt(
-        5, "面板消失后，卡单延迟时间 (秒)", _check_range(minimum=0, unit=" 秒")
-    )
+    delaySuspendTimePanelDisappear: int = _opt(5, "面板消失后，卡单延迟时间 (秒)", _check_range(minimum=0, unit=" 秒"))
     delaySuspendTimeJobStart: int = _opt(
         10, "任务启动玩家落地后，卡单延迟时间 (秒)", _check_range(minimum=0, unit=" 秒")
     )
@@ -301,9 +297,7 @@ class Config:
 
     # ---- 生活层与楼梯间的移动时间 (毫秒) ----
     walkToPillarTime: int = _opt(1500, '生活层进行"走到床头柱子前卡住"动作的持续时间 (毫秒)', _ms_check)
-    walkToBedroomEntranceTime: int = _opt(
-        5500, '生活层进行"走到个人空间门口"动作的持续时间 (毫秒)', _ms_check
-    )
+    walkToBedroomEntranceTime: int = _opt(5500, '生活层进行"走到个人空间门口"动作的持续时间 (毫秒)', _ms_check)
     exitBedroomDoorBackTime: int = _opt(
         1500, '生活层进行"走出个人空间的门"动作时，向右后方移动的持续时间 (毫秒)', _ms_check
     )
@@ -320,13 +314,9 @@ class Config:
     moveTimeFindJob: int = _opt(350, '差事层进行"寻找差事黄圈"动作时 每次移动的持续时间 (毫秒)', _ms_check)
 
     # ---- 差事流程超时 (秒) ----
-    lobbyCheckLoopTime: int = _opt(
-        1, "差事面板玩家加入状态检测间隔时间 (秒)", _check_range(minimum=1, unit=" 秒")
-    )
+    lobbyCheckLoopTime: int = _opt(1, "差事面板玩家加入状态检测间隔时间 (秒)", _check_range(minimum=1, unit=" 秒"))
     matchPanelTimeout: int = _opt(180, "面板无人加入时重开时间 (秒)", _check_range(minimum=1, unit=" 秒"))
-    playerJoiningTimeout: int = _opt(
-        60, "等待正在加入玩家超时重开时间 (秒)", _check_range(minimum=1, unit=" 秒")
-    )
+    playerJoiningTimeout: int = _opt(60, "等待正在加入玩家超时重开时间 (秒)", _check_range(minimum=1, unit=" 秒"))
     startMatchDelay: int = _opt(15, "开始差事等待延迟 (秒)", _check_range(minimum=0, unit=" 秒"))
     exitMatchTimeout: int = _opt(
         120,
@@ -367,9 +357,7 @@ class Config:
         "即将发车，请在听到“咚”的一声后卡单",
         "差事启动时发的消息 (设置为空字符串则不发这条消息)",
     )
-    msgJobStartFail: str = _opt(
-        "启动差事失败，请等下一班车", "差事启动失败时发的消息 (设置为空字符串则不发这条消息)"
-    )
+    msgJobStartFail: str = _opt("启动差事失败，请等下一班车", "差事启动失败时发的消息 (设置为空字符串则不发这条消息)")
     msgDetectedSB: str = _opt(
         "有人没有卡单，请先阅读教程，了解Bot的使用方法后再使用本bot",
         "发现有人没卡单时发的消息 (设置为空字符串则不发这条消息)",
@@ -377,7 +365,7 @@ class Config:
 
     # ---- 运行期状态，不会写入配置文件 ----
     # 配置文件绝对路径
-    config_filepath: Path = _runtime_state(BASE_DIR / "config.yaml")
+    config_filepath: Path = field(default_factory=lambda: _runtime_state(BASE_DIR / "config.yaml"))
 
     @classmethod
     def _schema_fields(cls) -> list[Field]:
@@ -412,16 +400,15 @@ class Config:
                     problems.append(f"  - {spec.name}: {problem}")
 
         # 特定业务逻辑校验
-        if getattr(self, "useAlterMessagingMethod", False):
-            if not getattr(self, "AlterMessagingMethodWindowTitle", "").strip():
-                problems.append(
-                    "  - AlterMessagingMethodWindowTitle: 启用 useAlterMessagingMethod 时不能为空"
-                )
+        if (
+            getattr(self, "useAlterMessagingMethod", False)
+            and not getattr(self, "AlterMessagingMethodWindowTitle", "").strip()
+        ):
+            problems.append("  - AlterMessagingMethodWindowTitle: 启用 useAlterMessagingMethod 时不能为空")
 
         if problems:
             raise ConfigValidationError(
-                f"配置文件 {self.config_filepath} 中存在 {len(problems)} 处不合法配置:\n"
-                + "\n".join(problems)
+                f"配置文件 {self.config_filepath} 中存在 {len(problems)} 处不合法配置:\n" + "\n".join(problems)
             )
 
 
@@ -594,7 +581,7 @@ def main() -> int:
 
     manager = ConfigManager(target)
     manager.load()
-    print(f"已{"更新" if len(sys.argv) > 1 else "重新生成"}配置文件 {manager.config_filepath}")
+    print(f"已{'更新' if len(sys.argv) > 1 else '重新生成'}配置文件 {manager.config_filepath}")
     return 0
 
 

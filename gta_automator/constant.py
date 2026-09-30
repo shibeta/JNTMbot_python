@@ -1,5 +1,5 @@
-from enum import Enum, auto
 import re
+from enum import Enum, auto
 
 
 class BotMode(Enum):

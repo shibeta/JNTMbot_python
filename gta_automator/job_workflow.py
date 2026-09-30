@@ -1,15 +1,23 @@
 import time
+from contextlib import suppress
 from typing import Any, Callable
 
 from app_lifecycle import sleep_smart as sleep
-from logger import get_logger
 from config import Config
+from logger import get_logger
 
 from ._base_workflow import _BaseWorkflow
+from .exception import (
+    GameState,
+    OperationTimeout,
+    OperationTimeoutContext,
+    UIElement,
+    UIElementNotFound,
+    UnexpectedGameState,
+)
+from .game_action import GameAction
 from .game_process import GameProcess
 from .game_screen import GameScreen
-from .exception import *
-from .game_action import GameAction
 
 logger = get_logger(__name__.split(".")[-1])
 
@@ -131,10 +139,8 @@ class LobbyStateTracker:
         # 有人已加入，且无人正在加入，且距离上一次队伍状态变化时间已经超过了启动延时
         can_start_with_delay = self.joined_count > 0 and self.joining_count == 0
         delay_passed = (time.monotonic() - self.team_status_last_changed_time) > self.normal_start_delay
-        if can_start_with_delay and delay_passed:
-            return True
 
-        return False
+        return can_start_with_delay and delay_passed
 
 
 class JobWorkflow(_BaseWorkflow):
@@ -168,9 +174,7 @@ class JobWorkflow(_BaseWorkflow):
         """
         logger.info("等待在事务所床上复活...")
 
-        if not self.wait_for_state(
-            self.screen.is_respawned_in_agency, timeout=self.config.respawnInAgencyTimeout
-        ):
+        if not self.wait_for_state(self.screen.is_respawned_in_agency, timeout=self.config.respawnInAgencyTimeout):
             raise OperationTimeout(OperationTimeoutContext.RESPAWN_IN_AGENCY)
         logger.info("在事务所床上复活成功。")
 
@@ -250,10 +254,9 @@ class JobWorkflow(_BaseWorkflow):
         self.action.setup_job_panel()
         logger.info("差事面板设置完成。")
 
-        try:
+        # 忽略发送消息失败
+        with suppress(Exception):
             self.send_steam_message_func(self.config.msgOpenJobPanel)
-        except Exception:
-            pass  # 忽略发送消息失败
 
     def _try_to_start_job(self) -> bool:
         """
@@ -264,10 +267,10 @@ class JobWorkflow(_BaseWorkflow):
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
         logger.info("动作: 正在启动差事...")
-        try:
+
+        # 忽略发送消息失败
+        with suppress(Exception):
             self.send_steam_message_func(self.config.msgJobStarting)
-        except Exception:
-            pass  # 忽略发送消息失败
 
         # 按确认键启动差事
         self.action.confirm()
@@ -354,19 +357,17 @@ class JobWorkflow(_BaseWorkflow):
             # 长时间无人加入，发送消息，抛出异常
             if self.lobby_tracker.has_wait_timeout:
                 logger.warning("长时间没有玩家加入，放弃本次差事。")
-                try:
+                # 忽略发送消息失败
+                with suppress(Exception):
                     self.send_steam_message_func(self.config.msgMatchPanelTimeout)
-                except Exception:
-                    pass  # 忽略发送消息失败
                 raise OperationTimeout(OperationTimeoutContext.TEAMMATE)
 
             # 玩家长期卡在正在加入，发送消息，抛出异常
             if self.lobby_tracker.has_joining_timeout:
                 logger.warning('玩家长期卡在"正在加入"状态，放弃本次差事。')
-                try:
+                # 忽略发送消息失败
+                with suppress(Exception):
                     self.send_steam_message_func(self.config.msgPlayerJoiningTimeout)
-                except Exception:
-                    pass  # 忽略发送消息失败
                 raise OperationTimeout(OperationTimeoutContext.PLAYER_JOIN)
 
             # 每次检查大厅状态间间隔一定时间，通过配置文件指定
@@ -423,10 +424,9 @@ class JobWorkflow(_BaseWorkflow):
                 logger.info("检测到任务失败计分板。等待20秒以自动退出。")
                 # 略去发送消息的时间
                 wait_end_time = time.monotonic() + 20
-                try:
+                # 忽略发送消息失败
+                with suppress(Exception):
                     self.send_steam_message_func(self.config.msgDetectedSB)
-                except Exception:
-                    pass  # 忽略发送消息失败
                 # 计算还需要等待的时间
                 remaining_wait_time = wait_end_time - time.monotonic()
                 if remaining_wait_time > 0:

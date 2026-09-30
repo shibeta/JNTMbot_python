@@ -1,10 +1,11 @@
+import atexit
 import os
+import signal
 import subprocess
 import threading
-import signal
 import time
-import atexit
 from typing import Any, Callable
+
 import requests
 from requests.exceptions import JSONDecodeError
 
@@ -59,9 +60,7 @@ class ProcessManager:
             logger.info(f"正在启动进程: {' '.join(self.command)}")
             try:
                 # CREATE_NEW_PROCESS_GROUP 可以避免主进程的 Ctrl+C 信号传递给子进程
-                self.process = subprocess.Popen(
-                    self.command, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
-                )
+                self.process = subprocess.Popen(self.command, creationflags=subprocess.CREATE_NEW_PROCESS_GROUP)
                 logger.debug(f"进程已启动，PID: {self.process.pid}")
             except FileNotFoundError:
                 logger.error(f"启动失败: 未找到可执行文件: {self.command[0]}")
@@ -168,11 +167,11 @@ class SteamBotApiClient:
                     # JSON 解析失败，回退到使用原始文本
                     # 截断消息以防日志爆炸
                     if len(error_response.text) > 200:
-                        error_message = f"API 错误 [{error_response.status_code}] (非JSON响应, 已截断): {error_response.text}"
-                    else:
                         error_message = (
-                            f"API 错误 [{error_response.status_code}] (非JSON响应): {error_response.text}"
+                            f"API 错误 [{error_response.status_code}] (非JSON响应, 已截断): {error_response.text}"
                         )
+                    else:
+                        error_message = f"API 错误 [{error_response.status_code}] (非JSON响应): {error_response.text}"
 
             # 丢弃原始的 requests/urllib3 堆栈
             raise SteamBotApiError(error_message, error_response) from None
@@ -245,7 +244,7 @@ class SteamBotApiClient:
 
         :raises SteamBotApiError: 请求出错
         """
-        response = self.post(f"{self.base_url}/login", headers=self.headers, timeout=(5, 20))
+        self.post(f"{self.base_url}/login", headers=self.headers, timeout=(5, 20))
 
     def get_userinfo(self) -> dict[str, Any]:
         """
@@ -459,9 +458,7 @@ class SteamBot:
                 if system_proxy:
                     command.append(f"--proxy={system_proxy}")
                 else:
-                    logger.warning(
-                        "配置了使用系统代理，但未获取到系统代理。请注意程序不支持 PAC 模式的代理。"
-                    )
+                    logger.warning("配置了使用系统代理，但未获取到系统代理。请注意程序不支持 PAC 模式的代理。")
             else:
                 command.append(f"--proxy={self.config.steamBotProxy}")
 
@@ -519,9 +516,7 @@ class SteamBot:
                             f"  - {channel['name'] if channel['name'] else '主频道'} (ID: {channel['id']}){' (语音频道)' if channel['isVoiceChannel'] else ''}"
                         )
                     logger.error("=================================================")
-                    logger.error(
-                        f"请将正确的频道 ID 填入 {self.config.config_filepath} 中的 steamChannelId 。"
-                    )
+                    logger.error(f"请将正确的频道 ID 填入 {self.config.config_filepath} 中的 steamChannelId 。")
 
                     raise ValueError(f"配置中的 Steam 群组频道 ID ({self.config.steamChannelId}) 无效")
         else:
@@ -544,9 +539,7 @@ class SteamBot:
         :raises ``Exception``: 请求出错
         """
 
-        logger.info(
-            f"正在向 Steam 群组 ({self.config.steamGroupId}) 的频道 ({self.config.steamChannelId}) 发送消息..."
-        )
+        logger.info(f"正在向 Steam 群组 ({self.config.steamGroupId}) 的频道 ({self.config.steamChannelId}) 发送消息...")
         if message:
             logger.info(f'消息内容: "{message}"')
         else:

@@ -20,27 +20,25 @@ class UniPush:
             logger.warning("已启用微信推送。")
             if config.enableHealthCheck:
                 logger.info("当健康检查发现 Bot 状态发生变化时，将通过微信通知。")
-            logger.info(
-                f"当程序运行超过 {config.pushActivationDelay} 分钟后，因发生异常而退出时，将通过微信通知。"
-            )
+            logger.info(f"当程序运行超过 {config.pushActivationDelay} 分钟后，因发生异常而退出时，将通过微信通知。")
 
     @staticmethod
     def validate_push_config(config: Config):
         """
         验证推送配置是否合法。
+        不合法将在日志中记录原因。
 
         :param Config config: 配置对象
         :return bool: ``False``不合法，``True``合法
         """
         # 微信推送检查
         is_push_config_valid = True
-        if config.enableWechatPush:
-            if not config.pushplusToken:
-                logger.error("已启用微信推送，但没有提供 pushplus token。")
-                logger.info(
-                    f"请访问 https://www.pushplus.plus/ 获取 token，并填入 {config.config_filepath} 中的 pushplusToken 。"
-                )
-                is_push_config_valid = False
+        if config.enableWechatPush and not config.pushplusToken:
+            logger.error("已启用微信推送，但没有提供 pushplus token。")
+            logger.info(
+                f"请访问 https://www.pushplus.plus/ 获取 token，并填入 {config.config_filepath} 中的 pushplusToken 。"
+            )
+            is_push_config_valid = False
 
         return is_push_config_valid
 

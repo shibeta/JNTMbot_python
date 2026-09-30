@@ -1,9 +1,10 @@
 import threading
 import time
-from typing import Any, List, Set, Tuple, Callable, Dict
-from pynput.keyboard import Controller, KeyCode, Key, GlobalHotKeys
+from typing import Any, Callable, Dict, List, Set, Tuple
 
-from app_lifecycle import sleep_stoppable as sleep, is_exiting
+from pynput.keyboard import Controller, GlobalHotKeys, Key, KeyCode
+
+from app_lifecycle import sleep_stoppable as sleep
 from logger import get_logger
 
 logger = get_logger(__name__)
@@ -19,20 +20,21 @@ class KeyboardSimulator:
     """
 
     # 定义一个类型别名，方便注解
-    KeyType = KeyCode | Key | str
+    type KeyType = KeyCode | Key | str
 
     def __init__(self):
         """
         初始化 KeyboardSimulator 实例。
         """
         # 键盘控制器实例
-        self._controller: Controller = Controller()
+
+        self._controller = Controller()
 
         # 记录当前通过此实例按下的按键集合
-        self._pressed_keys: Set[KeyboardSimulator.KeyType] = set()
+        self._pressed_keys = set()
 
         # 用于保护 _pressed_keys 集合的线程锁
-        self._lock: threading.Lock = threading.Lock()
+        self._lock = threading.Lock()
 
     def press(self, key: KeyType) -> None:
         """

@@ -1,17 +1,16 @@
 import struct
-from pathlib import Path
 import time
+from pathlib import Path
 
 from app_lifecycle import sleep_smart as sleep
 from config import Config
-
 from logger import get_logger
 from windows_utils import get_document_fold_path
 
-from .exception import *
-from .game_screen import GameScreen
+from .exception import GameState, UIElement, UIElementNotFound, UnexpectedGameState
 from .game_action import GameAction
 from .game_process import GameProcess
+from .game_screen import GameScreen
 
 logger = get_logger(__name__.split(".")[-1])
 
@@ -151,7 +150,7 @@ class _BaseWorkflow:
         :param check_function: 一个无参数并返回布尔值的函数 (e.g., self.screen.is_on_job_panel)
         :param timeout: 超时秒数
         :param check_interval: 检查间隔秒数
-        :param game_started: 游戏是否应当启动。传入 False 时，会跳过游戏启动检查
+        :param game_has_started: 游戏是否应当启动。传入 False 时，会跳过游戏启动检查
         :return: 如果在超时前状态达成则返回 True，否则返回 False
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """

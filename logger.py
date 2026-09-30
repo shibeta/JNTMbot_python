@@ -1,5 +1,6 @@
 import logging
 import logging.config
+import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
@@ -7,12 +8,15 @@ from typing import Any
 from paths import LOG_DIR, LOG_FILE_PATH
 
 # 尝试导入 colorlog 库
-colorlog: type | None = None
-try:
-    import colorlog
-except ImportError:
-    # 导入失败保留为 None, 稍后回退到不带颜色的日志
-    colorlog = None
+if hasattr(sys.stdout, "isatty") and sys.stdout.isatty():
+    try:
+        import colorlog  # noqa: F401
+
+        enable_color = True
+    except Exception:
+        enable_color = False
+else:
+    enable_color = False
 
 
 class UIautomationFilter(logging.Filter):
@@ -58,7 +62,7 @@ DEFAULT_LOGGING_CONFIG: dict[str, Any] = {
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "formatter": "color" if colorlog else "default",
+            "formatter": "color" if enable_color else "default",
             "level": "DEBUG",
             "filters": ["silence_uiautomation_less_than_info"],
         },
@@ -155,6 +159,6 @@ if __name__ == "__main__":
 
     print("\n--- 日志演示结束 ---")
 
-    if not colorlog:
+    if not enable_color:
         print("\n提示: 'colorlog' 库未安装，日志将不带颜色。")
         print("请在命令行运行 'pip install colorlog' 来启用彩色日志。")

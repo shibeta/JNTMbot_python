@@ -1,31 +1,32 @@
-from functools import wraps
-import os
-from pathlib import Path
-from contextlib import contextmanager
 import ctypes.wintypes
-import sys
-from urllib.request import getproxies
-import psutil
+import os
 import subprocess
+import sys
 import winreg
+from contextlib import contextmanager
+from functools import wraps
+from pathlib import Path
+from typing import Callable, ClassVar, Concatenate
+from urllib.request import getproxies
+
+import psutil
+import win32api
+import win32clipboard
 import win32con
 import win32gui
-import win32process
-import win32api
 import win32print
-import win32clipboard
+import win32process
 from win32con import (
-    SW_RESTORE,
-    HWND_TOPMOST,
     HWND_NOTOPMOST,
-    THREAD_SUSPEND_RESUME,
+    HWND_TOPMOST,
+    SW_RESTORE,
+    SWP_NOACTIVATE,
     SWP_NOMOVE,
     SWP_NOSIZE,
-    SWP_NOACTIVATE,
     SWP_SHOWWINDOW,
+    THREAD_SUSPEND_RESUME,
     WM_CLOSE,
 )
-from typing import Callable, ClassVar, Concatenate
 
 from app_lifecycle import sleep_smart, sleep_stoppable
 from logger import get_logger
@@ -118,11 +119,7 @@ class ClipboardScope:
             return True
 
         # 检查范围集合
-        for start, end in self.unsupported_ranges:
-            if start <= fmt <= end:
-                return True
-
-        return False
+        return any(start <= fmt <= end for start, end in self.unsupported_ranges)
 
     @_clipboard_guard
     def _backup(self):
@@ -689,9 +686,7 @@ def set_top_window(hwnd: int):
         if restore_minimized_window(hwnd):
             sleep_smart(0.2)  # 等待窗口恢复
         # 将窗口置顶
-        win32gui.SetWindowPos(
-            hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE
-        )
+        win32gui.SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW | SWP_NOACTIVATE)
     except Exception as e:
         raise Exception(f"置顶窗口 {hwnd} 时出错: {e}") from e
 

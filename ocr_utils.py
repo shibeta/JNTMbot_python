@@ -1,22 +1,24 @@
+import io
 import os
 import sys
 import threading
-from PIL import Image
-import io
-import win32gui
-import win32ui
-import numpy as np
 from ctypes import windll
 
-from app_lifecycle import sleep_smart as sleep, _exit_event
+import numpy as np
+import win32gui
+import win32ui
+from PIL import Image
+
+from app_lifecycle import _exit_event
+from app_lifecycle import sleep_smart as sleep
+from logger import get_logger
 from RapidOCR_api import OcrAPI
 from windows_utils import (
-    is_window_handler_exist,
-    restore_minimized_window,
     enable_dpi_awareness,
     get_primary_monitor_dpi_scale,
+    is_window_handler_exist,
+    restore_minimized_window,
 )
-from logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -158,11 +160,7 @@ class WindowCapturer:
             window_width, window_height, print_flags = self._calculate_window_metrics(hwnd, include_title_bar)
 
             # 目标窗口或窗口尺寸变化时，重建 GDI 资源缓存
-            if (
-                self._cached_hwnd != hwnd
-                or self._cached_width != window_width
-                or self._cached_height != window_height
-            ):
+            if self._cached_hwnd != hwnd or self._cached_width != window_width or self._cached_height != window_height:
                 logger.debug("截图目标窗口发生变化，重建 GDI 资源缓存。")
                 # 清理
                 self._cleanup_gdi_cache()
@@ -230,9 +228,7 @@ class WindowCapturer:
         if pixel_width <= 0 or pixel_height <= 0:
             raise ValueError("计算出的截图区域尺寸无效。")
 
-        cropped_image_np = full_image_np[
-            pixel_top : pixel_top + pixel_height, pixel_left : pixel_left + pixel_width
-        ]
+        cropped_image_np = full_image_np[pixel_top : pixel_top + pixel_height, pixel_left : pixel_left + pixel_width]
 
         # debug: 保存截图以便排查问题
         # pil_image = Image.fromarray(cropped_image_np)
@@ -388,9 +384,7 @@ class OCREngine:
         # logger.debug(
         #     f"开始对窗口 {hwnd} 截图，{'不' if not include_title_bar else ''}包括标题栏，截图范围 {left}, {top}, {width}, {height} 。"
         # )
-        screenshot_np = self.screen_capturer.capture_window_area(
-            hwnd, left, top, width, height, include_title_bar
-        )
+        screenshot_np = self.screen_capturer.capture_window_area(hwnd, left, top, width, height, include_title_bar)
         logger.debug("截图完成。")
 
         # 转换为 PNG 格式

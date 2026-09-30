@@ -6,14 +6,21 @@ from config import Config
 from gamepad_utils import GamepadSimulator
 from logger import get_logger
 
-from .constant import *
-from .exception import *
+from .constant import BotMode, PlayerLevel
+from .exception import (
+    GameState,
+    OperationTimeout,
+    OperationTimeoutContext,
+    UIElement,
+    UIElementNotFound,
+    UnexpectedGameState,
+)
+from .game_action import GameAction
 from .game_process import GameProcess
 from .game_screen import GameScreen, OcrFuncProtocol
-from .game_action import GameAction
+from .job_workflow import JobWorkflow
 from .lifecycle_workflow import LifecycleWorkflow
 from .online_workflow import OnlineWorkflow
-from .job_workflow import JobWorkflow
 
 logger = get_logger(__name__)
 
@@ -165,10 +172,7 @@ class GTAAutomator:
         try:
             self.online_workflow.start_new_match()
         except UnexpectedGameState as e:
-            if (
-                e.expected == {GameState.ONLINE_FREEMODE, GameState.IN_MISSION}
-                and e.actual_state == GameState.UNKNOWN
-            ):
+            if e.expected == {GameState.ONLINE_FREEMODE, GameState.IN_MISSION} and e.actual_state == GameState.UNKNOWN:
                 # 开始新战局时，用尽全部恢复策略后仍无法切换战局
                 logger.error("初始化游戏时，切换战局失败次数过多，退出游戏。")
                 self.lifecycle_workflow.shutdown()
@@ -315,10 +319,7 @@ class GTAAutomator:
         try:
             self.job_workflow.handle_post_job_start()
         except OperationTimeout as e:
-            if (
-                e.context == OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR
-                or OperationTimeoutContext.CHARACTER_LAND
-            ):
+            if e.context == OperationTimeoutContext.JOB_SETUP_PANEL_DISAPPEAR or OperationTimeoutContext.CHARACTER_LAND:
                 timeout_context = e.context.value
                 # 在差事中检查状态超时，尝试更换战局
                 # 在差事中退出游戏可能导致恶意值增加，所以这里选择切换战局

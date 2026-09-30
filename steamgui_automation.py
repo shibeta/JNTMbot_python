@@ -1,11 +1,13 @@
+import time
+from contextlib import suppress
 from functools import wraps
 from typing import Callable
+
 import uiautomation as auto
-from windows_utils import ClipboardScope
-import time
 
 from app_lifecycle import sleep_smart as sleep
 from logger import get_logger
+from windows_utils import ClipboardScope
 
 logger = get_logger(__name__)
 
@@ -69,11 +71,9 @@ class SteamAutomation:
                         and original_focused_control is not None
                         and original_focused_control.Exists()
                     ):
-                        try:
+                        # 某些控件（如桌面）可能无法被SetFocus
+                        with suppress(Exception):
                             original_focused_control.SetFocus()
-                        except Exception:
-                            # 某些控件（如桌面）可能无法被SetFocus
-                            pass
 
         return wrapper
 
@@ -125,9 +125,7 @@ class SteamAutomation:
             logger.info(f"已找到 Steam 聊天窗口: {chat_window.Name} 。")
         except Exception as e:
             logger.error(f"未找到 Steam 聊天窗口: {e}。")
-            logger.warning(
-                "Steam Automation 需要手动打开 Steam 群组聊天窗口，请确保 Steam 群组聊天窗口已经打开。"
-            )
+            logger.warning("Steam Automation 需要手动打开 Steam 群组聊天窗口，请确保 Steam 群组聊天窗口已经打开。")
             raise
 
         # 窗口中能否找到文本输入框
@@ -190,9 +188,7 @@ class SteamAutomation:
         # 检查是否有缓存发送按钮控件
         if self.last_send_button_control is not None:
             try:
-                cache_valid = (
-                    self.last_send_button_control.Exists() and self.last_send_button_control.Name == "发送"
-                )
+                cache_valid = self.last_send_button_control.Exists() and self.last_send_button_control.Name == "发送"
             except Exception:
                 # Control.Exists() 有时候会报错
                 cache_valid = False

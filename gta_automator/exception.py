@@ -53,6 +53,8 @@ class UIElement(enum.Enum):
     JOB_SETUP_PANEL = "任务准备面板"
     JOB_TRIGGER_POINT = "任务触发点"
     PAUSE_MENU = "暂停菜单"
+    EXIT_CONFIRM_PAGE = "确认退出页面"
+    EXIT_CONFIRM_BUTTON = "确认退出按钮"
     BAD_SPORT_LEVEL_INDICATOR = "恶意等级指示器"
 
 

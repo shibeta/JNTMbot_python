@@ -3,9 +3,9 @@ from typing import List, Protocol
 
 from logger import get_logger
 
-from .exception import *
+from .constant import PlayerLevel
+from .exception import GameState, UnexpectedGameState
 from .game_process import GameProcess
-from .constant import *
 
 logger = get_logger(__name__.split(".")[-1])
 
@@ -391,9 +391,7 @@ class GameScreen:
 
         :raises ``UnexpectedGameState(expected=GameState.ON, actual=GameState.OFF)``: 游戏未启动，无法执行 OCR
         """
-        return self.search_text(
-            GameScreenTextPatterns.IS_CONFIRM_OPTION_AVAILABLE, ocr_text, 0.5, 0.8, 0.5, 0.2
-        )
+        return self.search_text(GameScreenTextPatterns.IS_CONFIRM_OPTION_AVAILABLE, ocr_text, 0.5, 0.8, 0.5, 0.2)
 
     def is_on_bad_pcsetting_warning_page(self, ocr_text: str | None = None) -> bool:
         """
