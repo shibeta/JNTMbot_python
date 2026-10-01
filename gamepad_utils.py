@@ -470,7 +470,7 @@ class GamepadSimulator:
         :raises ``GamepadError``: 底层调用失败
         """
         try:
-            self._execute_with_retry(self.pad.press_button, button)
+            self._execute_with_retry(self.pad.release_button, button)
         except Exception as e:
             raise GamepadError(f"松开按钮 {button} 时出错: {e}") from e
 
@@ -600,7 +600,7 @@ class GamepadSimulator:
         :raises ``GamepadError``: 底层调用失败
         """
         try:
-            self._execute_with_retry(self.pad.right_joystick_float, pressure_float)
+            self._execute_with_retry(self.pad.right_trigger_float, pressure_float)
         except Exception as e:
             raise GamepadError(f"按压右扳机时出错: {e}") from e
 
