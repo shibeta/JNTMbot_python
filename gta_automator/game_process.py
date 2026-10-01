@@ -26,24 +26,27 @@ logger = get_logger(__name__.split(".")[-1])
 class GameProcess:
     """封装与游戏窗口和进程相关的各种方法"""
 
+    # 窗口句柄与进程 ID，未找到 GTA V 窗口时均为 None
+    hwnd: int | None
+    pid: int | None
+
     def __init__(
         self,
         hwnd: int | None = None,
         pid: int | None = None,
     ):
-        self.hwnd = hwnd  # 窗口句柄
-        self.pid = pid  # 进程ID
+        # 更新窗口句柄和 PID
+        self.update_info(hwnd, pid)
 
         # 确保程序退出时 GTA V 进程不会被挂起
         atexit.register(self.resume)
 
-        # 查找已经打开的 GTA V 窗口
-        self.update_info()
+        # 以防万一, 将游戏进程从挂起中恢复
         self.resume()
 
     def update_info(self, hwnd: int | None = None, pid: int | None = None):
         """
-        传入窗口句柄和 PID ，更新对象的信息。
+        传入窗口句柄和 PID ，更新对应的信息。
 
         如果未提供，则根据窗口标题和进程名寻找窗口句柄和 PID 。未找到将设置窗口句柄和 PID 为 None。
         """
