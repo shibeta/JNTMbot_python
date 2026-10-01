@@ -87,7 +87,7 @@ def _check_proxy(value: Any) -> str | None:
 _ms_check = _check_range(minimum=0, unit=" 毫秒")
 
 
-def _opt[T](default: T, comment: str, check: _Checker | None = None) -> T:
+def _opt(default: object, comment: str, check: _Checker | None = None) -> Any:
     """
     声明一个会写入配置文件的配置项。
 
@@ -96,11 +96,6 @@ def _opt[T](default: T, comment: str, check: _Checker | None = None) -> T:
     :param check: 可选的取值范围校验函数
     """
     return field(default=default, metadata={"yaml": True, "comment": comment, "check": check})
-
-
-def _runtime_state[T](default: T) -> T:
-    """声明一个**不写入配置文件**的运行期状态字段。"""
-    return field(default=default, init=False, repr=False, compare=False, metadata={"yaml": False})
 
 
 def _declared_kind(spec: Field) -> type | None:
@@ -363,9 +358,10 @@ class Config:
         "发现有人没卡单时发的消息 (设置为空字符串则不发这条消息)",
     )
 
-    # ---- 运行期状态，不会写入配置文件 ----
-    # 配置文件绝对路径
-    config_filepath: Path = field(default_factory=lambda: _runtime_state(BASE_DIR / "config.yaml"))
+    def __post_init__(self) -> None:
+        """定义不会写入配置文件的运行时配置项"""
+        # 配置文件绝对路径
+        self.config_filepath: Path = BASE_DIR / "config.yaml"
 
     @classmethod
     def _schema_fields(cls) -> list[Field]:
