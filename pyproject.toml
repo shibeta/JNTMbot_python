@@ -76,15 +76,16 @@ python_version = "3.12"
 files = ["."]
 # vgamepad / comtypes / pywin32 / pynput 没有类型存根
 ignore_missing_imports = true
-# 不检查外部引入库和 Node.js 项目
-exclude = ['RapidOCR_api.py$', "steam_bot/"]
+# 不检查外部引入库, Node.js 项目和单元测试代码
+# TODO: 将ai生成的单元测试正规化
+exclude = ['RapidOCR_api.py$', "steam_bot/", "tests/"]
 exclude_gitignore = true
 check_untyped_defs = false
 
-# [tool.pytest.ini_options]
-# testpaths = ["tests"]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 # addopts = "-q"
-# pythonpath = ["."]
+pythonpath = ["."]
 
 [tool.coverage.run]
 # 没有包所以指定扫描所有文件，通过 omit 忽略不需要扫描的文件夹和文件
