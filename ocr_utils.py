@@ -400,7 +400,11 @@ class OCREngine:
             raise OcrError(f"OCR 后端出错: {e}") from e
 
         # 解析返回的 JSON 结果
-        if result and result.get("code") == 100:
+        if not isinstance(result, dict) or "code" not in result or "data" not in result:
+            logger.error(f"OCR 识别失败。无法解析返回结果: {result}")
+            return ""
+
+        if result.get("code") == 100:
             if not result.get("data"):
                 logger.debug("OCR 识别结果为空。")
                 return ""
@@ -408,16 +412,15 @@ class OCREngine:
             recognized_text = "".join([line["text"] for line in result["data"]])
             logger.debug(f"OCR 识别结果: {recognized_text}")
             return recognized_text
-        elif result and result.get("code") == 101:
+        elif result.get("code") == 101:
             logger.debug("图片中未识别出文字。")
             return ""
         else:
-            error_msg = result.get("data", "未知错误") if result else "无返回结果"
-            logger.error(f"OCR 识别失败。代码: {result.get('code', 'N/A')}, 信息: {error_msg}")
+            logger.error(f"OCR 识别失败。代码: {result.get('code')}, 信息: {result.get('data')}")
             return ""
 
 
-# --- 使用示例 (与您原文件中的 main 部分相同) ---
+# --- 使用示例 ---
 if __name__ == "__main__":
     # 找一个窗口来测试，例如记事本。请先手动打开一个记事本窗口。
     hwnd = win32gui.FindWindow("notepad", None)
