@@ -198,10 +198,18 @@ class TestNotificationHelpers:
     def test_on_unhealthy_respects_exit_flag(self, make_monitor, exit_on_unhealthy: bool):
         env = make_monitor(exit_on_unhealthy=exit_on_unhealthy)
 
-        env.monitor._on_unhealthy("SteamChatTimeout")
+        env.monitor._on_unhealthy(["SteamChatTimeout"])
 
         assert env.exit_func.called is exit_on_unhealthy
         env.push.assert_not_called()
+
+    def test_on_unhealthy_does_not_mutate_caller_list(self, make_monitor):
+        env = make_monitor()
+        reasons = ["SteamChatTimeout"]
+
+        env.monitor._on_unhealthy(reasons)
+
+        assert reasons == ["SteamChatTimeout"]
 
     def test_on_become_unhealthy_with_unknown_reason(self, make_monitor):
         env = make_monitor()
