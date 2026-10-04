@@ -221,9 +221,10 @@ jobs:
 
     steps:
       # 为 Release 命名需要当前日期
-      - name: Set current date variable
+      - name: Get current date
+        id: get-date
         shell: pwsh
-        run: echo "TODAY=$(Get-Date -Format 'yyyy-MM-dd')" >> $env:GITHUB_ENV
+        run: echo "today=$(Get-Date -Format 'yyyy-MM-dd')" >> $env:GITHUB_OUTPUT
 
       - name: Download all build artifacts
         uses: actions/download-artifact@v8
@@ -259,7 +260,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: 'nightly'
-          name: 'Nightly Build ${{ env.TODAY }}'
+          name: 'Nightly Build ${{ steps.get-date.outputs.today }}'
           draft: false
           body: |
             这是 JNTMbot_python 的 nightly 版本，包含最新的更改和功能。
