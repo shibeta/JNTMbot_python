@@ -57,7 +57,7 @@ pathspec==1.1.1
     # via mypy
 pefile==2024.8.26
     # via pyinstaller
-pillow==12.2.0
+pillow==12.3.0
     # via JNTMbot_python (pyproject.toml)
 pip-tools==7.6.1
     # via JNTMbot_python (pyproject.toml)
