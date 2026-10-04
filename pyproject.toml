@@ -5,7 +5,7 @@ Repository = "https://github.com/shibeta/JNTMbot_python.git"
 
 [project]
 name = "JNTMbot_python"
-version = "1.5.1"
+version = "1.5.2"
 description = "德瑞Bot自动开车脚本"
 readme = "README.md"
 requires-python = ">=3.12"
