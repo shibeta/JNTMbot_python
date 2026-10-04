@@ -1,8 +1,5 @@
 import argparse
-from argparse import ArgumentError
-
-# 将 ArgumentError 导出给其他文件使用
-__all__ = ["ArgumentError", "ArgumentParser"]
+from argparse import ArgumentError as ArgumentError
 
 
 class ArgumentParser:

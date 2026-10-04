@@ -191,4 +191,3 @@ class TestArgumentParser:
 
     def test_argument_error_is_exported(self):
         assert argument_parser_module.ArgumentError is argparse.ArgumentError
-        assert argument_parser_module.__all__ == ["ArgumentError", "ArgumentParser"]
