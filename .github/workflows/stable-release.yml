@@ -20,7 +20,7 @@ jobs:
     name: Build Python Executable
     runs-on: windows-latest
     outputs:
-      product_version: ${{steps.export_envs.outputs.product_version}}
+      product_version: ${{steps.get-version.outputs.product_version}}
     permissions:
       contents: read
     env:
@@ -52,21 +52,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      # 从 pyproject.toml 导出应用版本
-      - name: Parse pyproject.toml metadata
+      # 从 pyproject.toml 导出应用版本到 GITHUB_OUTPUT
+      - name: Parse Version Number from pyproject.toml 
+        id: get-version
         shell: pwsh
         run: |
-          python -c "
-          import tomllib, os
+          $code = @'
+          import tomllib
           with open('pyproject.toml', 'rb') as f:
               project = tomllib.load(f).get('project', {})
-              
-          env_file = os.environ.get('GITHUB_ENV')
-          with open(env_file, 'a', encoding='utf-8') as env:
-              env.write(f'PRODUCT_VERSION={project.get(\"version\", \"1.0.0\")}\n')
-          "
+          print(project.get("version", "1.0.0"))
+          '@
+          $version = python -c $code
+          echo "product_version=$version" >> $env:GITHUB_OUTPUT
+          
           # 验证提取结果
-          Write-Host "Version: $env:PRODUCT_VERSION"
+          Write-Host "Version: $version"
 
       - name: Generate PyInstaller Version Info
         shell: pwsh
@@ -76,7 +77,7 @@ jobs:
           --internal-name ${{ env.PRODUCT_NAME }} `
           --file-description ${{ env.PRODUCT_DESCRIPTION }} `
           --original-filename ${{ env.PRODUCT_NAME }}.exe `
-          --version ${{ env.PRODUCT_VERSION }} `
+          --version ${{ steps.get-version.outputs.product_version }} `
           --outfile version_file.txt
 
       - name: Generate PyInstaller Spec
@@ -140,12 +141,6 @@ jobs:
         with:
           name: python-artifact
           path: ./dist/${{ env.PRODUCT_NAME }}/
-
-      # 导出版本号供发布时使用
-      - name: Export Envs for Release Job
-        id: export_envs
-        run: |
-          echo "product_version=${{ env.PRODUCT_VERSION }}" >> $env:GITHUB_OUTPUT
 
   # --- 构建 Node.js 部分 ---
   build_node:
