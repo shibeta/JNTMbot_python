@@ -11,12 +11,16 @@
     "bin": "server.js",
     "author": "shibeta",
     "license": "ISC",
+    "engines": {
+        "node": ">=22.23.4"
+    },
     "pkg": {
         "targets": [
-            "latest"
+            "node22-win-x64"
         ],
         "assets": [
-            "node_modules/**"
+            "node_modules/lzma/**",
+            "node_modules/@doctormckay/steam-crypto/system.pem"
         ]
     },
     "dependencies": {
@@ -25,6 +29,10 @@
         "steam-user": "^5.3.0"
     },
     "devDependencies": {
-        "pkg": "^5.8.1"
+        "@yao-pkg/pkg": "^6.24.0"
+    },
+    "overrides": {
+        "adm-zip": "^0.6.1",
+        "protobufjs": "^7.6.6"
     }
 }
